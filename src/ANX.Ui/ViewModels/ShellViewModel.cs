@@ -35,6 +35,12 @@ public partial class ShellViewModel : ViewModelBase
         [
             new NavigationViewItem
             {
+                Content = L("Nav.Execution"),
+                Icon = new SymbolIcon { Symbol = SymbolRegular.Beaker24 },
+                TargetPageType = typeof(Views.Pages.TestExecutionPage),
+            },
+            new NavigationViewItem
+            {
                 Content = L("Nav.Home"),
                 Icon = new SymbolIcon { Symbol = SymbolRegular.Home24 },
                 TargetPageType = typeof(Views.Pages.HomePage),

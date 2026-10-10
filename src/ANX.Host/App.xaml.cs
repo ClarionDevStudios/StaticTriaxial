@@ -7,6 +7,12 @@ using ANX.Ui.Services;
 using ANX.Ui.ViewModels;
 using ANX.Ui.Views;
 using ANX.Ui.Views.Pages;
+using ANX.Communication.Channels;
+using ANX.Control;
+using ANX.Core.Control;
+using ANX.Core.Methods;
+using ANX.Method.Bending;
+using ANX.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -75,6 +81,31 @@ public partial class App
                 _ = services.AddSingleton<SettingsViewModel>();
                 _ = services.AddSingleton<HomePage>();
                 _ = services.AddSingleton<SettingsPage>();
+
+                // 数据与试验执行（方法工程只在宿主里出现 —— 铁律）
+                _ = services.AddSingleton(new StorageOptions(AppPaths.ResolveDatabasePath()));
+                _ = services.AddSingleton<IMethodPersistenceModule, BendingPersistenceModule>();
+                _ = services.AddSingleton(sp => new DatabaseInitializer(
+                    sp.GetRequiredService<StorageOptions>(),
+                    sp.GetServices<IMethodPersistenceModule>()
+                ));
+                _ = services.AddSingleton<SheetNumberGenerator>();
+                _ = services.AddSingleton<TestSheetService>();
+                _ = services.AddSingleton<ITestExecution, BendingExecution>();
+
+#if SIMULATOR
+                _ = services.AddSingleton<ITestDeviceController>(new SimulatedDeviceController(
+                    sampleIntervalSeconds: 0.02,
+                    timeScale: 5.0
+                ));
+#endif
+
+                _ = services.AddSingleton(sp => new TestExecutionViewModel(
+                    sp.GetRequiredService<ILocalizationService>(),
+                    sp.GetRequiredService<ITestExecution>(),
+                    sp.GetService<ITestDeviceController>()
+                ));
+                _ = services.AddSingleton<TestExecutionPage>();
             }
         );
 
@@ -90,6 +121,9 @@ public partial class App
             // M1 先按固定默认启动；设置持久化（IAppSettingsService 的实现）是后续步骤。
             Services.GetRequiredService<ILocalizationService>().SetLanguage("zh-CN");
             Services.GetRequiredService<IAppThemeService>().Apply("Dark");
+
+            // 建库 / 校验架构版本（版本不匹配会直接抛错，提示备份后重建）
+            Services.GetRequiredService<DatabaseInitializer>().Initialize();
 
             await AppHost.StartAsync();
 
