@@ -59,15 +59,24 @@ public static class Gr3DownlinkCommands
     public static Gr3Command Zero(byte pressFlags, byte displaceFlags) =>
         new(Gr3Constants.DownlinkZero, [pressFlags, displaceFlags]);
 
-    /// <summary>C4H 电机加载：方向 + 速度。</summary>
+    /// <summary>
+    /// C4H 电机控制：方向字 + 速度。
+    /// 方向字取值见 <see cref="Gr3Constants.MotorOrderStop"/> / <see cref="Gr3Constants.MotorOrderForwardUp"/> /
+    /// <see cref="Gr3Constants.MotorOrderReverseDown"/>（**0 停止 / 1 正转上升 / 2 反转下降**）。
+    /// 设备行为：同向运转时只改变速度；反向时先停止再以当前速度反向。
+    /// </summary>
     public static Gr3Command MotorLoad(byte order, ushort speed)
     {
         var payload = new Gr3CommandWriter().WriteByte(order).WriteUInt16(speed).ToArray();
         return new Gr3Command(Gr3Constants.DownlinkMotorLoad, payload);
     }
 
-    /// <summary>C5H 电机控制：命令 + 速度。</summary>
-    public static Gr3Command MotorControl(byte order, ushort speed)
+    /// <summary>
+    /// C5H **试验控制指令**：命令 + 速度。
+    /// 注意：协议目录把它写成"电机控制命令"，实际是试验控制（2026-10-10 用户澄清，以此为准）。
+    /// **复位不在这里** —— 复位发 C3H 清零。
+    /// </summary>
+    public static Gr3Command TestControl(byte order, ushort speed)
     {
         var payload = new Gr3CommandWriter().WriteByte(order).WriteUInt16(speed).ToArray();
         return new Gr3Command(Gr3Constants.DownlinkMotorControl, payload);

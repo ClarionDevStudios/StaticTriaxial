@@ -14,6 +14,7 @@
     <ProjectReference Include="..\..\src\ANX.Core\ANX.Core.csproj" />
     <ProjectReference Include="..\..\src\ANX.Control\ANX.Control.csproj" />
     <ProjectReference Include="..\..\src\ANX.Communication\ANX.Communication.csproj" />
+    <ProjectReference Include="..\..\src\ANX.Protocol\ANX.Protocol.csproj" />
   </ItemGroup>
 
   <!-- 模拟器只在 Debug 编译，用到它的用例同样只在 Debug 编译 -->

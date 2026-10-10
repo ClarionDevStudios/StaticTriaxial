@@ -75,7 +75,16 @@ public static class Gr3Constants
     /// <summary>C4H 控制电机加载。</summary>
     public const byte DownlinkMotorLoad = 0xC4;
 
-    /// <summary>C5H 电机控制命令。</summary>
+    /// <summary>C4H 数据域的方向字：电机停止。</summary>
+    public const byte MotorOrderStop = 0;
+
+    /// <summary>C4H 数据域的方向字：正转，工作台上升。</summary>
+    public const byte MotorOrderForwardUp = 1;
+
+    /// <summary>C4H 数据域的方向字：反转，工作台下降。</summary>
+    public const byte MotorOrderReverseDown = 2;
+
+    /// <summary>C5H 试验控制指令（协议目录写作"电机控制命令"，以用户澄清为准）。</summary>
     public const byte DownlinkMotorControl = 0xC5;
 
     /// <summary>C6H 试验控制命令。</summary>
