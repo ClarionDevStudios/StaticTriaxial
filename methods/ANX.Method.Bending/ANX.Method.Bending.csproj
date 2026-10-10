@@ -5,5 +5,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\ANX.Core\ANX.Core.csproj" />
+    <ProjectReference Include="..\..\src\ANX.Reporting\ANX.Reporting.csproj" />
+    <ProjectReference Include="..\..\src\ANX.Storage\ANX.Storage.csproj" />
   </ItemGroup>
 </Project>

@@ -213,6 +213,79 @@ public sealed class TestSheetService : ITestSheetService
         return CurveJson.Decode(command.ExecuteScalar() as string);
     }
 
+    /// <summary>读主表指定的列（键为列名；列名必须在方法声明里存在）。</summary>
+    public IReadOnlyDictionary<string, object?> ReadMainRow(
+        string sheetId,
+        IReadOnlyList<string> columns
+    )
+    {
+        var method = ResolveMethodForSheet(sheetId);
+        foreach (var column in columns)
+        {
+            if (!IsDeclared(method.MainTable, column))
+            {
+                throw new ArgumentException($"方法 {method.MethodCode} 的主表没有声明列 '{column}'", nameof(columns));
+            }
+        }
+
+        using var connection = _initializer.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            $"SELECT {string.Join(", ", columns)} FROM {method.MainTable.TableName} WHERE SheetID = $sheetId;";
+        command.Parameters.AddWithValue("$sheetId", sheetId);
+
+        using var reader = command.ExecuteReader();
+        if (!reader.Read())
+        {
+            throw new InvalidOperationException($"找不到试验单 {sheetId}");
+        }
+
+        var result = new Dictionary<string, object?>(StringComparer.Ordinal);
+        for (var i = 0; i < columns.Count; i++)
+        {
+            result[columns[i]] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+        }
+
+        return result;
+    }
+
+    /// <summary>读明细行（按 SampleID 排序），每行一个"列名 → 值"字典。</summary>
+    public IReadOnlyList<IReadOnlyDictionary<string, object?>> ReadDetailRows(
+        string sheetId,
+        IReadOnlyList<string> columns
+    )
+    {
+        var method = ResolveMethodForSheet(sheetId);
+        foreach (var column in columns)
+        {
+            if (!IsDeclared(method.DetailTable, column))
+            {
+                throw new ArgumentException($"方法 {method.MethodCode} 的明细表没有声明列 '{column}'", nameof(columns));
+            }
+        }
+
+        using var connection = _initializer.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            $"SELECT {string.Join(", ", columns)} FROM {method.DetailTable.TableName} WHERE SheetID = $sheetId ORDER BY SampleID;";
+        command.Parameters.AddWithValue("$sheetId", sheetId);
+
+        var rows = new List<IReadOnlyDictionary<string, object?>>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            var row = new Dictionary<string, object?>(StringComparer.Ordinal);
+            for (var i = 0; i < columns.Count; i++)
+            {
+                row[columns[i]] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+            }
+
+            rows.Add(row);
+        }
+
+        return rows;
+    }
+
     private IMethodPersistenceModule ResolveMethod(string methodCode) =>
         _methods.TryGetValue(methodCode, out var method)
             ? method
