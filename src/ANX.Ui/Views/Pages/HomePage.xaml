@@ -12,7 +12,7 @@
   mc:Ignorable="d"
 >
   <ScrollViewer VerticalScrollBarVisibility="Auto">
-    <StackPanel Margin="36,28,36,24" HorizontalAlignment="Left" Width="880">
+    <StackPanel Margin="36,28,36,24" HorizontalAlignment="Left" Width="920">
       <TextBlock Style="{StaticResource PageTitleStyle}" Text="{DynamicResource Home.Title}" />
       <TextBlock Style="{StaticResource PageSubtitleStyle}" Text="{DynamicResource Home.Subtitle}" />
 
@@ -20,105 +20,50 @@
         <StackPanel>
           <TextBlock Style="{StaticResource CardTitleStyle}" Text="{DynamicResource Home.MilestoneTitle}" />
 
-          <Grid Margin="0,14,0,0">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="56" />
-              <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="120" />
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-              <RowDefinition Height="Auto" />
-              <RowDefinition Height="Auto" />
-              <RowDefinition Height="Auto" />
-              <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
+          <!-- 里程碑列表由 ViewModel 提供（HomeViewModel.Definitions 是唯一事实来源） -->
+          <ItemsControl Margin="0,14,0,0" ItemsSource="{Binding ViewModel.Milestones}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Grid Margin="0,0,0,8">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="56" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="110" />
+                  </Grid.ColumnDefinitions>
 
-            <TextBlock
-              Grid.Row="0"
-              Grid.Column="0"
-              Style="{StaticResource FieldLabelStyle}"
-              Text="M1"
-            />
-            <TextBlock
-              Grid.Row="0"
-              Grid.Column="1"
-              Margin="0,0,16,0"
-              TextWrapping="Wrap"
-              Text="{DynamicResource Home.M1}"
-            />
-            <TextBlock
-              Grid.Row="0"
-              Grid.Column="2"
-              Foreground="{DynamicResource SystemFillColorSuccessBrush}"
-              Text="{DynamicResource Home.M1Status}"
-            />
+                  <TextBlock
+                    Grid.Column="0"
+                    Style="{StaticResource FieldLabelStyle}"
+                    Text="{Binding Code}"
+                  />
+                  <TextBlock
+                    Grid.Column="1"
+                    Margin="0,0,16,0"
+                    Text="{Binding Description}"
+                    TextWrapping="Wrap"
+                  />
+                  <TextBlock Grid.Column="2" Text="{Binding StatusText}">
+                    <TextBlock.Style>
+                      <Style BasedOn="{StaticResource FieldLabelStyle}" TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding IsDone}" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource SystemFillColorSuccessBrush}" />
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
 
-            <TextBlock
-              Grid.Row="1"
-              Grid.Column="0"
-              Margin="0,8,0,0"
-              Style="{StaticResource FieldLabelStyle}"
-              Text="M2"
-            />
-            <TextBlock
-              Grid.Row="1"
-              Grid.Column="1"
-              Margin="0,8,16,0"
-              TextWrapping="Wrap"
-              Text="{DynamicResource Home.M2}"
-            />
-            <TextBlock
-              Grid.Row="1"
-              Grid.Column="2"
-              Margin="0,8,0,0"
-              Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-              Text="{DynamicResource Home.TodoStatus}"
-            />
-
-            <TextBlock
-              Grid.Row="2"
-              Grid.Column="0"
-              Margin="0,8,0,0"
-              Style="{StaticResource FieldLabelStyle}"
-              Text="M3"
-            />
-            <TextBlock
-              Grid.Row="2"
-              Grid.Column="1"
-              Margin="0,8,16,0"
-              TextWrapping="Wrap"
-              Text="{DynamicResource Home.M3}"
-            />
-            <TextBlock
-              Grid.Row="2"
-              Grid.Column="2"
-              Margin="0,8,0,0"
-              Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-              Text="{DynamicResource Home.TodoStatus}"
-            />
-
-            <TextBlock
-              Grid.Row="3"
-              Grid.Column="0"
-              Margin="0,8,0,0"
-              Style="{StaticResource FieldLabelStyle}"
-              Text="M4"
-            />
-            <TextBlock
-              Grid.Row="3"
-              Grid.Column="1"
-              Margin="0,8,16,0"
-              TextWrapping="Wrap"
-              Text="{DynamicResource Home.M4}"
-            />
-            <TextBlock
-              Grid.Row="3"
-              Grid.Column="2"
-              Margin="0,8,0,0"
-              Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-              Text="{DynamicResource Home.TodoStatus}"
-            />
-          </Grid>
+          <TextBlock
+            Margin="0,6,0,0"
+            Style="{StaticResource FieldLabelStyle}"
+            Text="{Binding ViewModel.CurrentMilestoneText}"
+          />
         </StackPanel>
       </ui:Card>
 
@@ -127,13 +72,8 @@
           <TextBlock Style="{StaticResource CardTitleStyle}" Text="{DynamicResource Home.BoundaryTitle}" />
           <TextBlock
             Margin="0,10,0,0"
-            TextWrapping="Wrap"
             Text="{DynamicResource Home.BoundaryText}"
-          />
-          <TextBlock
-            Margin="0,10,0,0"
-            Style="{StaticResource FieldLabelStyle}"
-            Text="{Binding ViewModel.CurrentMilestone, StringFormat=里程碑 {0}}"
+            TextWrapping="Wrap"
           />
         </StackPanel>
       </ui:Card>
