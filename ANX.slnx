@@ -1,10 +1,17 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/ANX.Core/ANX.Core.csproj" />
+    <Project Path="src/ANX.Communication/ANX.Communication.csproj" />
+    <Project Path="src/ANX.Protocol/ANX.Protocol.csproj" />
     <Project Path="src/ANX.Ui/ANX.Ui.csproj" />
     <Project Path="src/ANX.Host/ANX.Host.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ANX.Core.Tests/ANX.Core.Tests.csproj" />
+    <Project Path="tests/ANX.Protocol.Tests/ANX.Protocol.Tests.csproj" />
+    <Project Path="tests/ANX.Communication.Tests/ANX.Communication.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/ANX.Tools.Gr3Probe/ANX.Tools.Gr3Probe.csproj" />
   </Folder>
 </Solution>
