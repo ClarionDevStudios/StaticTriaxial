@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ANX.Core\ANX.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 报表唯一路径：TMS FlexCel（本机零售包已作为本地 NuGet 源接入） -->
+    <PackageReference Include="TMS.FlexCel" Version="7.26.0" />
+  </ItemGroup>
+</Project>
