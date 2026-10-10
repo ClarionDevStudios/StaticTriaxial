@@ -13,18 +13,21 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
     private readonly double _peakLoadKN;
     private readonly double _displacementAtPeakMM;
     private readonly double _sampleIntervalSeconds;
+    private readonly double _timeScale;
     private CancellationTokenSource? _cts;
     private Task? _loop;
 
     public SimulatedDeviceController(
         double peakLoadKN = 9.0,
         double displacementAtPeakMM = 5.0,
-        double sampleIntervalSeconds = 0.02
+        double sampleIntervalSeconds = 0.02,
+        double timeScale = 1.0
     )
     {
         _peakLoadKN = peakLoadKN;
         _displacementAtPeakMM = displacementAtPeakMM;
         _sampleIntervalSeconds = sampleIntervalSeconds;
+        _timeScale = timeScale;
     }
 
     public string DeviceName => "模拟器";
@@ -112,7 +115,8 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
             while (!token.IsCancellationRequested)
             {
                 SampleReceived?.Invoke(this, SampleAt(seconds, _peakLoadKN, _displacementAtPeakMM));
-                seconds += _sampleIntervalSeconds;
+                // timeScale 让测试可以加速：每等 _sampleIntervalSeconds，仿真时间前进 _sampleIntervalSeconds × timeScale
+                seconds += _sampleIntervalSeconds * _timeScale;
                 await Task.Delay(TimeSpan.FromSeconds(_sampleIntervalSeconds), token).ConfigureAwait(false);
             }
         }

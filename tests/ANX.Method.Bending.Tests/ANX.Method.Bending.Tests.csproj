@@ -13,5 +13,11 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\ANX.Core\ANX.Core.csproj" />
     <ProjectReference Include="..\..\methods\ANX.Method.Bending\ANX.Method.Bending.csproj" />
+    <ProjectReference Include="..\..\src\ANX.Communication\ANX.Communication.csproj" />
+  </ItemGroup>
+
+  <!-- 模拟器只在 Debug 编译，用到它的用例同样只在 Debug 编译 -->
+  <ItemGroup Condition="'$(Configuration)' != 'Debug'">
+    <Compile Remove="BendingFullRunTests.cs" />
   </ItemGroup>
 </Project>
