@@ -7,11 +7,15 @@
     <Project Path="src/ANX.Host/ANX.Host.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/ANX.Method.Bending.Tests/ANX.Method.Bending.Tests.csproj" />
     <Project Path="tests/ANX.Core.Tests/ANX.Core.Tests.csproj" />
     <Project Path="tests/ANX.Protocol.Tests/ANX.Protocol.Tests.csproj" />
     <Project Path="tests/ANX.Communication.Tests/ANX.Communication.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/ANX.Tools.Gr3Probe/ANX.Tools.Gr3Probe.csproj" />
+  </Folder>
+  <Folder Name="/methods/">
+    <Project Path="methods/ANX.Method.Bending/ANX.Method.Bending.csproj" />
   </Folder>
 </Solution>
