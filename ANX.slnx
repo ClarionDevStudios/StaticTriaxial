@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ANX.Core/ANX.Core.csproj" />
+    <Project Path="src/ANX.Ui/ANX.Ui.csproj" />
+    <Project Path="src/ANX.Host/ANX.Host.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ANX.Core.Tests/ANX.Core.Tests.csproj" />
+  </Folder>
+</Solution>

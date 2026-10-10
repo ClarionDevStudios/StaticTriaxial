@@ -1,0 +1,41 @@
+<ResourceDictionary
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+>
+  <sys:String x:Key="App.Title">沥青综合性能试验软件（ANX）</sys:String>
+
+  <sys:String x:Key="Nav.Home">首页</sys:String>
+  <sys:String x:Key="Nav.Settings">系统设置</sys:String>
+  <sys:String x:Key="Nav.Exit">退出系统</sys:String>
+
+  <sys:String x:Key="Common.Yes">确定</sys:String>
+  <sys:String x:Key="Common.No">取消</sys:String>
+  <sys:String x:Key="Common.ExitConfirm">确定要退出软件吗？</sys:String>
+
+  <sys:String x:Key="Home.Title">首页</sys:String>
+  <sys:String x:Key="Home.Subtitle">C# / WPF 重构版（学习项目）。目标不是替换现役软件，而是练 C# 与工业上位机开发能力；现役 Delphi 软件继续维护，并扮演"标准答案"。</sys:String>
+  <sys:String x:Key="Home.MilestoneTitle">里程碑</sys:String>
+  <sys:String x:Key="Home.M1">骨架可运行：外壳 + DI/日志 + 契约 + 测试链路</sys:String>
+  <sys:String x:Key="Home.M2">通道 + GR-3 协议（含抓帧黄金用例）</sys:String>
+  <sys:String x:Key="Home.M3">T0715 弯曲全链路出报告</sys:String>
+  <sys:String x:Key="Home.M4">真机验证 + 第二个方法（马歇尔）</sys:String>
+  <sys:String x:Key="Home.M1Status">已完成</sys:String>
+  <sys:String x:Key="Home.TodoStatus">未开始</sys:String>
+  <sys:String x:Key="Home.BoundaryTitle">M1 已知边界</sys:String>
+  <sys:String x:Key="Home.BoundaryText">系统设置的持久化尚未接入（IAppSettingsService 只有契约，还没实现）——重启后语言与主题会回到默认值。协议、控制、存储、报表四层目前只有契约，M2 起逐个落地。</sys:String>
+
+  <sys:String x:Key="Settings.Title">系统设置</sys:String>
+  <sys:String x:Key="Settings.TabPreferences">界面偏好</sys:String>
+  <sys:String x:Key="Settings.Language">语言</sys:String>
+  <sys:String x:Key="Settings.Theme">主题</sys:String>
+  <sys:String x:Key="Settings.ThemeDark">深色</sys:String>
+  <sys:String x:Key="Settings.ThemeLight">浅色</sys:String>
+  <sys:String x:Key="Settings.System">系统</sys:String>
+  <sys:String x:Key="Settings.LogDirectory">日志目录</sys:String>
+  <sys:String x:Key="Settings.OpenLogDir">打开日志目录</sys:String>
+  <sys:String x:Key="Settings.About">关于</sys:String>
+  <sys:String x:Key="Settings.AppVersion">程序版本</sys:String>
+  <sys:String x:Key="Settings.RuntimeVersion">运行时版本</sys:String>
+  <sys:String x:Key="Settings.UiLibraryVersion">控件库版本</sys:String>
+</ResourceDictionary>

@@ -1,0 +1,24 @@
+<Project>
+  <!-- 全解决方案统一设置。目标框架由各工程自行声明（类库 net10.0，WPF net10.0-windows）。 -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Version>0.1.0</Version>
+    <Product>ANX 沥青综合性能试验软件（C# 重构 · 学习项目）</Product>
+    <Company>ANX</Company>
+    <NeutralLanguage>zh-CN</NeutralLanguage>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- 多语言资源与日期的既定行为：不做不变文化截断 -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <SatelliteResourceLanguages>zh-Hans;en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <!--
+    模拟器只在 Debug 构建里编译。
+    Release（正式）构建不定义 SIMULATOR：相关源文件不参与编译，通道只剩串口与 UDP。
+  -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <DefineConstants>$(DefineConstants);SIMULATOR</DefineConstants>
+  </PropertyGroup>
+</Project>

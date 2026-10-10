@@ -1,0 +1,41 @@
+<ResourceDictionary
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+>
+  <sys:String x:Key="App.Title">Asphalt Performance Test Software (ANX)</sys:String>
+
+  <sys:String x:Key="Nav.Home">Home</sys:String>
+  <sys:String x:Key="Nav.Settings">Settings</sys:String>
+  <sys:String x:Key="Nav.Exit">Exit</sys:String>
+
+  <sys:String x:Key="Common.Yes">OK</sys:String>
+  <sys:String x:Key="Common.No">Cancel</sys:String>
+  <sys:String x:Key="Common.ExitConfirm">Are you sure you want to exit?</sys:String>
+
+  <sys:String x:Key="Home.Title">Home</sys:String>
+  <sys:String x:Key="Home.Subtitle">C# / WPF rewrite (a learning project). The goal is not to replace the existing software but to practise C# and industrial HMI engineering; the Delphi software stays in service and serves as the reference answer.</sys:String>
+  <sys:String x:Key="Home.MilestoneTitle">Milestones</sys:String>
+  <sys:String x:Key="Home.M1">Skeleton runs: shell + DI/logging + contracts + test pipeline</sys:String>
+  <sys:String x:Key="Home.M2">Channels + GR-3 protocol (with captured-frame golden cases)</sys:String>
+  <sys:String x:Key="Home.M3">T0715 bending, end to end, with report output</sys:String>
+  <sys:String x:Key="Home.M4">On-machine verification + second method (Marshall)</sys:String>
+  <sys:String x:Key="Home.M1Status">Done</sys:String>
+  <sys:String x:Key="Home.TodoStatus">Not started</sys:String>
+  <sys:String x:Key="Home.BoundaryTitle">M1 known boundaries</sys:String>
+  <sys:String x:Key="Home.BoundaryText">Settings persistence is not wired up yet (IAppSettingsService is only a contract), so language and theme fall back to defaults after a restart. Protocol, control, storage and reporting exist as contracts only; they land from M2 onwards.</sys:String>
+
+  <sys:String x:Key="Settings.Title">Settings</sys:String>
+  <sys:String x:Key="Settings.TabPreferences">Preferences</sys:String>
+  <sys:String x:Key="Settings.Language">Language</sys:String>
+  <sys:String x:Key="Settings.Theme">Theme</sys:String>
+  <sys:String x:Key="Settings.ThemeDark">Dark</sys:String>
+  <sys:String x:Key="Settings.ThemeLight">Light</sys:String>
+  <sys:String x:Key="Settings.System">System</sys:String>
+  <sys:String x:Key="Settings.LogDirectory">Log directory</sys:String>
+  <sys:String x:Key="Settings.OpenLogDir">Open log directory</sys:String>
+  <sys:String x:Key="Settings.About">About</sys:String>
+  <sys:String x:Key="Settings.AppVersion">Application version</sys:String>
+  <sys:String x:Key="Settings.RuntimeVersion">Runtime version</sys:String>
+  <sys:String x:Key="Settings.UiLibraryVersion">UI library version</sys:String>
+</ResourceDictionary>

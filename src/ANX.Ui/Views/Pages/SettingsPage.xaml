@@ -1,0 +1,152 @@
+<Page
+  x:Class="ANX.Ui.Views.Pages.SettingsPage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:local="clr-namespace:ANX.Ui.Views.Pages"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+  Title="Settings"
+  d:DataContext="{d:DesignInstance local:SettingsPage, IsDesignTimeCreatable=False}"
+  Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+  mc:Ignorable="d"
+>
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="36,28,36,24" HorizontalAlignment="Left" Width="620">
+      <TextBlock Style="{StaticResource PageTitleStyle}" Text="{DynamicResource Settings.Title}" />
+
+      <ui:Card Margin="0,20,0,0" Padding="20">
+        <StackPanel>
+          <TextBlock Style="{StaticResource CardTitleStyle}" Text="{DynamicResource Settings.TabPreferences}" />
+
+          <Grid Margin="0,16,0,0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="140" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock
+              Grid.Row="0"
+              Grid.Column="0"
+              Style="{StaticResource FieldLabelStyle}"
+              Text="{DynamicResource Settings.Language}"
+            />
+            <ComboBox
+              Grid.Row="0"
+              Grid.Column="1"
+              DisplayMemberPath="DisplayName"
+              ItemsSource="{Binding ViewModel.Languages}"
+              SelectedItem="{Binding ViewModel.SelectedLanguage, Mode=TwoWay}"
+            />
+
+            <TextBlock
+              Grid.Row="1"
+              Grid.Column="0"
+              Margin="0,14,0,0"
+              Style="{StaticResource FieldLabelStyle}"
+              Text="{DynamicResource Settings.Theme}"
+            />
+            <ComboBox
+              Grid.Row="1"
+              Grid.Column="1"
+              Margin="0,14,0,0"
+              DisplayMemberPath="DisplayName"
+              ItemsSource="{Binding ViewModel.ThemeOptions}"
+              SelectedItem="{Binding ViewModel.SelectedTheme, Mode=TwoWay}"
+            />
+          </Grid>
+        </StackPanel>
+      </ui:Card>
+
+      <ui:Card Margin="0,16,0,0" Padding="20">
+        <StackPanel>
+          <TextBlock Style="{StaticResource CardTitleStyle}" Text="{DynamicResource Settings.System}" />
+
+          <TextBlock
+            Margin="0,14,0,0"
+            Style="{StaticResource FieldLabelStyle}"
+            Text="{DynamicResource Settings.LogDirectory}"
+          />
+          <TextBlock
+            Margin="0,6,0,0"
+            Style="{StaticResource MonoTextStyle}"
+            Text="{Binding ViewModel.LogDirectory}"
+            TextWrapping="Wrap"
+          />
+          <ui:Button
+            Margin="0,12,0,0"
+            HorizontalAlignment="Left"
+            Appearance="Primary"
+            Command="{Binding ViewModel.OpenLogDirectoryCommand}"
+            Content="{DynamicResource Settings.OpenLogDir}"
+          />
+        </StackPanel>
+      </ui:Card>
+
+      <ui:Card Margin="0,16,0,0" Padding="20">
+        <StackPanel>
+          <TextBlock Style="{StaticResource CardTitleStyle}" Text="{DynamicResource Settings.About}" />
+
+          <Grid Margin="0,14,0,0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="140" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock
+              Grid.Row="0"
+              Grid.Column="0"
+              Style="{StaticResource FieldLabelStyle}"
+              Text="{DynamicResource Settings.AppVersion}"
+            />
+            <TextBlock
+              Grid.Row="0"
+              Grid.Column="1"
+              Style="{StaticResource MonoTextStyle}"
+              Text="{Binding ViewModel.AppVersion}"
+            />
+
+            <TextBlock
+              Grid.Row="1"
+              Grid.Column="0"
+              Margin="0,8,0,0"
+              Style="{StaticResource FieldLabelStyle}"
+              Text="{DynamicResource Settings.RuntimeVersion}"
+            />
+            <TextBlock
+              Grid.Row="1"
+              Grid.Column="1"
+              Margin="0,8,0,0"
+              Style="{StaticResource MonoTextStyle}"
+              Text="{Binding ViewModel.RuntimeVersion}"
+            />
+
+            <TextBlock
+              Grid.Row="2"
+              Grid.Column="0"
+              Margin="0,8,0,0"
+              Style="{StaticResource FieldLabelStyle}"
+              Text="{DynamicResource Settings.UiLibraryVersion}"
+            />
+            <TextBlock
+              Grid.Row="2"
+              Grid.Column="1"
+              Margin="0,8,0,0"
+              Style="{StaticResource MonoTextStyle}"
+              Text="{Binding ViewModel.UiLibraryVersion}"
+            />
+          </Grid>
+        </StackPanel>
+      </ui:Card>
+    </StackPanel>
+  </ScrollViewer>
+</Page>

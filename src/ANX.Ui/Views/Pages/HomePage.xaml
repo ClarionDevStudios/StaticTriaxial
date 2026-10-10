@@ -1,0 +1,142 @@
+<Page
+  x:Class="ANX.Ui.Views.Pages.HomePage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:local="clr-namespace:ANX.Ui.Views.Pages"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+  Title="Home"
+  d:DataContext="{d:DesignInstance local:HomePage, IsDesignTimeCreatable=False}"
+  Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+  mc:Ignorable="d"
+>
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="36,28,36,24" HorizontalAlignment="Left" Width="880">
+      <TextBlock Style="{StaticResource PageTitleStyle}" Text="{DynamicResource Home.Title}" />
+      <TextBlock Style="{StaticResource PageSubtitleStyle}" Text="{DynamicResource Home.Subtitle}" />
+
+      <ui:Card Margin="0,20,0,0" Padding="20">
+        <StackPanel>
+          <TextBlock Style="{StaticResource CardTitleStyle}" Text="{DynamicResource Home.MilestoneTitle}" />
+
+          <Grid Margin="0,14,0,0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="56" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="120" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock
+              Grid.Row="0"
+              Grid.Column="0"
+              Style="{StaticResource FieldLabelStyle}"
+              Text="M1"
+            />
+            <TextBlock
+              Grid.Row="0"
+              Grid.Column="1"
+              Margin="0,0,16,0"
+              TextWrapping="Wrap"
+              Text="{DynamicResource Home.M1}"
+            />
+            <TextBlock
+              Grid.Row="0"
+              Grid.Column="2"
+              Foreground="{DynamicResource SystemFillColorSuccessBrush}"
+              Text="{DynamicResource Home.M1Status}"
+            />
+
+            <TextBlock
+              Grid.Row="1"
+              Grid.Column="0"
+              Margin="0,8,0,0"
+              Style="{StaticResource FieldLabelStyle}"
+              Text="M2"
+            />
+            <TextBlock
+              Grid.Row="1"
+              Grid.Column="1"
+              Margin="0,8,16,0"
+              TextWrapping="Wrap"
+              Text="{DynamicResource Home.M2}"
+            />
+            <TextBlock
+              Grid.Row="1"
+              Grid.Column="2"
+              Margin="0,8,0,0"
+              Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+              Text="{DynamicResource Home.TodoStatus}"
+            />
+
+            <TextBlock
+              Grid.Row="2"
+              Grid.Column="0"
+              Margin="0,8,0,0"
+              Style="{StaticResource FieldLabelStyle}"
+              Text="M3"
+            />
+            <TextBlock
+              Grid.Row="2"
+              Grid.Column="1"
+              Margin="0,8,16,0"
+              TextWrapping="Wrap"
+              Text="{DynamicResource Home.M3}"
+            />
+            <TextBlock
+              Grid.Row="2"
+              Grid.Column="2"
+              Margin="0,8,0,0"
+              Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+              Text="{DynamicResource Home.TodoStatus}"
+            />
+
+            <TextBlock
+              Grid.Row="3"
+              Grid.Column="0"
+              Margin="0,8,0,0"
+              Style="{StaticResource FieldLabelStyle}"
+              Text="M4"
+            />
+            <TextBlock
+              Grid.Row="3"
+              Grid.Column="1"
+              Margin="0,8,16,0"
+              TextWrapping="Wrap"
+              Text="{DynamicResource Home.M4}"
+            />
+            <TextBlock
+              Grid.Row="3"
+              Grid.Column="2"
+              Margin="0,8,0,0"
+              Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+              Text="{DynamicResource Home.TodoStatus}"
+            />
+          </Grid>
+        </StackPanel>
+      </ui:Card>
+
+      <ui:Card Margin="0,16,0,0" Padding="20" VerticalAlignment="Stretch">
+        <StackPanel>
+          <TextBlock Style="{StaticResource CardTitleStyle}" Text="{DynamicResource Home.BoundaryTitle}" />
+          <TextBlock
+            Margin="0,10,0,0"
+            TextWrapping="Wrap"
+            Text="{DynamicResource Home.BoundaryText}"
+          />
+          <TextBlock
+            Margin="0,10,0,0"
+            Style="{StaticResource FieldLabelStyle}"
+            Text="{Binding ViewModel.CurrentMilestone, StringFormat=里程碑 {0}}"
+          />
+        </StackPanel>
+      </ui:Card>
+    </StackPanel>
+  </ScrollViewer>
+</Page>
