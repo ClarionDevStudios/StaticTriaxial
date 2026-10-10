@@ -105,4 +105,26 @@ public static class Gr3Constants
 
     /// <summary>试验编号长度（C2H，ASCII 固定 14 字节）。</summary>
     public const int TestNumberLength = 14;
+
+    // ── 上行数据域长度（真机实测，见 docs\对照\GR-3-文档与实现冲突表.md）──
+    /// <summary>压力通道数。</summary>
+    public const int PressChannelCount = 4;
+
+    /// <summary>位移通道数。</summary>
+    public const int DisplaceChannelCount = 4;
+
+    /// <summary>微米通道数。</summary>
+    public const int MicrometerChannelCount = 4;
+
+    /// <summary>标定点数。</summary>
+    public const int CalibrationPointCount = 11;
+
+    /// <summary>A0H 数据域长度（真机实测 56）。</summary>
+    public const int SystemInfoLength = 56;
+
+    /// <summary>A2H 数据域长度（真机实测 71）。</summary>
+    public const int RealtimeDataLength = 71;
+
+    /// <summary>A3H 数据域长度（真机实测 95）。</summary>
+    public const int ChannelConfigLength = 95;
 }

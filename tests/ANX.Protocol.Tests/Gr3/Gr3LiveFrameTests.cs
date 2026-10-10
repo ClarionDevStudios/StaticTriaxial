@@ -58,17 +58,6 @@ public sealed class Gr3LiveFrameTests
     }
 
     [Fact]
-    public void 真机A3通道配置帧应能解出()
-    {
-        var raw = Frames["A3-通道配置"];
-
-        Assert.Equal(109, raw.Length);
-        Assert.True(Gr3FrameCodec.TryDecodeFrame(raw, out var frame, out _));
-        Assert.Equal(Gr3Constants.UplinkChannelConfig, frame.CommandCode);
-        Assert.Equal(95, frame.Payload.Length);
-    }
-
-    [Fact]
     public void 真机单个数据报应打包五帧A2且全部能解出()
     {
         var raw = Frames["A2-实时数据报(5帧)"];
@@ -108,6 +97,126 @@ public sealed class Gr3LiveFrameTests
         {
             Assert.Equal(sequences[i - 1] + 1, sequences[i]);
         }
+    }
+
+    [Fact]
+    public void 真机A0应解出版本与通道配置()
+    {
+        Assert.True(Gr3FrameCodec.TryDecodeFrame(Frames["A0-系统配置"], out var frame, out _));
+        Assert.True(Gr3UplinkParser.TryParseSystemInfo(frame, out var info));
+
+        Assert.Equal(10, info.HardwareVersion);
+        Assert.Equal(15, info.FirmwareVersion);
+        Assert.Equal(10, info.ProtocolVersion);
+
+        Assert.Equal(4, info.PressChannels.Count);
+        Assert.Equal(4, info.DisplaceChannels.Count);
+
+        // 压力通道量程：0x000003E8 / 0x00000064 / 0x0000012C / 0
+        Assert.Equal(1000, info.PressChannels[0].Scale);
+        Assert.Equal(100, info.PressChannels[1].Scale);
+        Assert.Equal(300, info.PressChannels[2].Scale);
+        Assert.Equal(0, info.PressChannels[3].Scale);
+
+        // 压力通道小数位 2/2/3/0，量纲 1/0/3/0
+        Assert.Equal(new byte[] { 2, 2, 3, 0 }, info.PressChannels.Select(c => c.Digital));
+        Assert.Equal(new byte[] { 1, 0, 3, 0 }, info.PressChannels.Select(c => c.UnitCode));
+
+        // 位移通道全是 0；微米有效位全 0；围压有效位 1
+        Assert.All(info.DisplaceChannels, c => Assert.Equal(0, c.Scale));
+        Assert.Equal(new byte[] { 0, 0, 0, 0 }, info.MicrometerValid);
+        Assert.Equal(1, info.ConfiningPressureValid);
+    }
+
+    [Fact]
+    public void 真机A2应解出实时数据各字段()
+    {
+        // 取数据报里的第一帧（每帧 85 B）
+        var first = Frames["A2-实时数据报(5帧)"][..85];
+
+        Assert.True(Gr3FrameCodec.TryDecodeFrame(first, out var frame, out _));
+        Assert.True(Gr3UplinkParser.TryParseRealtimeData(frame, out var data));
+
+        // 压力四通道：0 / 100 / -1（0xFFFFFFFF，未接）/ 0
+        Assert.Equal(new[] { 0, 100, -1, 0 }, data.PressData);
+        Assert.Equal(0, data.ConfiningData);
+        Assert.All(data.DisplaceData, v => Assert.Equal(0, v));
+        Assert.All(data.MicrometerData, v => Assert.Equal(0, v));
+
+        Assert.Equal(0, data.TargetTemp);
+        Assert.Equal(0, data.CurrentTemp);
+        Assert.Equal(0.0, data.CurrentTemperatureCelsius);
+
+        // 0x12 = Bit1 位移上限位 + Bit4 电机反转（下降）运行中
+        Assert.Equal(
+            Gr3MachineStatus.DisplacementUpperLimit | Gr3MachineStatus.MotorReverse,
+            data.MachineStatus
+        );
+        Assert.Equal(0x12, (byte)data.MachineStatus);
+
+        // 0x00 = 停止 / 未暂停 / 未找到破碎点 / 非保持
+        Assert.Equal(Gr3TestStatus.None, data.TestStatus);
+        Assert.Equal(0x00, (byte)data.TestStatus);
+        Assert.Equal(0x0000, data.PortOutputBStatus);
+        Assert.Equal(0x00, data.PortInputAStatus);
+        Assert.Equal(0x0102, data.PortInputBStatus);
+        Assert.Equal(new[] { 0, 0 }, data.ExtendedExtensometer);
+    }
+
+    [Fact]
+    public void 真机A3通道一应解出量程小数位量纲与标定点()
+    {
+        Assert.True(Gr3FrameCodec.TryDecodeFrame(Frames["A3-通道配置(通道1)"], out var frame, out _));
+        Assert.True(Gr3UplinkParser.TryParseChannelConfig(frame, out var config));
+
+        Assert.Equal(1, config.ChannelId);
+        Assert.Equal(1000, config.Config.Scale);
+        Assert.Equal(2, config.Config.Digital);
+        Assert.Equal(1, config.Config.UnitCode); // 1 = 载荷 kN
+
+        Assert.Equal(Gr3Constants.CalibrationPointCount, config.CalibrationRealValues.Count);
+        Assert.Equal(Gr3Constants.CalibrationPointCount, config.CalibrationCodeValues.Count);
+
+        // 标定实值 9900 → 100000（配合 Digital=2 即 99.00 → 1000.00 kN，正好等于 Range=1000）
+        Assert.Equal(new[] { 9900, 12300, 20000, 30000, 40000, 50000, 60000, 70000, 80000, 90000, 100000 }, config.CalibrationRealValues);
+        Assert.Equal(new[] { 100, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000 }, config.CalibrationCodeValues);
+
+        // 由标定表反推的换算口径：raw / 10^Digital
+        Assert.Equal(99.0, config.Config.ToEngineeringValue(config.CalibrationRealValues[0]));
+        Assert.Equal(1000.0, config.Config.ToEngineeringValue(config.CalibrationRealValues[^1]));
+    }
+
+    [Fact]
+    public void 真机A3越界通道应回零配置且不报错()
+    {
+        // 协议写通道号取值 1-12；请求 0（越界）时设备不报错，回一帧通道配置帧，
+        // 其中通道号 / 量程 / 小数位 / 量纲都是 0，标定段是未定义内容（故不对其断言）。
+        Assert.True(Gr3FrameCodec.TryDecodeFrame(Frames["A3-通道配置(通道0越界)"], out var frame, out _));
+        Assert.True(Gr3UplinkParser.TryParseChannelConfig(frame, out var config));
+
+        Assert.Equal(0, config.ChannelId);
+        Assert.Equal(0, config.Config.Scale);
+        Assert.Equal(0, config.Config.Digital);
+        Assert.Equal(0, config.Config.UnitCode);
+        Assert.Equal(Gr3Constants.CalibrationPointCount, config.CalibrationRealValues.Count);
+        Assert.Equal(Gr3Constants.CalibrationPointCount, config.CalibrationCodeValues.Count);
+    }
+
+    [Fact]
+    public void 长度不符的上行数据域应被判失败()
+    {
+        // 把 A0 的数据域截短一个字节：解析器必须拒绝，而不是按错位读出垃圾值
+        Assert.True(Gr3FrameCodec.TryDecodeFrame(Frames["A0-系统配置"], out var a0, out _));
+        var truncated = new ANX.Core.Protocol.DecodedFrame(
+            a0.CommandCode,
+            a0.Status,
+            a0.Payload[..^1]
+        );
+
+        Assert.False(Gr3UplinkParser.TryParseSystemInfo(truncated, out _));
+
+        // 命令字对不上也应拒绝
+        Assert.False(Gr3UplinkParser.TryParseRealtimeData(a0, out _));
     }
 
     private static Dictionary<string, byte[]> LoadFixture()

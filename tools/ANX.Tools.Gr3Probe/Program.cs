@@ -34,10 +34,13 @@ internal static class Program
         var port = int.Parse(GetArg(args, "--port") ?? DefaultPort.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
         var localPort = int.Parse(GetArg(args, "--local-port") ?? DefaultPort.ToString(CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
         var waitMs = int.Parse(GetArg(args, "--wait") ?? "1500", CultureInfo.InvariantCulture);
+        var channelId = byte.Parse(GetArg(args, "--channel") ?? "1", CultureInfo.InvariantCulture);
 
         Console.OutputEncoding = Encoding.UTF8;
         Console.WriteLine("=== GR-3 联机探针（只读：联机 / 心跳 / 读设备 ID / 读通道配置）===");
-        Console.WriteLine($"远端 {host}:{port}   本地端口 {localPort}   每步等待 {waitMs}ms");
+        Console.WriteLine(
+            $"远端 {host}:{port}   本地端口 {localPort}   每步等待 {waitMs}ms   读通道配置用通道号 {channelId}（协议规定 1-12）"
+        );
         Console.WriteLine();
 
         var codec = new Gr3FrameCodec();
@@ -108,7 +111,7 @@ internal static class Program
         await SendAndCollectAsync(codec, channel, "① C0 联机", Gr3DownlinkCommands.Connect(now), waitMs);
         await SendAndCollectAsync(codec, channel, "② CB 心跳", Gr3DownlinkCommands.Heartbeat(), waitMs);
         await SendAndCollectAsync(codec, channel, "③ CAH 读设备 ID (order=2)", Gr3DownlinkCommands.ReadDeviceId(), waitMs);
-        await SendAndCollectAsync(codec, channel, "④ CAH 读通道配置 (order=1, 通道 0)", Gr3DownlinkCommands.ReadChannelConfig(1, 0), waitMs);
+        await SendAndCollectAsync(codec, channel, $"④ CAH 读通道配置 (order=1, 通道 {channelId})", Gr3DownlinkCommands.ReadChannelConfig(1, channelId), waitMs);
 
         await channel.CloseAsync();
 
