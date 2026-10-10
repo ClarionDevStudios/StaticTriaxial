@@ -15,6 +15,24 @@ public sealed record BendingSampleResult(
 );
 
 /// <summary>
+/// 一组试件的统计结果（规范 5.5 / 5.6）。
+/// </summary>
+/// <param name="EffectiveSamples">参与统计的有效试件（已剔除超差者）。</param>
+/// <param name="ExcludedIndexes">被剔除试件在入参里的下标。</param>
+/// <param name="MeanFlexuralStrengthMPa">弯拉强度算术平均值（0.01MPa）。</param>
+/// <param name="MeanMaxBendingTensileStrainMicro">最大弯拉应变算术平均值（1με）。</param>
+/// <param name="EffectiveCount">有效试件数。</param>
+/// <param name="NeedsSupplement">有效试件不足 3 个，应补充试验。</param>
+public sealed record BendingGroupResult(
+    IReadOnlyList<BendingSampleResult> EffectiveSamples,
+    IReadOnlyList<int> ExcludedIndexes,
+    double MeanFlexuralStrengthMPa,
+    double MeanMaxBendingTensileStrainMicro,
+    int EffectiveCount,
+    bool NeedsSupplement
+);
+
+/// <summary>
 /// T 0715-2025 沥青混合料弯曲试验判定（棱柱体小梁三点弯曲）。
 ///
 /// 规范依据（JTG 3410-2025 T 0715-2025）：
@@ -40,6 +58,12 @@ public static class BendingAnalyzer
 
     /// <summary>一组弯曲应变平均值的报告精度（με）—— 规范 5.5 要求 1。组统计在 M3 第 3 步落地时按它舍入。</summary>
     public const int GroupMeanStrainDecimals = 0;
+
+    /// <summary>规范 6：最大弯拉应变的重复性试验允许误差（με）。</summary>
+    public const double RepeatabilityAllowanceMicro = 400.0;
+
+    /// <summary>规范 5.6：剔除后有效试件少于 3 个时应补充试验。</summary>
+    public const int MinimumEffectiveSamples = 3;
 
     /// <summary>
     /// 修正直线的回退拟合区间：峰值荷载的 10%~80%。
@@ -133,6 +157,58 @@ public static class BendingAnalyzer
         var scale = Math.Pow(10, decimals);
         var scaled = Math.Round(value * scale, 6, MidpointRounding.AwayFromZero);
         return Math.Round(scaled, MidpointRounding.AwayFromZero) / scale;
+    }
+
+    /// <summary>
+    /// 5.1 修正直线：按 X 升序 → 只取峰值前的上升段 → 居中移动平均平滑（仅用于拟合）→
+
+    /// <summary>
+    /// 规范 5.5 / 5.6 与 6：一组试件的算术平均值，以及"最大弯拉应变超差则剔除偏差最大者后重算"。
+    /// 剔除到有效试件少于 <see cref="MinimumEffectiveSamples"/> 个时不再剔除，并置
+    /// <see cref="BendingGroupResult.NeedsSupplement"/> 提示补充试验。
+    /// </summary>
+    public static BendingGroupResult AnalyzeGroup(IReadOnlyList<BendingSampleResult> samples)
+    {
+        ArgumentNullException.ThrowIfNull(samples);
+        if (samples.Count == 0)
+        {
+            throw new ArgumentException("一组至少要有 1 个试件", nameof(samples));
+        }
+
+        var working = samples.Select((sample, index) => (Index: index, Sample: sample)).ToList();
+        var excluded = new List<int>();
+
+        while (working.Count > 1)
+        {
+            var meanStrain = working.Average(w => w.Sample.MaxBendingTensileStrainMicro);
+            var worst = working
+                .OrderByDescending(w => Math.Abs(w.Sample.MaxBendingTensileStrainMicro - meanStrain))
+                .First();
+
+            if (Math.Abs(worst.Sample.MaxBendingTensileStrainMicro - meanStrain) <= RepeatabilityAllowanceMicro)
+            {
+                break;
+            }
+
+            if (working.Count - 1 < MinimumEffectiveSamples)
+            {
+                break;
+            }
+
+            excluded.Add(worst.Index);
+            working.Remove(worst);
+        }
+
+        var effective = working.Select(w => w.Sample).ToArray();
+
+        return new BendingGroupResult(
+            effective,
+            excluded,
+            RoundTo(effective.Average(s => s.FlexuralStrengthMPa), StrengthDecimals),
+            RoundTo(effective.Average(s => s.MaxBendingTensileStrainMicro), GroupMeanStrainDecimals),
+            effective.Length,
+            effective.Length < MinimumEffectiveSamples
+        );
     }
 
     /// <summary>

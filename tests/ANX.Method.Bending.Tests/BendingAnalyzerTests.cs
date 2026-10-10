@@ -83,6 +83,77 @@ public sealed class BendingAnalyzerTests
     }
 
     /// <summary>
+
+    // ── 5.5 / 5.6 / 6 组统计与超差剔除 ─────────────────────────────
+
+    [Fact]
+    public void 组内应变都在允许误差内时不应剔除()
+    {
+        var group = BendingAnalyzer.AnalyzeGroup(
+        [
+            MakeSample(strength: 8.00, strain: 5000),
+            MakeSample(strength: 8.20, strain: 5200),
+            MakeSample(strength: 8.10, strain: 5100),
+            MakeSample(strength: 8.30, strain: 5300),
+        ]);
+
+        Assert.Empty(group.ExcludedIndexes);
+        Assert.Equal(4, group.EffectiveCount);
+        Assert.False(group.NeedsSupplement);
+        Assert.Equal(8.15, group.MeanFlexuralStrengthMPa, Tolerance);   // (8.00+8.20+8.10+8.30)/4
+        Assert.Equal(5150.0, group.MeanMaxBendingTensileStrainMicro, Tolerance); // 组值按 1με
+    }
+
+    [Fact]
+    public void 超差时应剔除与平均值偏差最大的那个并重算()
+    {
+        var group = BendingAnalyzer.AnalyzeGroup(
+        [
+            MakeSample(strength: 8.00, strain: 5000),
+            MakeSample(strength: 8.00, strain: 5100),
+            MakeSample(strength: 8.00, strain: 5200),
+            MakeSample(strength: 9.00, strain: 6000), // 偏差最大
+        ]);
+
+        Assert.Equal([3], group.ExcludedIndexes);
+        Assert.Equal(3, group.EffectiveCount);
+        Assert.Equal(5100.0, group.MeanMaxBendingTensileStrainMicro, Tolerance);
+        Assert.False(group.NeedsSupplement);
+    }
+
+    [Fact]
+    public void 剔除会跌破三个有效试件时不应剔除()
+    {
+        var group = BendingAnalyzer.AnalyzeGroup(
+        [
+            MakeSample(strength: 8.00, strain: 5000),
+            MakeSample(strength: 8.00, strain: 5100),
+            MakeSample(strength: 9.00, strain: 9000),
+        ]);
+
+        // 剔掉最差的那个就会只剩 2 个（< 3），所以规范要求"补充试验"而不是继续剔
+        Assert.Empty(group.ExcludedIndexes);
+        Assert.Equal(3, group.EffectiveCount);
+        Assert.False(group.NeedsSupplement);
+    }
+
+    [Fact]
+    public void 有效试件不足三个时应提示补充试验()
+    {
+        var group = BendingAnalyzer.AnalyzeGroup(
+        [
+            MakeSample(strength: 8.00, strain: 5000),
+            MakeSample(strength: 8.10, strain: 5100),
+        ]);
+
+        Assert.Equal(2, group.EffectiveCount);
+        Assert.True(group.NeedsSupplement);
+    }
+
+    private static BendingSampleResult MakeSample(double strength, double strain) =>
+        new(strength, 5, 4.5, strength, strain, 2, -1, 0.5);
+
+    /// <summary>
     /// 造曲线：上升段严格在 y = 2x − 1 上（30 点），峰值 (5.00, 9.00)，之后下降。
     /// </summary>
     private static CurvePoint[] BuildCurve()
