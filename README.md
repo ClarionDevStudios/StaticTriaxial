@@ -55,10 +55,28 @@ src\ANX.Ui             WPF 外壳与通用页
 src\ANX.Host           宿主（唯一引用 methods\ 的工程）
 tests\                 xUnit（Core / Protocol / Communication 三个测试工程）
 methods\               方法插件（M3 起）
+tools\                 开发工具（GR-3 只读探针；表定义 → 建表 SQL 导出）
 docs\                  实现方案、对照表、学习笔记
 ```
 
 **依赖铁律**：Core 不引用任何业务工程；Ui 只认 Core 的接口；Host 是唯一引用 `methods\*` 的工程；方法工程可引用 Core、不得引用 Ui。
+
+## 数据库结构（2026-10-11 按现役补齐）
+
+T 0715 三表按现役 `SQL\T0715-2025_BendingTest.sql` **逐列补齐**：主表 42 列 / 明细 27 列 / 模板 32 列
+（现役为 37 / 27 / 31），**每列都带中文含义注释**（单位、取值口径、"现役对应列"）。
+
+- 完整建表 SQL（可直接读的审核件）：[docs/对照/建表SQL.sql](docs/对照/建表SQL.sql)
+  —— 由 `tools\ANX.Tools.SchemaDump` 从表定义生成，**不要手改**；改完表定义重跑：
+
+  ```powershell
+  $env:DOTNET_CLI_HOME = 'E:\AiStudy\CodeX\.dotnetcli'
+  dotnet run --project tools\ANX.Tools.SchemaDump -m:1 -- --out docs\对照\建表SQL.sql
+  ```
+
+- 字段对照（现役 ↔ 新工程）：[docs/对照/T0715-字段对照.md](docs/对照/T0715-字段对照.md)
+- **架构版本 2 → 3**：库版本对不上时程序**拒绝启动**并要求"备份旧库后重建"（本项目不做迁移）。
+  开发期的旧 `Bins\Data\anx.db` 需要先备份再删掉重建。
 
 ## M1 验证记录（2026-10-10）
 

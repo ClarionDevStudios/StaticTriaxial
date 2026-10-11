@@ -16,14 +16,23 @@ public enum ColumnType
     Text = 2,
 }
 
-/// <summary>一列的定义。</summary>
-public sealed record ColumnDefinition(string Name, ColumnType Type, bool IsRequired = false);
+/// <summary>
+/// 一列的定义。<paramref name="Comment"/> 是这一列的中文含义说明（含单位、取值口径），
+/// 由 <c>SchemaBuilder</c> 写进生成的建表 SQL 注释里 —— 目的就是让人能直接读 SQL 审核字段。
+/// </summary>
+public sealed record ColumnDefinition(
+    string Name,
+    ColumnType Type,
+    bool IsRequired = false,
+    string? Comment = null
+);
 
 /// <summary>一张表的定义。框架只认这些结构信息，不认任何具体方法字段的含义。</summary>
 public sealed record TableDefinition(
     string TableName,
     string PrimaryKeyColumn,
-    IReadOnlyList<ColumnDefinition> Columns
+    IReadOnlyList<ColumnDefinition> Columns,
+    string? Comment = null
 );
 
 /// <summary>
