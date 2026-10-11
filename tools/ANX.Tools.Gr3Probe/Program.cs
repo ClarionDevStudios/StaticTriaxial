@@ -66,7 +66,8 @@ internal static class Program
                 port,
                 localPort,
                 int.Parse(watchSeconds, CultureInfo.InvariantCulture),
-                double.Parse(GetArg(args, "--heartbeat") ?? "0", CultureInfo.InvariantCulture)
+                double.Parse(GetArg(args, "--heartbeat") ?? "0", CultureInfo.InvariantCulture),
+                useCb: string.Equals(GetArg(args, "--keepalive") ?? "cah", "cb", StringComparison.OrdinalIgnoreCase)
             );
         }
 
@@ -373,12 +374,17 @@ internal static class Program
         int port,
         int localPort,
         int seconds,
-        double heartbeatSeconds
+        double heartbeatSeconds,
+        bool useCb
     )
     {
         Console.WriteLine(
             $"=== 会话保活观测（只读，{seconds}s"
-                + (heartbeatSeconds > 0 ? $"，每 {heartbeatSeconds:0.#}s 发一次 CBH 心跳" : "，不发心跳")
+                + (
+                    heartbeatSeconds > 0
+                        ? $"，每 {heartbeatSeconds:0.#}s 发一次{(useCb ? "CBH 心跳" : "CAH 读通道配置")}"
+                        : "，不发保活帧"
+                )
                 + "）==="
         );
 
@@ -425,7 +431,15 @@ internal static class Program
 
             if (heartbeatSeconds > 0 && clock.Elapsed.TotalSeconds >= nextBeat)
             {
-                await controller.HeartbeatAsync();
+                if (useCb)
+                {
+                    await controller.HeartbeatAsync();
+                }
+                else
+                {
+                    await controller.SendKeepAliveAsync();
+                }
+
                 nextBeat += heartbeatSeconds;
             }
         }

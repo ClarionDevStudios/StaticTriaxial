@@ -172,16 +172,16 @@ public sealed class DeviceChainTests
     }
 
     /// <summary>
-    /// 心跳保活：下位机 60 秒收不到任何下行帧就回收会话（2026-10-11 真机实测：A2 流整段停掉、
-    /// 机器一并停住），所以联机期间必须自动发 CBH；断开后要停。
+    /// 保活帧：下位机 60 秒收不到任何下行帧就回收会话（2026-10-11 真机实测：A2 流整段停掉、
+    /// 机器一并停住），所以联机期间自动发 **CAH 读通道配置**（用户定的口径）；断开后要停。
     /// </summary>
     [Fact]
-    public async Task 联机期间应周期性发心跳断开后停止()
+    public async Task 联机期间应周期性发保活帧断开后停止()
     {
         var channel = new FakeChannel();
         await using var controller = new Gr3DeviceController(channel)
         {
-            HeartbeatInterval = TimeSpan.FromMilliseconds(30),
+            KeepAliveInterval = TimeSpan.FromMilliseconds(30),
         };
 
         var connect = controller.ConnectAsync();
@@ -190,20 +190,33 @@ public sealed class DeviceChainTests
 
         var deadline = DateTime.UtcNow.AddSeconds(2);
         while (
-            channel.SentFrames.Count(frame => frame[10] == Gr3Constants.DownlinkHeartbeat) < 3
+            channel.SentFrames.Count(frame => frame[10] == Gr3Constants.DownlinkReadChannelConfig) < 3
             && DateTime.UtcNow < deadline
         )
         {
             await Task.Delay(20);
         }
 
-        var beats = channel.SentFrames.Count(frame => frame[10] == Gr3Constants.DownlinkHeartbeat);
-        Assert.True(beats >= 3, $"联机后 2 秒内只发了 {beats} 次心跳");
+        var keepAlives = channel.SentFrames
+            .Where(frame => frame[10] == Gr3Constants.DownlinkReadChannelConfig)
+            .ToArray();
+        Assert.True(keepAlives.Length >= 3, $"联机后 2 秒内只发了 {keepAlives.Length} 次保活帧");
+
+        // 保活帧内容：CAH order=1（读通道配置）通道 1
+        Assert.Equal(1, keepAlives[0][11]);
+        Assert.Equal(1, keepAlives[0][12]);
+
+        // 不再用 CBH：协议里 CB 叫"心跳保活"，但保活口径已改为 CAH
+        Assert.DoesNotContain(channel.SentFrames, frame => frame[10] == Gr3Constants.DownlinkHeartbeat);
 
         await controller.DisconnectAsync();
 
         var sentAtDisconnect = channel.SentFrames.Count;
         await Task.Delay(200);
+        Assert.DoesNotContain(
+            channel.SentFrames.Skip(sentAtDisconnect),
+            frame => frame[10] == Gr3Constants.DownlinkReadChannelConfig
+        );
         Assert.Equal(sentAtDisconnect, channel.SentFrames.Count);
     }
 

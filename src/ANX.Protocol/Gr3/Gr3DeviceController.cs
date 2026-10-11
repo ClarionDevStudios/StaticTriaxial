@@ -164,21 +164,22 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
             throw new TimeoutException($"联机超时：{_timeout.TotalSeconds:0.#}s 内未收到 A0 系统配置");
         }
 
-        StartHeartbeat();
+        StartKeepAlive();
     }
 
     public async Task DisconnectAsync()
     {
-        await StopHeartbeatAsync().ConfigureAwait(false);
+        await StopKeepAliveAsync().ConfigureAwait(false);
         Unsubscribe();
         await _channel.CloseAsync().ConfigureAwait(false);
     }
 
     /// <summary>
-    /// 心跳周期（CBH 会话保活）。下位机 **60 秒**收不到任何下行帧就回收会话（2026-10-11 真机实测，
-    /// 表现为 A2 流整段停掉、机器一并停住），这里取 2 秒、留足余量。测试可改小。
+    /// 保活帧周期：**联机期间每 10 秒发一次 CAH 读通道配置**（用户 2026-10-11 定的口径）。
+    /// 下位机 **60 秒**收不到任何下行帧就回收会话（真机实测，表现为 A2 流整段停掉、机器一并停住），
+    /// 10 秒有 6 倍余量。测试可改小。
     /// </summary>
-    public TimeSpan HeartbeatInterval { get; set; } = TimeSpan.FromSeconds(2);
+    public TimeSpan KeepAliveInterval { get; set; } = TimeSpan.FromSeconds(10);
 
     public double SpeedMillimetersPerMinute { get; private set; } = 50.0;
 
@@ -261,15 +262,29 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
         SendAndWaitAckAsync(Gr3DownlinkCommands.Zero(0x80, 0xFF), cancellationToken);
 
     /// <summary>
-    /// CBH 心跳（**会话保活**）。协议把 CB 叫"心跳保活"：PC 长时间不发任何下行帧时，
-    /// 下位机会回收会话 —— 2026-10-11 真机实测约 **60 秒**后 A2 流直接停掉（机器也一并停住），
-    /// 而重新发 C0 联机立刻恢复。所以运行期间必须周期性发本指令。
+    /// CBH 心跳。协议把 CB 叫"心跳保活"，但**联机期间的自动保活用的是 CAH**
+    /// （见 <see cref="SendKeepAliveAsync"/>，用户 2026-10-11 定的口径）；本方法留着做显式心跳 /
+    /// 对照实验用（只读探针的 `--keepalive cb` 走这条）。
     /// </summary>
     public Task HeartbeatAsync(CancellationToken cancellationToken = default) =>
         SendAndWaitAckAsync(Gr3DownlinkCommands.Heartbeat(), cancellationToken);
 
-    /// <summary>联机成功后启动心跳循环（幂等）。</summary>
-    private void StartHeartbeat()
+    /// <summary>
+    /// 保活帧：**CAH 读通道配置**（用户 2026-10-11 定的口径 —— 联机期间每 10 秒发一次 CAH）。
+    /// 下位机 60 秒收不到任何下行帧就回收会话（真机实测），所以必须周期性发；用 CAH 而不是 CBH
+    /// 还顺带读了通道配置（A3 不参与解析，不会干扰业务帧）。
+    /// </summary>
+    public Task SendKeepAliveAsync(CancellationToken cancellationToken = default) =>
+        SendAsync(
+            Gr3DownlinkCommands.ReadChannelConfig(1, KeepAliveChannelId),
+            cancellationToken
+        );
+
+    /// <summary>保活帧读哪个通道的配置（协议规定 1-12；用固定 1，避开"通道不存在"被拒）。</summary>
+    public byte KeepAliveChannelId { get; set; } = 1;
+
+    /// <summary>联机成功后启动保活循环（幂等）。</summary>
+    private void StartKeepAlive()
     {
         if (_heartbeatLoop is not null)
         {
@@ -281,13 +296,13 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
 
         _heartbeatLoop = Task.Run(async () =>
         {
-            using var timer = new PeriodicTimer(HeartbeatInterval);
+            using var timer = new PeriodicTimer(KeepAliveInterval);
             try
             {
                 while (await timer.WaitForNextTickAsync(token).ConfigureAwait(false))
                 {
-                    // 只发不等应答：应答通道（_ackWaiter）是"一条命令一个应答"，心跳不能去抢它
-                    await SendAsync(Gr3DownlinkCommands.Heartbeat(), token).ConfigureAwait(false);
+                    // 只发不等应答：应答通道（_ackWaiter）是"一条命令一个应答"，保活帧不能去抢它
+                    await SendKeepAliveAsync(token).ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException)
@@ -296,12 +311,12 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
             }
             catch (Exception)
             {
-                // 心跳是尽力而为：发不出去也不打断业务，链路真断了会先由数据流表现出来
+                // 保活是尽力而为：发不出去也不打断业务，链路真断了会先由数据流表现出来
             }
         });
     }
 
-    private async Task StopHeartbeatAsync()
+    private async Task StopKeepAliveAsync()
     {
         if (_heartbeatCts is null)
         {
@@ -321,7 +336,7 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
 
     public async ValueTask DisposeAsync()
     {
-        await StopHeartbeatAsync().ConfigureAwait(false);
+        await StopKeepAliveAsync().ConfigureAwait(false);
         Unsubscribe();
         await _channel.DisposeAsync().ConfigureAwait(false);
     }
