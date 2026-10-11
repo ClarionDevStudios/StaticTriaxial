@@ -40,8 +40,9 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
     /// <summary>实时指标卡：与现役执行页的 7 个卡片同构，按本方法取用。</summary>
     public IReadOnlyList<MetricDefinition> Metrics { get; } =
     [
-        new("load", BendingMetricKeys.Load, "kN", ShowPeak: true),
-        new("displacement", BendingMetricKeys.Displacement, "mm", ShowPeak: true),
+        // 荷载 / 位移是实时跳动的读数：数值区预留 8 位宽，免得卡片随位数变宽变窄
+        new("load", BendingMetricKeys.Load, "kN", ShowPeak: true, ValueMinChars: 8),
+        new("displacement", BendingMetricKeys.Displacement, "mm", ShowPeak: true, ValueMinChars: 8),
         new("flexuralStrength", BendingMetricKeys.FlexuralStrength, "MPa"),
         new("originCorrection", BendingMetricKeys.OriginCorrection, "mm"),
         new("maxStrain", BendingMetricKeys.MaxStrain, "με"),

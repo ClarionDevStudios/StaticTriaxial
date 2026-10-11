@@ -21,43 +21,47 @@
     </Grid.RowDefinitions>
 
     <!-- ① 顶部按钮条（照现役：标题栏右侧一排按钮） -->
-    <StackPanel
-      Grid.Row="0"
-      HorizontalAlignment="Right"
-      Orientation="Horizontal"
-    >
-      <ui:Button
-        Margin="4,0,0,0"
-        Appearance="Secondary"
-        Command="{Binding ViewModel.OpenSheetSelectionCommand}"
-        Content="{DynamicResource Exec.NewSheet}"
-      />
-      <ui:Button
-        Margin="4,0,0,0"
-        Appearance="Secondary"
-        Command="{Binding ViewModel.OpenMachineSettingsCommand}"
-        Content="{DynamicResource Exec.TestParams}"
-      />
-      <ui:Button
-        Margin="4,0,0,0"
-        Appearance="Secondary"
-        Command="{Binding ViewModel.PrintReportCommand}"
-        Content="{DynamicResource Exec.Print}"
-      />
-      <ui:Button
-        Margin="4,0,0,0"
-        Appearance="Secondary"
-        Command="{Binding ViewModel.OpenHistoryCommand}"
-        Content="{DynamicResource Exec.History}"
-      />
-      <ui:Button
-        Margin="4,0,0,0"
-        Appearance="Secondary"
-        Content="{DynamicResource Exec.DataFlow}"
-        IsEnabled="False"
-        ToolTip="{DynamicResource Exec.ToDo}"
-      />
-    </StackPanel>
+    <!-- 顶部按钮：两组各两个、组内上下排列，两组整体靠右（右边缘对齐） -->
+    <Grid Grid.Row="0" HorizontalAlignment="Right">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+
+      <!-- 第一组：新建试验 / 试验参数 -->
+      <StackPanel Grid.Column="0" VerticalAlignment="Top">
+        <ui:Button
+          MinWidth="96"
+          Appearance="Secondary"
+          Command="{Binding ViewModel.OpenSheetSelectionCommand}"
+          Content="{DynamicResource Exec.NewSheet}"
+        />
+        <ui:Button
+          MinWidth="96"
+          Margin="0,6,0,0"
+          Appearance="Secondary"
+          Command="{Binding ViewModel.OpenMachineSettingsCommand}"
+          Content="{DynamicResource Exec.TestParams}"
+        />
+      </StackPanel>
+
+      <!-- 第二组：打印报表 / 历史数据 -->
+      <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Top">
+        <ui:Button
+          MinWidth="96"
+          Appearance="Secondary"
+          Command="{Binding ViewModel.PrintReportCommand}"
+          Content="{DynamicResource Exec.Print}"
+        />
+        <ui:Button
+          MinWidth="96"
+          Margin="0,6,0,0"
+          Appearance="Secondary"
+          Command="{Binding ViewModel.OpenHistoryCommand}"
+          Content="{DynamicResource Exec.History}"
+        />
+      </StackPanel>
+    </Grid>
 
     <!-- ② 实时数据区：指标卡 + 工作台按钮（照现役布局） -->
     <Grid Grid.Row="1" Margin="0,12,0,0">
@@ -92,6 +96,7 @@
                   Margin="0,4,0,0"
                   Style="{StaticResource MonoTextStyle}"
                   FontSize="22"
+                  MinWidth="{Binding ValueMinWidth}"
                   Text="{Binding Value, Mode=OneWay}"
                 />
                 <TextBlock
@@ -106,25 +111,38 @@
         </ItemsControl.ItemTemplate>
       </ItemsControl>
 
-      <StackPanel Grid.Column="1" Width="150">
+      <!--
+        工作台按钮：水平并排、带上下箭头图标，高度撑满本行 ——
+        本行高度由指标卡决定，所以按钮高度自然与卡片一致（不写死数值）。
+      -->
+      <StackPanel
+        Grid.Column="1"
+        Margin="8,0,0,0"
+        Orientation="Horizontal"
+        VerticalAlignment="Stretch"
+      >
         <ui:Button
-          Height="54"
+          MinWidth="96"
           Appearance="Secondary"
           Content="{DynamicResource Exec.WorktableUp}"
+          Icon="{ui:SymbolIcon ArrowUp24}"
           IsEnabled="{Binding ViewModel.CanJog}"
           LostMouseCapture="OnJogButtonReleased"
           PreviewMouseLeftButtonDown="OnJogUpButtonPressed"
           PreviewMouseLeftButtonUp="OnJogButtonReleased"
+          VerticalAlignment="Stretch"
         />
         <ui:Button
-          Height="54"
-          Margin="0,8,0,0"
+          MinWidth="96"
+          Margin="8,0,0,0"
           Appearance="Secondary"
           Content="{DynamicResource Exec.WorktableDown}"
+          Icon="{ui:SymbolIcon ArrowDown24}"
           IsEnabled="{Binding ViewModel.CanJog}"
           LostMouseCapture="OnJogButtonReleased"
           PreviewMouseLeftButtonDown="OnJogDownButtonPressed"
           PreviewMouseLeftButtonUp="OnJogButtonReleased"
+          VerticalAlignment="Stretch"
         />
       </StackPanel>
     </Grid>
@@ -231,24 +249,30 @@
       </ui:Card>
     </Grid>
 
-    <!-- ④ 底部状态栏 -->
-    <StackPanel
-      Grid.Row="3"
-      Margin="0,10,0,0"
-      Orientation="Horizontal"
-    >
-      <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource Exec.Connection}" />
-      <TextBlock
-        Margin="8,0,0,0"
-        Style="{StaticResource MonoTextStyle}"
-        Text="{Binding ViewModel.ConnectionText, Mode=OneWay}"
-      />
+    <!-- ④ 底部状态栏：左边连接状态，右侧数据流按钮 -->
+    <Grid Grid.Row="3" Margin="0,10,0,0">
+      <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
+        <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource Exec.Connection}" />
+        <TextBlock
+          Margin="8,0,0,0"
+          Style="{StaticResource MonoTextStyle}"
+          Text="{Binding ViewModel.ConnectionText, Mode=OneWay}"
+        />
+        <ui:Button
+          Margin="16,0,0,0"
+          Appearance="Secondary"
+          Command="{Binding ViewModel.ConnectCommand}"
+          Content="{DynamicResource Exec.Connect}"
+        />
+      </StackPanel>
+
       <ui:Button
-        Margin="16,0,0,0"
+        HorizontalAlignment="Right"
         Appearance="Secondary"
-        Command="{Binding ViewModel.ConnectCommand}"
-        Content="{DynamicResource Exec.Connect}"
+        Content="{DynamicResource Exec.DataFlow}"
+        IsEnabled="False"
+        ToolTip="{DynamicResource Exec.ToDo}"
       />
-    </StackPanel>
+    </Grid>
   </Grid>
 </Page>

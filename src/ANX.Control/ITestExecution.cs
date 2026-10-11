@@ -7,11 +7,16 @@ using ANX.Core;
 /// <param name="DisplayNameKey">显示名**资源键**（多语言），不是显示文本本身 —— 与 IAP 的字段声明同款。</param>
 /// <param name="Unit">单位符号（无量纲留空）。</param>
 /// <param name="ShowPeak">是否同时显示峰值。</param>
+/// <param name="ValueMinChars">
+/// 数值区至少预留多少个字符的宽度。给"会一直跳动、位数会涨"的实时读数用
+/// （荷载、位移），免得卡片宽度随数字位数忽宽忽窄。0 = 不预留。
+/// </param>
 public sealed record MetricDefinition(
     string Key,
     string DisplayNameKey,
     string Unit,
-    bool ShowPeak = false
+    bool ShowPeak = false,
+    int ValueMinChars = 0
 );
 
 /// <summary>

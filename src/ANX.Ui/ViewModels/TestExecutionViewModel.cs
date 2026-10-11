@@ -1,6 +1,7 @@
 namespace ANX.Ui.ViewModels;
 
 using System.Globalization;
+using System.Windows.Media;
 using ANX.Control;
 using ANX.Core;
 using ANX.Core.Control;
@@ -32,8 +33,40 @@ public partial class MetricCard : ObservableObject
     /// <summary>显示名（按当前语言取资源键）。</summary>
     public string DisplayName => _localization.GetString(_definition.DisplayNameKey);
 
+    /// <summary>
+    /// 数值区最少宽度（像素）：按卡片数值那套等宽字体量出 <see cref="MetricDefinition.ValueMinChars"/> 个数字的宽。
+    /// 0 表示不预留（交给内容决定）。
+    /// </summary>
+    public double ValueMinWidth =>
+        _definition.ValueMinChars > 0 ? _definition.ValueMinChars * DigitWidth : 0;
+
     /// <summary>单位（不译：IAP 的口径是单位为不译项）。</summary>
     public string Unit => _definition.Unit;
+
+    /// <summary>数值字体（MonoTextStyle / 22px）一个数字的宽，只量一次。</summary>
+    private static readonly double DigitWidth = MeasureDigitWidth();
+
+    private static double MeasureDigitWidth()
+    {
+        var typeface = new Typeface(
+            new FontFamily("Consolas"),
+            FontStyles.Normal,
+            FontWeights.Normal,
+            FontStretches.Normal
+        );
+
+        var text = new FormattedText(
+            "0",
+            CultureInfo.InvariantCulture,
+            FlowDirection.LeftToRight,
+            typeface,
+            22,
+            System.Windows.Media.Brushes.Black,
+            1.0
+        );
+
+        return text.WidthIncludingTrailingWhitespace;
+    }
 
     public bool ShowPeak => _definition.ShowPeak;
 
