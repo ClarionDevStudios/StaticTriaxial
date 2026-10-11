@@ -49,9 +49,11 @@ public sealed class DatabaseInitializer(StorageOptions options, IEnumerable<IMet
         }
         else if (version != SchemaBuilder.CurrentSchemaVersion)
         {
-            throw new InvalidOperationException(
-                $"数据库架构版本不匹配（库为 {version}，程序要求 {SchemaBuilder.CurrentSchemaVersion}）。"
-                    + "本项目不做迁移：请备份旧库后重建。"
+            // 可预期失败：宿主会把 DatabaseVersion / RequiredVersion / DatabasePath 弹给用户
+            throw new SchemaVersionMismatchException(
+                version,
+                SchemaBuilder.CurrentSchemaVersion,
+                options.DatabasePath
             );
         }
 

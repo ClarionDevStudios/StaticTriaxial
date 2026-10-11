@@ -117,4 +117,11 @@
   <sys:String x:Key="Param.Saved">Saved</sys:String>
   <sys:String x:Key="Param.SaveFailed">Save failed</sys:String>
   <sys:String x:Key="Exec.NoSheet">No test sheet yet (create one or pick an existing sheet)</sys:String>
+
+  <!-- Startup notice: the database schema version does not match; show it, then exit normally -->
+  <sys:String x:Key="Startup.SchemaMismatch.Title">Database schema mismatch - cannot start</sys:String>
+  <!-- These three are joined with Environment.NewLine in code: XAML/BAML normalizes line breaks inside resource text -->
+  <sys:String x:Key="Startup.SchemaMismatch.Summary">The database schema version does not match, so the application cannot start.</sys:String>
+  <sys:String x:Key="Startup.SchemaMismatch.Versions">Database version: {0}, required version: {1}</sys:String>
+  <sys:String x:Key="Startup.SchemaMismatch.Hint">This project does not migrate data. Back up the file below, delete it, then start the application again (a new database will be created):</sys:String>
 </ResourceDictionary>

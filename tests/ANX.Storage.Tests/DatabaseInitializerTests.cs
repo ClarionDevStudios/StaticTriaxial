@@ -58,7 +58,14 @@ public sealed class DatabaseInitializerTests : IDisposable
             command.ExecuteNonQuery();
         }
 
-        var exception = Assert.Throws<InvalidOperationException>(() => CreateInitializer().Initialize());
+        var exception = Assert.Throws<SchemaVersionMismatchException>(
+            () => CreateInitializer().Initialize()
+        );
+
+        // 版本号与库路径都随异常带出来（宿主据此弹提示框），不只是给一句文字
+        Assert.Equal(99, exception.DatabaseVersion);
+        Assert.Equal(SchemaBuilder.CurrentSchemaVersion, exception.RequiredVersion);
+        Assert.Equal(_databasePath, exception.DatabasePath);
         Assert.Contains("备份旧库后重建", exception.Message, StringComparison.Ordinal);
     }
 

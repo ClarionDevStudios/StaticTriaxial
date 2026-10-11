@@ -171,11 +171,52 @@ public partial class App
 
             logger.LogInformation("启动完成，日志目录：{LogDirectory}", AppPaths.ResolveLogDirectory());
         }
+        catch (SchemaVersionMismatchException ex)
+        {
+            // 可预期的失败：把"哪个库、差多少、下一步做什么"讲清楚，然后**正常退出**。
+            // 不向上抛 —— 否则 WPF 的未处理异常会再盖一个原始错误框，用户还是看不懂。
+            logger.LogError(ex, "启动失败：数据库架构版本不匹配");
+            ShowSchemaMismatchDialog(ex);
+            Shutdown(1);
+            return;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "启动失败");
             throw;
         }
+    }
+
+    /// <summary>
+    /// 建库版本对不上时的提示框：库版本 / 程序要求 / 要备份的文件，逐条给出。
+    /// 这里用系统 MessageBox 而不是 WPF-UI 的对话框 —— 此刻外壳还没建起来（没有可用的
+    /// 宿主窗口与内容对话框宿主），而这条提示必须在任何窗口之前就能弹出来。
+    /// </summary>
+    private void ShowSchemaMismatchDialog(SchemaVersionMismatchException mismatch)
+    {
+        var localization = Services.GetRequiredService<ILocalizationService>();
+
+        // 换行在代码里拼：XAML/BAML 会把资源文本里的 CR/LF 归一化掉，写进资源留不住
+        var text = string.Join(
+            Environment.NewLine,
+            localization.GetString("Startup.SchemaMismatch.Summary"),
+            string.Empty,
+            string.Format(
+                localization.GetString("Startup.SchemaMismatch.Versions"),
+                mismatch.DatabaseVersion,
+                mismatch.RequiredVersion
+            ),
+            string.Empty,
+            localization.GetString("Startup.SchemaMismatch.Hint"),
+            mismatch.DatabasePath
+        );
+
+        MessageBox.Show(
+            text,
+            localization.GetString("Startup.SchemaMismatch.Title"),
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning
+        );
     }
 
     private async void OnExit(object sender, ExitEventArgs e)
