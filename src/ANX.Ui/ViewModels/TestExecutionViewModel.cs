@@ -391,7 +391,9 @@ public partial class TestExecutionViewModel : ViewModelBase
         _curve.Clear();
         CurveCleared?.Invoke(this, EventArgs.Empty);
 
-        var sequencer = new TestSequencer(_execution.Profile);
+        // 运行参数从**参数表**来（接触阈值 / 破坏判据 / 确认帧数 / 加载速率），不再用写死的默认值
+        var profile = await _execution.LoadProfileAsync();
+        var sequencer = new TestSequencer(profile);
         _sequencer = sequencer;
         sequencer.Start();
 
@@ -440,10 +442,28 @@ public partial class TestExecutionViewModel : ViewModelBase
                         device.ElapsedSeconds += ControlPeriod.TotalSeconds;
                         var sample = latest with { ElapsedSeconds = device.ElapsedSeconds };
 
+                        var phaseBefore = sequencer.Phase;
+
                         if (!sequencer.OnSample(sample))
                         {
                             finished.TrySetResult(true);
                             return;
+                        }
+
+                        if (
+                            phaseBefore == TestPhase.ContactSearch
+                            && sequencer.Phase == TestPhase.Loading
+                        )
+                        {
+                            // 接触成立：位移清零（C3）并切到试验速率 —— 与现役线程的"4.4 传感器调零 + 提速"一致
+                            await device.ResetAsync(controlToken).ConfigureAwait(false);
+                            await device
+                                .SetSpeedAsync(profile.LoadRateMillimetersPerMinute, controlToken)
+                                .ConfigureAwait(false);
+
+                            _ = System.Windows.Application.Current?.Dispatcher.InvokeAsync(
+                                () => Append(L("Exec.ContactDetected"))
+                            );
                         }
 
                         _ = System.Windows.Application.Current?.Dispatcher.InvokeAsync(
@@ -457,6 +477,8 @@ public partial class TestExecutionViewModel : ViewModelBase
                 }
             });
 
+            // 空走阶段用接近速率（比试验速率慢），接触后再提速
+            await device.SetSpeedAsync(profile.ApproachSpeedMillimetersPerMinute, _cts.Token);
             await device.StartAsync(_cts.Token);
 
             var completed = await Task.WhenAny(

@@ -37,6 +37,12 @@ public interface ITestExecution : ICurveAxisSource
     /// <summary>运行参数与保护阈值（交给阶段机）。</summary>
     TestRunProfile Profile { get; }
 
+    /// <summary>
+    /// 按**当前存下来的方法参数**装配一次运行的参数与保护阈值
+    /// （接触阈值 / 破坏判据 / 确认帧数 / 加载速率都从参数表来，不再用写死的默认值）。
+    /// </summary>
+    Task<TestRunProfile> LoadProfileAsync(CancellationToken cancellationToken = default);
+
     /// <summary>实时指标卡。</summary>
     IReadOnlyList<MetricDefinition> Metrics { get; }
 

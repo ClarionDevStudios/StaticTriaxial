@@ -153,4 +153,5 @@
   <sys:String x:Key="Exec.JogStopped">工作台已停止</sys:String>
   <sys:String x:Key="Exec.JogFailed">点动失败</sys:String>
   <sys:String x:Key="Exec.JogNeedConnect">还没联机 —— 先点「联机」，再操作工作台</sys:String>
+  <sys:String x:Key="Exec.ContactDetected">接触成立：位移清零，切换到试验速率</sys:String>
 </ResourceDictionary>

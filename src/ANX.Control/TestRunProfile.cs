@@ -29,4 +29,13 @@ public sealed record TestRunProfile
 
     /// <summary>破坏后自动复位时长（s）。</summary>
     public double ResetSeconds { get; init; } = 5.0;
+
+    /// <summary>试验加载速率（mm/min），规范 50；由方法按"加载速率"参数给出。</summary>
+    public double LoadRateMillimetersPerMinute { get; init; } = 50.0;
+
+    /// <summary>
+    /// 接触阶段的接近速率（mm/min），默认 10 —— 比试验速率慢，避免压头冲击试件
+    /// （与现役线程的 `CONTACT_SPEED_MM_MIN` 同义）。
+    /// </summary>
+    public double ApproachSpeedMillimetersPerMinute { get; init; } = 10.0;
 }

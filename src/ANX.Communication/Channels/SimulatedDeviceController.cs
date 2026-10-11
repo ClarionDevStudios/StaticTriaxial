@@ -101,7 +101,15 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
         }
     }
 
-    public Task ResetAsync(CancellationToken cancellationToken = default) => StopAsync();
+    /// <summary>
+    /// 复位 = **位移清零**（与真机 C3H「显示数据清零」同义）：把模拟的工作台位置归零，
+    /// 但不停采样 —— 接触成立那一刻上位机就会调它，停了就没法继续加载了。
+    /// </summary>
+    public Task ResetAsync(CancellationToken cancellationToken = default)
+    {
+        _jogDisplacementMM = 0;
+        return Task.CompletedTask;
+    }
 
     public async ValueTask DisposeAsync()
     {

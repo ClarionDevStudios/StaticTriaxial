@@ -153,4 +153,5 @@
   <sys:String x:Key="Exec.JogStopped">Worktable stopped</sys:String>
   <sys:String x:Key="Exec.JogFailed">Jog failed</sys:String>
   <sys:String x:Key="Exec.JogNeedConnect">Not connected - click Connect first, then use the worktable buttons</sys:String>
+  <sys:String x:Key="Exec.ContactDetected">Contact detected: displacement zeroed, switching to test speed</sys:String>
 </ResourceDictionary>
