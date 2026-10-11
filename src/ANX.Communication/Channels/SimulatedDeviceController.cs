@@ -36,6 +36,9 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
 
     public bool IsConnected { get; private set; }
 
+    /// <summary>试验已进行秒数；由控制循环推进（模拟器的采样自带时间戳，仅供产生数据用）。</summary>
+    public double ElapsedSeconds { get; set; }
+
     public double SpeedMillimetersPerMinute { get; private set; } = 50.0;
 
     public event EventHandler<TestSample>? SampleReceived;

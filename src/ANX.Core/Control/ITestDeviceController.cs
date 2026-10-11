@@ -12,6 +12,12 @@ public interface ITestDeviceController
     /// <summary>是否已联机。</summary>
     bool IsConnected { get; }
 
+    /// <summary>
+    /// 试验已进行的秒数（接触清零后起算）。**由控制循环每拍推进** —— A2H 帧本身不带时间戳，
+    /// 阶段机的超时与复位计时都以它为准（与现役线程用自己秒表计时同义）。
+    /// </summary>
+    double ElapsedSeconds { get; set; }
+
     /// <summary>实时采样快照。由控制引擎订阅，用于阶段判断、保护与曲线记录。</summary>
     event EventHandler<TestSample>? SampleReceived;
 

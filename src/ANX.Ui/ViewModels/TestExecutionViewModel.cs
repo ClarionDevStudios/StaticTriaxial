@@ -89,6 +89,12 @@ public partial class MetricCard : ObservableObject
 /// </summary>
 public partial class TestExecutionViewModel : ViewModelBase
 {
+    /// <summary>控制周期：与现役线程一致（20ms / 50Hz）。</summary>
+    private static readonly TimeSpan ControlPeriod = TimeSpan.FromMilliseconds(20);
+
+    /// <summary>空闲时数值卡的最低刷新间隔（设备约 190Hz，没必要逐帧刷）。</summary>
+    private static readonly TimeSpan LiveReadoutInterval = TimeSpan.FromMilliseconds(50);
+
     private readonly ITestExecution _execution;
     private readonly ITestDeviceController? _device;
     private readonly ICurrentSheetContext? _currentSheet;
@@ -100,6 +106,8 @@ public partial class TestExecutionViewModel : ViewModelBase
     private CancellationTokenSource? _cts;
     private string? _sheetId;
     private int _sampleCounter;
+    private TestSample? _latestSample;
+    private DateTime _lastLiveReadout = DateTime.MinValue;
 
     public TestExecutionViewModel(
         ILocalizationService localization,
@@ -259,8 +267,21 @@ public partial class TestExecutionViewModel : ViewModelBase
         }
     }
 
-    /// <summary>实时采样：只刷新数值卡，不画曲线 —— 曲线归试验那一轮。</summary>
-    private void OnLiveSample(object? sender, TestSample sample) => UpdateCards(sample);
+    /// <summary>
+    /// 空闲时的实时采样：只刷新数值卡，不画曲线 —— 曲线归试验那一轮。
+    /// 设备约 190Hz，界面按 20Hz 刷就够了。
+    /// </summary>
+    private void OnLiveSample(object? sender, TestSample sample)
+    {
+        var now = DateTime.UtcNow;
+        if (now - _lastLiveReadout < LiveReadoutInterval)
+        {
+            return;
+        }
+
+        _lastLiveReadout = now;
+        UpdateCards(sample);
+    }
 
     /// <summary>开始 / 停止一个试件。</summary>
     [RelayCommand]
@@ -376,30 +397,67 @@ public partial class TestExecutionViewModel : ViewModelBase
 
         var finished = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        void OnSample(object? sender, TestSample sample)
-        {
-            if (!sequencer.OnSample(sample))
-            {
-                finished.TrySetResult(true);
-                return;
-            }
+        // 设备帧只落到"最新一帧"；判定与界面刷新由控制循环按 20ms 节拍推进
+        void OnSample(object? sender, TestSample sample) => _latestSample = sample;
 
-            UpdateLiveValues(sample);
-        }
-
-        _device!.SampleReceived += OnSample;
+        var device = _device!;
+        device.SampleReceived += OnSample;
         IsRunning = true;
         _cts = new CancellationTokenSource();
+        var controlLoop = new FixedStepLoop(ControlPeriod);
+        _latestSample = null;
 
         try
         {
-            if (!_device.IsConnected)
+            if (!device.IsConnected)
             {
-                await _device.ConnectAsync(_cts.Token);
+                await device.ConnectAsync(_cts.Token);
                 ConnectionText = L("Exec.Connected");
             }
 
-            await _device.StartAsync(_cts.Token);
+            device.ElapsedSeconds = 0;
+            controlLoop.Start();
+            var controlToken = _cts.Token;
+
+            /**
+             * 控制循环：与现役线程同构 —— 固定 20ms 节拍，每拍拿最新一帧、
+             * 用循环的时间推进 ElapsedSeconds（A2 帧不带时间戳）、喂阶段机、刷界面。
+             * 采样率再高（真机约 190Hz）界面也只按 50Hz 刷，等于顺带做了节流。
+             */
+            var loopTask = Task.Run(async () =>
+            {
+                try
+                {
+                    while (!controlToken.IsCancellationRequested)
+                    {
+                        _ = await controlLoop.WaitForNextTickAsync(controlToken).ConfigureAwait(false);
+
+                        if (_latestSample is not { } latest)
+                        {
+                            continue; // 联机阶段下位机本就不回送数据
+                        }
+
+                        device.ElapsedSeconds += ControlPeriod.TotalSeconds;
+                        var sample = latest with { ElapsedSeconds = device.ElapsedSeconds };
+
+                        if (!sequencer.OnSample(sample))
+                        {
+                            finished.TrySetResult(true);
+                            return;
+                        }
+
+                        _ = System.Windows.Application.Current?.Dispatcher.InvokeAsync(
+                            () => UpdateLiveValues(sample)
+                        );
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    // 停止 / 取消：正常结束
+                }
+            });
+
+            await device.StartAsync(_cts.Token);
 
             var completed = await Task.WhenAny(
                 finished.Task,
@@ -410,11 +468,14 @@ public partial class TestExecutionViewModel : ViewModelBase
             {
                 sequencer.Stop(TestStopReason.LoadingTimeout);
             }
+
+            await _cts.CancelAsync();
+            await loopTask;
         }
         finally
         {
-            _device.SampleReceived -= OnSample;
-            await _device.StopAsync(CancellationToken.None);
+            device.SampleReceived -= OnSample;
+            await device.StopAsync(CancellationToken.None);
             IsRunning = false;
             _cts?.Dispose();
             _cts = null;
