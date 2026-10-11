@@ -2,6 +2,7 @@ namespace ANX.Tools.Gr3Probe;
 
 using System.Globalization;
 using System.Text;
+using ANX.Core;
 using ANX.Communication;
 using ANX.Communication.Channels;
 using ANX.Core.Protocol;
@@ -48,6 +49,12 @@ internal static class Program
         if (Array.IndexOf(args, "--motor-test") >= 0)
         {
             return await RunMotorTestAsync(host, port, localPort, waitMs);
+        }
+
+        // 速率标定（会真的动工作台）—— 实测「速度字段 1 个单位 = 多少 mm/min」
+        if (Array.IndexOf(args, "--speed-calib") >= 0)
+        {
+            return await RunSpeedCalibrationAsync(host, port, localPort, waitMs);
         }
 
         var codec = new Gr3FrameCodec();
@@ -261,8 +268,12 @@ internal static class Program
         string.Join(' ', bytes.ToArray().Select(b => b.ToString("X2", CultureInfo.InvariantCulture)));
 
     /// <summary>
-    /// 电机空载试：联机 → 读状态 → C4 正转 1 秒 → C4 停止 → C3 清零 → 再读状态。
+    /// 电机空载试：联机 → 读状态 → C4 正转 1 秒 → 停止 → C3 清零 → C4 反转 1 秒 → 停止 → C3 清零。
     /// **会真的动工作台**，只在显式传 `--motor-test` 时执行。
+    ///
+    /// 每步都打印机器状态位 + 当前荷载/位移，这样：
+    /// ① C4 方向字 0/1/2 三位都能验证（正转位、反转位）；
+    /// ② C3 清零不再是"没超时"了事 —— 正转让位移离开零点后清零，位移应回 ~0。
     /// </summary>
     private static async Task<int> RunMotorTestAsync(string host, int port, int localPort, int waitMs)
     {
@@ -276,6 +287,14 @@ internal static class Program
             displaceChannelIndex: 1
         );
 
+        var lastSample = default(TestSample);
+        var sampleCount = 0;
+        controller.SampleReceived += (_, sample) =>
+        {
+            lastSample = sample;
+            sampleCount++;
+        };
+
         try
         {
             await controller.ConnectAsync();
@@ -288,30 +307,195 @@ internal static class Program
 
         Console.WriteLine("联机成功（A0 已收到）");
         await Task.Delay(Math.Max(800, waitMs));
-        ReportStatus("联机后", controller);
+        ReportStatus("① 联机后", controller, lastSample, sampleCount);
 
         await controller.JogAsync(JogDirection.Up);
         Console.WriteLine("已发 C4H 正转上升");
-        await Task.Delay(1000);
-        ReportStatus("C4 正转中", controller);
+        await Task.Delay(1500);
+        ReportStatus("② C4 正转中（期望 正转=True）", controller, lastSample, sampleCount);
 
         await controller.StopAsync();
         Console.WriteLine("已发 C4H 停止");
         await Task.Delay(Math.Max(800, waitMs));
-        ReportStatus("C4 停止后", controller);
+        ReportStatus("③ C4 停止后（期望两位都 False）", controller, lastSample, sampleCount);
+
+        var beforeZero = lastSample.Displacement;
 
         await controller.ResetAsync();
         Console.WriteLine("已发 C3H 清零");
         await Task.Delay(Math.Max(800, waitMs));
-        ReportStatus("C3 清零后", controller);
+        ReportStatus("④ C3 清零后（期望位移回 ~0）", controller, lastSample, sampleCount);
+        Console.WriteLine(
+            $"     清零对照：清零前位移 {beforeZero:F4} mm → 清零后 {lastSample.Displacement:F4} mm"
+        );
+
+        await controller.JogAsync(JogDirection.Down);
+        Console.WriteLine("已发 C4H 反转下降");
+        await Task.Delay(1500);
+        ReportStatus("⑤ C4 反转中（期望 反转=True）", controller, lastSample, sampleCount);
+
+        await controller.StopAsync();
+        Console.WriteLine("已发 C4H 停止");
+        await Task.Delay(Math.Max(800, waitMs));
+        ReportStatus("⑥ C4 停止后", controller, lastSample, sampleCount);
+
+        await controller.ResetAsync();
+        Console.WriteLine("已发 C3H 清零（收尾）");
+        await Task.Delay(Math.Max(800, waitMs));
+        ReportStatus("⑦ C3 清零后", controller, lastSample, sampleCount);
 
         Console.WriteLine();
-        Console.WriteLine("判读要点：C4 正转中应看到「正转=True、反转=False」；停止后两位都为 False。");
+        Console.WriteLine("判读要点：");
+        Console.WriteLine("  · ② 正转=True、反转=False；⑤ 反转=True、正转=False；③⑥ 两位都 False。");
+        Console.WriteLine("  · ④ 清零前位移应偏离 0（正转已让工作台离开起点），清零后回到 ~0。");
         return 0;
     }
 
-    /// <summary>打印最近一帧 A2 的状态位。</summary>
-    private static void ReportStatus(string label, Gr3DeviceController controller)
+    /// <summary>
+    /// 速率标定（会真的动工作台）：按现役的换算请求若干速率，实测位移速率，反推
+    /// 「速度字段 1 个单位 = 多少 mm/min」。每档正转之后反转向下同样时长，行程不累积。
+    /// </summary>
+    private static async Task<int> RunSpeedCalibrationAsync(string host, int port, int localPort, int waitMs)
+    {
+        // (请求速率 mm/min, 保持秒数)。请求速率经 Gr3MotorSpeed.ToWire 换算成下发字段值。
+        var steps = new (double MmPerMin, double Seconds)[]
+        {
+            (5.0, 6.0),
+            (50.0, 1.5),
+            (200.0, 0.6),
+        };
+
+        Console.WriteLine("=== 速率标定（会真的动工作台：请空载、上下留行程余量）===");
+        Console.WriteLine($"远端 {host}:{port}   本地端口 {localPort}");
+        Console.WriteLine(
+            $"换算假设：下发值 = 速率 × {Gr3MotorSpeed.UnitsPerMillimeterPerMinute:0.#}"
+                + $"（1 单位 = {1 / Gr3MotorSpeed.UnitsPerMillimeterPerMinute:0.###} mm/min，现役值）"
+        );
+        Console.WriteLine();
+
+        await using var channel = new UdpChannel(new UdpChannelOptions(host, port, localPort));
+        await using var controller = new Gr3DeviceController(
+            channel,
+            pressChannelIndex: 1,
+            displaceChannelIndex: 1
+        );
+
+        var lastSample = default(TestSample);
+        controller.SampleReceived += (_, sample) => lastSample = sample;
+
+        // 顺手留一份 A2 原始数据域：点动期间的「试验状态」字节跟协议定义对不上（读到 0x03 / 0x04），
+        // 打出来才好定位是字节偏移错了还是位定义不同。
+        byte[]? lastRealtimePayload = null;
+        channel.DataReceived += (_, e) =>
+        {
+            var span = e.Data.Span;
+            while (Gr3FrameCodec.TryDecodeFrame(span, out var frame, out var consumed))
+            {
+                if (frame.CommandCode == Gr3Constants.UplinkRealtimeData)
+                {
+                    lastRealtimePayload = frame.Payload.ToArray();
+                }
+
+                span = span[consumed..];
+            }
+        };
+
+        try
+        {
+            await controller.ConnectAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"联机失败：{ex.Message}");
+            return 2;
+        }
+
+        Console.WriteLine("联机成功（A0 已收到）");
+        await Task.Delay(Math.Max(800, waitMs));
+        Console.WriteLine(
+            $"  起始：机器状态 0x{(byte)controller.LastMachineStatus:X2}   位移 {lastSample.Displacement:F4} mm"
+        );
+        Console.WriteLine();
+
+        foreach (var (mmPerMin, seconds) in steps)
+        {
+            var wire = Gr3MotorSpeed.ToWire(mmPerMin);
+
+            var up = await MeasureAsync(controller, () => lastSample, JogDirection.Up, mmPerMin, seconds);
+            PrintStep($"正转上升 请求 {mmPerMin:0.##} mm/min（下发 {wire}）", up.Delta, seconds);
+
+            var down = await MeasureAsync(controller, () => lastSample, JogDirection.Down, mmPerMin, seconds);
+            PrintStep($"反转下降 请求 {mmPerMin:0.##} mm/min（下发 {wire}）", down.Delta, seconds);
+
+            Console.WriteLine();
+
+            if (up.HitLimit || down.HitLimit)
+            {
+                Console.WriteLine("撞限位，标定中止 —— 请人工把工作台挪回中间再重跑。");
+                return 3;
+            }
+        }
+
+        if (lastRealtimePayload is { } payload)
+        {
+            Console.WriteLine("点动期间最后一帧 A2 数据域（71 B）：");
+            Console.WriteLine("  " + ToHex(payload));
+        }
+
+        Console.WriteLine();
+        Console.WriteLine("判读：实测速率 ≈ 请求速率 → 换算正确；差固定倍数（如 1/10、1/100）→ 单位选错。");
+        return 0;
+    }
+
+    /// <summary>点动指定时长，返回位移变化量与是否撞限位；结束即停止电机。</summary>
+    private static async Task<(double Delta, bool HitLimit)> MeasureAsync(
+        Gr3DeviceController controller,
+        Func<TestSample> latest,
+        JogDirection direction,
+        double millimetersPerMinute,
+        double seconds
+    )
+    {
+        await controller.StopAsync();
+        await Task.Delay(400);
+
+        var before = latest().Displacement;
+        await controller.JogAtSpeedAsync(direction, millimetersPerMinute);
+        await Task.Delay(TimeSpan.FromSeconds(seconds));
+        var after = latest().Displacement;
+
+        await controller.StopAsync();
+        await Task.Delay(400);
+
+        var status = controller.LastMachineStatus;
+        var hitLimit =
+            status.HasFlag(Gr3MachineStatus.DisplacementUpperLimit)
+            || status.HasFlag(Gr3MachineStatus.DisplacementLowerLimit);
+
+        if (hitLimit)
+        {
+            Console.WriteLine($"  ⚠ 撞限位（机器状态 0x{(byte)status:X2}）");
+        }
+
+        return (after - before, hitLimit);
+    }
+
+    private static void PrintStep(string label, double deltaMillimeters, double seconds)
+    {
+        var rate = deltaMillimeters / seconds * 60.0;
+        Console.WriteLine(
+            $"  {label}：{seconds:0.#}s 位移变化 {deltaMillimeters:+0.0000;-0.0000;0.0000} mm"
+                + $" → 实测 {rate:0.###} mm/min"
+        );
+    }
+
+    /// <summary>打印最近一帧 A2 的状态位 + 荷载 / 位移。</summary>
+    private static void ReportStatus(
+        string label,
+        Gr3DeviceController controller,
+        TestSample sample,
+        int sampleCount
+    )
     {
         var status = controller.LastMachineStatus;
 
@@ -324,6 +508,9 @@ internal static class Program
                 + $" 反转={status.HasFlag(Gr3MachineStatus.MotorReverse)}"
                 + $" 控温={status.HasFlag(Gr3MachineStatus.TemperatureControlActive)}）"
                 + $"  试验状态 0x{(byte)controller.LastTestStatus:X2}"
+        );
+        Console.WriteLine(
+            $"     荷载 {sample.Load:F4} kN   位移 {sample.Displacement:F4} mm" + $"   累计采样 {sampleCount} 帧"
         );
     }
 

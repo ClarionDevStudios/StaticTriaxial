@@ -13,7 +13,9 @@ using ANX.Core.Protocol;
 /// <remarks>
 /// 命令归属（2026-10-10 用户澄清）：**复位 = C3H 清零**；C5H 是**试验控制指令**（协议目录把它写成
 /// "电机控制命令"）；C4H 是电机加载 / 停止。
-/// **待真机确认**：C4 的方向字（'U' 上升 / 'D' 下降 / 'S' 停止）目前按参考实现的用法写，需空载试一次。
+/// 方向字（2026-10-11 真机空载试已验证）：0 停 / 1 正转上升 / 2 反转下降 —— 分别读到机器状态
+/// 0x00 / 0x08 / 0x10，C3H 清零后位移由 0.0180mm 回到 0.0000mm。
+/// 速度字段的单位换算见 <see cref="Gr3MotorSpeed"/>（现役：下发值 = 速率 × 10）。
 /// </remarks>
 public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposable
 {
@@ -150,6 +152,13 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
 
     public double SpeedMillimetersPerMinute { get; private set; } = 50.0;
 
+    /// <summary>
+    /// 手动点动（工作台上升 / 下降按钮）用的速率，mm/min。
+    /// **与现役的差异（待用户定）**：现役点动 = 试验速率 × 10 倍率（弯曲 50mm/min 参数 → 500mm/min 点动，
+    /// 注释写明"刻意加速，快速调整试样位置"）；我们先保守地固定 50mm/min，等真机确认行程余量后再对齐。
+    /// </summary>
+    public double JogSpeedMillimetersPerMinute { get; set; } = 50.0;
+
     public Task SetSpeedAsync(double millimetersPerMinute, CancellationToken cancellationToken = default)
     {
         SpeedMillimetersPerMinute = millimetersPerMinute;
@@ -157,18 +166,26 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
     }
 
     /// <summary>
-    /// 点动工作台（C4H）：方向字 1=正转上升 / 2=反转下降，速度取当前设定
-    /// （没设过就用 50mm/min）。执行页的"工作台上升 / 下降"按钮走这里。
+    /// 点动工作台（C4H）：方向字 1=正转上升 / 2=反转下降，速率取 <see cref="JogSpeedMillimetersPerMinute"/>。
+    /// 执行页的"工作台上升 / 下降"按钮走这里。
     /// </summary>
     public Task JogAsync(JogDirection direction, CancellationToken cancellationToken = default) =>
+        JogAtSpeedAsync(direction, JogSpeedMillimetersPerMinute, cancellationToken);
+
+    /// <summary>
+    /// 点动，显式指定速率（mm/min）。标定 / 需要精确速率时用，不加点动倍率。
+    /// </summary>
+    public Task JogAtSpeedAsync(
+        JogDirection direction,
+        double millimetersPerMinute,
+        CancellationToken cancellationToken = default
+    ) =>
         SendAndWaitAckAsync(
             Gr3DownlinkCommands.MotorLoad(
                 direction == JogDirection.Up
                     ? Gr3Constants.MotorOrderForwardUp
                     : Gr3Constants.MotorOrderReverseDown,
-                (ushort)Math.Round(SpeedMillimetersPerMinute) == 0
-                    ? (ushort)50
-                    : (ushort)Math.Round(SpeedMillimetersPerMinute)
+                Gr3MotorSpeed.ToWire(millimetersPerMinute)
             ),
             cancellationToken
         );
@@ -194,7 +211,7 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
         await SendAndWaitAckAsync(
                 Gr3DownlinkCommands.MotorLoad(
                     Gr3Constants.MotorOrderForwardUp,
-                    (ushort)Math.Round(SpeedMillimetersPerMinute)
+                    Gr3MotorSpeed.ToWire(SpeedMillimetersPerMinute)
                 ),
                 cancellationToken
             )

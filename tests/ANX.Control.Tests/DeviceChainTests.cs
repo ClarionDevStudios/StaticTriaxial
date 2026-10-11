@@ -3,6 +3,7 @@ namespace ANX.Control.Tests;
 using ANX.Communication.Channels;
 using ANX.Core;
 using ANX.Core.Communication;
+using ANX.Core.Control;
 using ANX.Protocol.Gr3;
 
 /// <summary>
@@ -124,6 +125,44 @@ public sealed class DeviceChainTests
         Assert.Equal(0, Gr3Constants.MotorOrderStop);
         Assert.Equal(1, Gr3Constants.MotorOrderForwardUp);
         Assert.Equal(2, Gr3Constants.MotorOrderReverseDown);
+    }
+
+    /// <summary>
+    /// 速度字段必须按现役的换算下发（现役 GR3CommandDispatcher：下发值 = 速率 × 10）。
+    /// 2026-10-11 真机空载试发现：直接把 mm/min 当字段值发，机器只有预期速率的零头。
+    /// </summary>
+    [Fact]
+    public async Task 速度字段应按现役换算下发()
+    {
+        var channel = new FakeChannel { AutoAck = true };
+        await using var controller = new Gr3DeviceController(channel);
+
+        var connect = controller.ConnectAsync();
+        channel.Feed(Gr3FrameCodec.BuildDatagram(Gr3Constants.UplinkSystemInfo, BuildSystemInfoPayload(), 1));
+        await connect;
+
+        await controller.JogAtSpeedAsync(JogDirection.Up, 50);
+
+        var frame = channel.SentFrames[^1];
+        Assert.Equal(Gr3Constants.DownlinkMotorLoad, frame[10]);
+        Assert.Equal(Gr3Constants.MotorOrderForwardUp, frame[11]);
+
+        // 数据域：方向字(1B) + 速度(2B 大端)。50mm/min × 10 = 500 = 0x01F4
+        Assert.Equal(0x01, frame[12]);
+        Assert.Equal(0xF4, frame[13]);
+
+        // 点动倍率：现役点动 = 试验速率 × 10
+        Assert.Equal(5000, Gr3MotorSpeed.JogToWire(50));
+    }
+
+    [Fact]
+    public void 速率换算边界()
+    {
+        Assert.Equal(500, Gr3MotorSpeed.ToWire(50));
+        Assert.Equal(100, Gr3MotorSpeed.ToWire(10));
+        Assert.Equal(0, Gr3MotorSpeed.ToWire(0));
+        Assert.Equal(ushort.MaxValue, Gr3MotorSpeed.ToWire(100_000));
+        Assert.Equal(50.0, Gr3MotorSpeed.FromWire(500), 6);
     }
 
     /// <summary>
