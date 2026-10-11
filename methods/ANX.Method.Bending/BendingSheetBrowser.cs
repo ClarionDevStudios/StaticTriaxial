@@ -9,6 +9,12 @@ using ANX.Storage;
 /// <summary>历史数据页的数据来源：查单 / 读明细 / 读曲线。</summary>
 public sealed class BendingSheetBrowser(TestSheetService sheets) : ITestSheetBrowser
 {
+    /// <summary>曲线横轴：跨中挠度。</summary>
+    public string CurveXAxisKey => BendingCurveAxes.Deflection;
+
+    /// <summary>曲线纵轴：荷载。</summary>
+    public string CurveYAxisKey => BendingCurveAxes.Load;
+
     private static readonly string[] SampleColumns =
     [
         "SampleID",

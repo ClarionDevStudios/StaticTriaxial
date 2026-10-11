@@ -50,6 +50,12 @@ public partial class HistoryViewModel : ViewModelBase
     /// <summary>曲线加载完成（页面据此重绘）。</summary>
     public event EventHandler<IReadOnlyList<CurvePoint>>? CurveLoaded;
 
+    /// <summary>曲线横轴标题（按当前语言；语言切换后由页面重新取一次）。</summary>
+    public string CurveXAxisTitle => L(_browser.CurveXAxisKey);
+
+    /// <summary>曲线纵轴标题（按当前语言）。</summary>
+    public string CurveYAxisTitle => L(_browser.CurveYAxisKey);
+
     /// <summary>按关键字查询试验单。</summary>
     [RelayCommand]
     private async Task SearchAsync()

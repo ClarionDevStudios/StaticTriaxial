@@ -6,7 +6,7 @@ using ANX.Core.TestSheets;
 /// <summary>
 /// 试验单浏览契约（历史数据页用）：只回"列名 → 文本"的通用行，界面不认识任何具体字段。
 /// </summary>
-public interface ITestSheetBrowser
+public interface ITestSheetBrowser : ICurveAxisSource
 {
     /// <summary>按关键字查试验单；<paramref name="keyword"/> 为空时返回全部。</summary>
     Task<IReadOnlyList<TestSheetSummary>> QueryAsync(

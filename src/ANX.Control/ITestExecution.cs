@@ -18,7 +18,7 @@ public sealed record MetricDefinition(
 /// 试验执行契约：界面靠它跑一轮试验，**不认识任何具体方法的算法与字段**
 /// （T0715 的判定公式、库表、报表装配都留在方法工程里）。
 /// </summary>
-public interface ITestExecution
+public interface ITestExecution : ICurveAxisSource
 {
     /// <summary>方法代号。</summary>
     string MethodCode { get; }

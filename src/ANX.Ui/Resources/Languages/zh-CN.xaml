@@ -131,4 +131,8 @@
   <sys:String x:Key="Runtime.Error.LogHint">详细堆栈已写入日志文件：</sys:String>
   <sys:String x:Key="Runtime.Error.Question">是否退出程序？点「是」立即退出；点「否」忽略这次异常继续运行（界面可能已处于不一致状态，建议先保存数据）。</sys:String>
   <sys:String x:Key="Runtime.Error.ThrottleNote">同一异常 {0} 秒内只提示一次，之后相同的异常只写入日志。</sys:String>
+
+  <!-- 曲线轴名：方法给资源键，界面按当前语言解析（弯曲是跨中挠度 / 荷载） -->
+  <sys:String x:Key="Chart.Axis.Deflection">跨中挠度 (mm)</sys:String>
+  <sys:String x:Key="Chart.Axis.Load">荷载 (kN)</sys:String>
 </ResourceDictionary>

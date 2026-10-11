@@ -1,26 +1,46 @@
 namespace ANX.Ui.Views.Pages;
 
 using ANX.Core;
+using ANX.Ui.Charts;
+using ANX.Ui.Services;
 using ANX.Ui.ViewModels;
 using Wpf.Ui.Abstractions.Controls;
 
-/// <summary>历史数据页：选中试件后把曲线画出来。</summary>
+/// <summary>历史数据页：选中试件后把曲线画出来；轴名随语言、配色随主题。</summary>
 public partial class HistoryPage : INavigableView<HistoryViewModel>
 {
-    public HistoryPage(HistoryViewModel viewModel)
+    private readonly IThemeService _theme;
+
+    public HistoryPage(
+        HistoryViewModel viewModel,
+        IThemeService themeService,
+        ILocalizationService localizationService
+    )
     {
         ViewModel = viewModel;
         DataContext = this;
+        _theme = themeService;
 
         InitializeComponent();
 
         viewModel.CurveLoaded += OnCurveLoaded;
 
-        CurvePlot.Plot.XLabel("跨中挠度 (mm)");
-        CurvePlot.Plot.YLabel("荷载 (kN)");
+        themeService.ThemeChanged += (_, themeName) => ApplyChartStyle(themeName);
+        localizationService.LanguageChanged += (_, _) => ApplyChartStyle(_theme.CurrentTheme);
+
+        ApplyChartStyle(_theme.CurrentTheme);
     }
 
     public HistoryViewModel ViewModel { get; }
+
+    /// <summary>轴名取当前语言、配色取当前主题。</summary>
+    private void ApplyChartStyle(string themeName)
+    {
+        CurvePlot.Plot.XLabel(ViewModel.CurveXAxisTitle);
+        CurvePlot.Plot.YLabel(ViewModel.CurveYAxisTitle);
+
+        CurveChartTheme.Apply(CurvePlot, themeName);
+    }
 
     private void OnCurveLoaded(object? sender, IReadOnlyList<CurvePoint> curve)
     {

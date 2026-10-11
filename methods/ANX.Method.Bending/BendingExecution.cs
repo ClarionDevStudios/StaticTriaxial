@@ -19,6 +19,12 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
 
     public string StandardReference => "JTG 3410-2025 T 0715-2025";
 
+    /// <summary>曲线横轴：跨中挠度。</summary>
+    public string CurveXAxisKey => BendingCurveAxes.Deflection;
+
+    /// <summary>曲线纵轴：荷载。</summary>
+    public string CurveYAxisKey => BendingCurveAxes.Load;
+
     public TestRunProfile Profile { get; } = new()
     {
         ContactLoadKN = 0.05,
