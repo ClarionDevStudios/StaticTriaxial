@@ -4,12 +4,12 @@ using ANX.Core;
 
 /// <summary>实时指标卡的定义（界面按它生成卡片，方法只声明"我有哪些指标"）。</summary>
 /// <param name="Key">指标键，与 <see cref="ITestExecution"/> 返回的实时值字典对应。</param>
-/// <param name="DisplayName">显示名。</param>
+/// <param name="DisplayNameKey">显示名**资源键**（多语言），不是显示文本本身 —— 与 IAP 的字段声明同款。</param>
 /// <param name="Unit">单位符号（无量纲留空）。</param>
 /// <param name="ShowPeak">是否同时显示峰值。</param>
 public sealed record MetricDefinition(
     string Key,
-    string DisplayName,
+    string DisplayNameKey,
     string Unit,
     bool ShowPeak = false
 );

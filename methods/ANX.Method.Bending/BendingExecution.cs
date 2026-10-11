@@ -40,13 +40,13 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
     /// <summary>实时指标卡：与现役执行页的 7 个卡片同构，按本方法取用。</summary>
     public IReadOnlyList<MetricDefinition> Metrics { get; } =
     [
-        new("load", "荷载", "kN", ShowPeak: true),
-        new("displacement", "位移", "mm", ShowPeak: true),
-        new("flexuralStrength", "弯拉强度", "MPa"),
-        new("originCorrection", "修正原点", "mm"),
-        new("maxStrain", "最大弯拉应变", "με"),
-        new("correctedDeflection", "跨中挠度", "mm"),
-        new("elapsed", "试验持续时间", "s"),
+        new("load", BendingMetricKeys.Load, "kN", ShowPeak: true),
+        new("displacement", BendingMetricKeys.Displacement, "mm", ShowPeak: true),
+        new("flexuralStrength", BendingMetricKeys.FlexuralStrength, "MPa"),
+        new("originCorrection", BendingMetricKeys.OriginCorrection, "mm"),
+        new("maxStrain", BendingMetricKeys.MaxStrain, "με"),
+        new("correctedDeflection", BendingMetricKeys.CorrectedDeflection, "mm"),
+        new("elapsed", BendingMetricKeys.Elapsed, "s"),
     ];
 
     public Task<string> CreateSheetAsync(

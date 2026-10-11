@@ -3,20 +3,22 @@ namespace ANX.Method.Bending.Tests;
 using System.Text;
 
 /// <summary>
-/// 曲线轴名走"方法给资源键、界面按语言解析"这条路：键一旦不在语言字典里，
-/// 界面上会直接把键名显示出来（GetString 取不到返回键名）。这里守住这条一致性。
+/// 方法声明的文案走"方法给资源键、界面 / 报表按键解析"这条路（IAP 同款）：
+/// 键一旦不在语言字典里，界面上会显示成 `⚠键名`。这里守住这条一致性。
 /// </summary>
 public sealed class CurveAxisResourceTests
 {
     [Theory]
     [InlineData("zh-CN")]
     [InlineData("en-US")]
-    public void 曲线轴资源键应存在于语言字典(string language)
+    public void 方法声明的资源键应存在于语言字典(string language)
     {
         var dictionary = File.ReadAllText(FindDictionary(language), Encoding.UTF8);
 
-        Assert.Contains($"x:Key=\"{BendingCurveAxes.Deflection}\"", dictionary, StringComparison.Ordinal);
-        Assert.Contains($"x:Key=\"{BendingCurveAxes.Load}\"", dictionary, StringComparison.Ordinal);
+        foreach (var key in BendingMetricKeys.All)
+        {
+            Assert.Contains($"x:Key=\"{key}\"", dictionary, StringComparison.Ordinal);
+        }
     }
 
     /// <summary>从测试输出目录往上找仓库根（认 ANX.slnx），再定位语言字典。</summary>

@@ -90,7 +90,7 @@
                 <TextBlock
                   Margin="0,2,0,0"
                   Style="{StaticResource FieldLabelStyle}"
-                  Text="{Binding Peak, Mode=OneWay, StringFormat=峰值 {0}}"
+                  Text="{Binding PeakText, Mode=OneWay}"
                   Visibility="{Binding ShowPeak, Converter={StaticResource BoolToVisibility}}"
                 />
               </StackPanel>

@@ -135,4 +135,15 @@
   <!-- 曲线轴名：方法给资源键，界面按当前语言解析（弯曲是跨中挠度 / 荷载） -->
   <sys:String x:Key="Chart.Axis.Deflection">跨中挠度 (mm)</sys:String>
   <sys:String x:Key="Chart.Axis.Load">荷载 (kN)</sys:String>
+
+  <!-- 方法声明的指标名与曲线文字：键由方法给出（IAP 同款），文案在这里 -->
+  <sys:String x:Key="Method.T0715.Load">荷载</sys:String>
+  <sys:String x:Key="Method.T0715.Displacement">位移</sys:String>
+  <sys:String x:Key="Method.T0715.FlexuralStrength">弯拉强度</sys:String>
+  <sys:String x:Key="Method.T0715.OriginCorrection">修正原点</sys:String>
+  <sys:String x:Key="Method.T0715.MaxStrain">最大弯拉应变</sys:String>
+  <sys:String x:Key="Method.T0715.CorrectedDeflection">跨中挠度</sys:String>
+  <sys:String x:Key="Method.T0715.Elapsed">试验持续时间</sys:String>
+  <sys:String x:Key="Method.T0715.CurveTitle">试件 {0}</sys:String>
+  <sys:String x:Key="Exec.PeakFormat">峰值 {0}</sys:String>
 </ResourceDictionary>

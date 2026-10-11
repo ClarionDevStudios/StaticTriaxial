@@ -137,7 +137,8 @@ public partial class App
                 _ = services.AddSingleton<ITestSheetBrowser, BendingSheetBrowser>();
                 _ = services.AddSingleton<IReportExportService>(sp => new BendingReportExportService(
                     sp.GetRequiredService<TestSheetService>(),
-                    AppPaths.ResolveReportRoot()
+                    AppPaths.ResolveReportRoot(),
+                    new LocalizationTextResolver(sp.GetRequiredService<ILocalizationService>())
                 ));
                 _ = services.AddSingleton(sp => new HistoryViewModel(
                     sp.GetRequiredService<ILocalizationService>(),

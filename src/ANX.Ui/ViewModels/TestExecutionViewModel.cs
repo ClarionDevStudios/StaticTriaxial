@@ -7,20 +7,46 @@ using ANX.Core.Control;
 using ANX.Ui.Services;
 using Wpf.Ui;
 
-/// <summary>一张实时指标卡（界面用，值随采样刷新）。</summary>
-public partial class MetricCard(MetricDefinition definition) : ObservableObject
+/// <summary>
+/// 一张实时指标卡（界面用，值随采样刷新）。
+/// 显示名与"峰值"文案都按当前语言解析 —— 方法给的是资源键（IAP 同款做法）。
+/// </summary>
+public partial class MetricCard : ObservableObject
 {
-    public string DisplayName { get; } = definition.DisplayName;
+    private readonly MetricDefinition _definition;
+    private readonly ILocalizationService _localization;
 
-    public string Unit { get; } = definition.Unit;
+    public MetricCard(MetricDefinition definition, ILocalizationService localization)
+    {
+        _definition = definition;
+        _localization = localization;
 
-    public bool ShowPeak { get; } = definition.ShowPeak;
+        // 换语言后卡片文字要跟着变（数字不动）
+        localization.LanguageChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(DisplayName));
+            OnPropertyChanged(nameof(PeakText));
+        };
+    }
+
+    /// <summary>显示名（按当前语言取资源键）。</summary>
+    public string DisplayName => _localization.GetString(_definition.DisplayNameKey);
+
+    /// <summary>单位（不译：IAP 的口径是单位为不译项）。</summary>
+    public string Unit => _definition.Unit;
+
+    public bool ShowPeak => _definition.ShowPeak;
+
+    /// <summary>峰值整句（"峰值 12.3"），格式也归语言资源。</summary>
+    public string PeakText => string.Format(_localization.GetString("Exec.PeakFormat"), Peak);
 
     [ObservableProperty]
     private string _value = "—";
 
     [ObservableProperty]
     private string _peak = "—";
+
+    partial void OnPeakChanged(string value) => OnPropertyChanged(nameof(PeakText));
 }
 
 /// <summary>
@@ -60,7 +86,7 @@ public partial class TestExecutionViewModel : ViewModelBase
 
         foreach (var definition in execution.Metrics)
         {
-            Cards.Add(new MetricCard(definition));
+            Cards.Add(new MetricCard(definition, localization));
         }
 
         ConnectionText = device is null ? L("Exec.NoDevice") : L("Exec.NotConnected");

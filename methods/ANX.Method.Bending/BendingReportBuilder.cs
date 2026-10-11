@@ -51,6 +51,7 @@ public sealed class BendingReportBuilder(
         string templatePath,
         string outputRoot,
         string culture = "zh-CN",
+        ITextResolver? texts = null,
         CancellationToken cancellationToken = default
     )
     {
@@ -72,7 +73,14 @@ public sealed class BendingReportBuilder(
             if (curve.Count > 0)
             {
                 var imagePath = Path.Combine(sheetDirectory, $"{sampleId}.png");
-                _images.SavePng(curve, imagePath, $"试件 {sampleId}", "跨中挠度 (mm)", "荷载 (kN)");
+                // 图题与轴名也走资源键（按报表语种解析），不在方法里写死中文
+                _images.SavePng(
+                    curve,
+                    imagePath,
+                    Text(BendingMetricKeys.CurveTitle, culture, texts, sampleId),
+                    Text(BendingCurveAxes.Deflection, culture, texts),
+                    Text(BendingCurveAxes.Load, culture, texts)
+                );
                 curveImagePaths.Add(imagePath);
             }
 
@@ -123,4 +131,17 @@ public sealed class BendingReportBuilder(
             double number => number.ToString("0.###", CultureInfo.InvariantCulture),
             _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty,
         };
+
+    /// <summary>
+    /// 取译文；没有解析器（无界面 / 测试场景）时退回键名 —— 与 IAP"缺键可见"的口径一致，
+    /// 免得漏翻时悄悄显示成中文或空白。
+    /// </summary>
+    private static string Text(string key, string culture, ITextResolver? texts, params object[] args)
+    {
+        var format = texts?.Get(key, culture) ?? key;
+
+        return args.Length == 0
+            ? format
+            : string.Format(CultureInfo.InvariantCulture, format, args);
+    }
 }

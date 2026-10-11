@@ -3,6 +3,7 @@ namespace ANX.Method.Bending;
 using System.Globalization;
 using ANX.Control;
 using ANX.Core;
+using ANX.Core.Reporting;
 using ANX.Core.TestSheets;
 using ANX.Storage;
 
@@ -65,9 +66,15 @@ public sealed class BendingSheetBrowser(TestSheetService sheets) : ITestSheetBro
         };
 }
 
-/// <summary>报表导出的方法级实现：选模板（按语种）→ 装配 → 出 Excel 与曲线 PNG。</summary>
-public sealed class BendingReportExportService(TestSheetService sheets, string reportsRoot)
-    : IReportExportService
+/// <summary>
+/// 报表导出的方法级实现：选模板（按语种）→ 装配 → 出 Excel 与曲线 PNG。
+/// <paramref name="texts"/> 由宿主接上界面的本地化服务，用于曲线图里的轴名与图题。
+/// </summary>
+public sealed class BendingReportExportService(
+    TestSheetService sheets,
+    string reportsRoot,
+    ITextResolver? texts = null
+) : IReportExportService
 {
     public async Task<string> ExportAsync(
         string sheetId,
@@ -80,7 +87,7 @@ public sealed class BendingReportExportService(TestSheetService sheets, string r
 
         var builder = new BendingReportBuilder(sheets, new ANX.Reporting.FlexCelReportExporter());
         var result = await builder
-            .BuildAsync(sheetId, templatePath, reportsRoot, culture, cancellationToken)
+            .BuildAsync(sheetId, templatePath, reportsRoot, culture, texts, cancellationToken)
             .ConfigureAwait(false);
 
         return result.ReportPath;

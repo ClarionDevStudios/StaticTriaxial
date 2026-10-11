@@ -86,6 +86,61 @@ public sealed class BendingReportBuilderTests : IDisposable
         Assert.Equal("73.47", workbook.GetCellValue(3, 4)); // 明细单件强度
     }
 
+    /// <summary>
+    /// 曲线图里的图题与轴名要按**报表语种**取译文（不是界面当前语言）——
+    /// 这里用假解析器记录"被问了哪些键、哪个语种"来验证这条链路。
+    /// </summary>
+    [Fact]
+    public async Task 曲线图的图题与轴名应按报表语种取资源键()
+    {
+        var service = CreateService();
+        var sheetId = await service.CreateAsync("T0715", "G15 高速 K12+300", "WT");
+        await service.AppendSampleAsync(
+            sheetId,
+            "1",
+            [new CurvePoint(0, 0), new CurvePoint(1, 1), new CurvePoint(2, 2)],
+            new Dictionary<string, double>(StringComparer.Ordinal)
+            {
+                ["SampleWidth"] = 30,
+                ["SampleHeight"] = 35,
+                ["PeakLoadValue"] = 9.0,
+                ["CorrectedDeflection"] = 4.5,
+                ["FlexuralStrength"] = 73.47,
+                ["MaxBendingTensileStrain"] = 23625,
+            }
+        );
+
+        var templatePath = Path.Combine(_directory, "template.xlsx");
+        BuildTemplate(templatePath);
+
+        var texts = new RecordingTextResolver();
+        var builder = new BendingReportBuilder(service, new FlexCelReportExporter());
+
+        _ = await builder.BuildAsync(
+            sheetId,
+            templatePath,
+            Path.Combine(_directory, "out"),
+            "en-US",
+            texts
+        );
+
+        Assert.Contains((BendingCurveAxes.Deflection, "en-US"), texts.Requests);
+        Assert.Contains((BendingCurveAxes.Load, "en-US"), texts.Requests);
+        Assert.Contains((BendingMetricKeys.CurveTitle, "en-US"), texts.Requests);
+    }
+
+    /// <summary>假解析器：只记录"被问了哪些键、哪个语种"。</summary>
+    private sealed class RecordingTextResolver : ITextResolver
+    {
+        public List<(string Key, string Culture)> Requests { get; } = [];
+
+        public string Get(string key, string culture)
+        {
+            Requests.Add((key, culture));
+            return $"[{culture}]{key}";
+        }
+    }
+
     private static void BuildTemplate(string path)
     {
         var template = new XlsFile();

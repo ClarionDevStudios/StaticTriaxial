@@ -8,6 +8,9 @@ public sealed class LocalizationService : ILocalizationService
     private const string DictionaryUriFormat =
         "pack://application:,,,/ANX.Ui;component/Resources/Languages/{0}.xaml";
 
+    /// <summary>已加载的语言字典（按语言码缓存）—— 报表按语种取译文时不必重复加载。</summary>
+    private readonly Dictionary<string, ResourceDictionary> _cache = new(StringComparer.OrdinalIgnoreCase);
+
     private ResourceDictionary? _currentDictionary;
 
     public string CurrentCulture { get; private set; } = "zh-CN";
@@ -38,10 +41,11 @@ public sealed class LocalizationService : ILocalizationService
             _currentDictionary = null;
         }
 
-        var dictionary = new ResourceDictionary
+        var dictionary = ResolveDictionary(normalized);
+        if (dictionary is null)
         {
-            Source = new Uri(string.Format(DictionaryUriFormat, normalized), UriKind.Absolute),
-        };
+            return;
+        }
 
         dictionaries.Add(dictionary);
         _currentDictionary = dictionary;
@@ -50,14 +54,41 @@ public sealed class LocalizationService : ILocalizationService
         LanguageChanged?.Invoke(this, normalized);
     }
 
-    public string GetString(string key)
+    public string GetString(string key) => GetString(key, CurrentCulture);
+
+    public string GetString(string key, string culture)
     {
-        if (_currentDictionary is not null && _currentDictionary[key] is string value)
+        var normalized = NormalizeCulture(culture);
+
+        // 当前语言用已经挂到应用资源上的那份；其它语言按需加载并缓存
+        var dictionary =
+            string.Equals(normalized, CurrentCulture, StringComparison.OrdinalIgnoreCase)
+                ? _currentDictionary ?? ResolveDictionary(normalized)
+                : ResolveDictionary(normalized);
+
+        return dictionary?[key] is string value ? value : $"⚠{key}";
+    }
+
+    /// <summary>按语言码加载字典（带缓存）。没有 WPF 应用时返回 null（无界面场景按缺键处理）。</summary>
+    private ResourceDictionary? ResolveDictionary(string culture)
+    {
+        if (_cache.TryGetValue(culture, out var cached))
         {
-            return value;
+            return cached;
         }
 
-        return key;
+        if (Application.Current is null)
+        {
+            return null;
+        }
+
+        var dictionary = new ResourceDictionary
+        {
+            Source = new Uri(string.Format(DictionaryUriFormat, culture), UriKind.Absolute),
+        };
+
+        _cache[culture] = dictionary;
+        return dictionary;
     }
 
     private static string NormalizeCulture(string cultureName)

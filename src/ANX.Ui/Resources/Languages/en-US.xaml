@@ -135,4 +135,15 @@
   <!-- Curve axis names: the method supplies the key, the UI resolves it for the current language -->
   <sys:String x:Key="Chart.Axis.Deflection">Midspan deflection (mm)</sys:String>
   <sys:String x:Key="Chart.Axis.Load">Load (kN)</sys:String>
+
+  <!-- Method-declared metric names and curve text: the method supplies the key (IAP style), the wording lives here -->
+  <sys:String x:Key="Method.T0715.Load">Load</sys:String>
+  <sys:String x:Key="Method.T0715.Displacement">Displacement</sys:String>
+  <sys:String x:Key="Method.T0715.FlexuralStrength">Flexural strength</sys:String>
+  <sys:String x:Key="Method.T0715.OriginCorrection">Origin correction</sys:String>
+  <sys:String x:Key="Method.T0715.MaxStrain">Max bending strain</sys:String>
+  <sys:String x:Key="Method.T0715.CorrectedDeflection">Midspan deflection</sys:String>
+  <sys:String x:Key="Method.T0715.Elapsed">Elapsed time</sys:String>
+  <sys:String x:Key="Method.T0715.CurveTitle">Specimen {0}</sys:String>
+  <sys:String x:Key="Exec.PeakFormat">Peak {0}</sys:String>
 </ResourceDictionary>
