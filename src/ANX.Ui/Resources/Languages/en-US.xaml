@@ -128,4 +128,9 @@
   <sys:String x:Key="Startup.Failed.Summary">An error occurred while starting the application, so it cannot continue.</sys:String>
   <sys:String x:Key="Startup.Failed.Detail">Error: {0}</sys:String>
   <sys:String x:Key="Startup.Failed.LogHint">Details have been written to the log file; please provide it to the developer:</sys:String>
+  <sys:String x:Key="Runtime.Error.Title">Unhandled UI exception</sys:String>
+  <sys:String x:Key="Runtime.Error.Summary">An unhandled exception occurred on the UI thread; the last operation may not have completed.</sys:String>
+  <sys:String x:Key="Runtime.Error.Detail">Exception: {0}</sys:String>
+  <sys:String x:Key="Runtime.Error.LogHint">The full stack trace has been written to the log file:</sys:String>
+  <sys:String x:Key="Runtime.Error.Question">Exit the application? Choose Yes to exit now, or No to ignore this exception and keep running (the interface may be inconsistent; save your work first).</sys:String>
 </ResourceDictionary>

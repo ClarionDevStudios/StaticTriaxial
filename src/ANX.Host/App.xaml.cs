@@ -268,5 +268,77 @@ public partial class App
     )
     {
         Log.Error(e.Exception, "界面线程未处理异常");
+
+        // 两种选择都算"已处理"，否则 WPF 在处理器返回后会按未处理异常终止进程。
+        e.Handled = true;
+
+        var shouldExit = true;
+
+        try
+        {
+            shouldExit = AskWhetherToExitOnUiError(e.Exception);
+        }
+        catch (Exception dialogFailure)
+        {
+            // 连提示框都弹不出来（界面恐怕已经坏了）：记下来，按"退出"处理
+            Log.Error(dialogFailure, "界面异常提示框弹出失败，按退出处理");
+        }
+
+        if (shouldExit)
+        {
+            Log.Information("界面线程未处理异常：用户选择退出");
+            Shutdown(1);
+            return;
+        }
+
+        Log.Information("界面线程未处理异常：用户选择继续运行");
+    }
+
+    /// <summary>
+    /// 问用户：带着这次异常继续跑，还是退出。返回 <c>true</c> 表示退出。
+    /// 「是 / 否」的按钮文案由系统提供，所以选项含义写进正文里，不让人去猜。
+    /// </summary>
+    private static bool AskWhetherToExitOnUiError(Exception ex)
+    {
+        var detail = string.IsNullOrWhiteSpace(ex.Message)
+            ? ex.GetType().Name
+            : $"{ex.GetType().Name}: {ex.Message}";
+
+        var text = string.Join(
+            Environment.NewLine,
+            Text("Runtime.Error.Summary"),
+            string.Empty,
+            string.Format(Text("Runtime.Error.Detail"), detail),
+            string.Empty,
+            Text("Runtime.Error.LogHint"),
+            AppPaths.ResolveCurrentLogFile(),
+            string.Empty,
+            Text("Runtime.Error.Question")
+        );
+
+        // 有主窗口就当它的模态对话框（浮在前面）；没有（或已关闭）就别传 owner，传了会抛
+        var owner = Application.Current?.MainWindow;
+        if (owner is { IsLoaded: false })
+        {
+            owner = null;
+        }
+
+        var result =
+            owner is null
+                ? MessageBox.Show(
+                    text,
+                    Text("Runtime.Error.Title"),
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Error
+                )
+                : MessageBox.Show(
+                    owner,
+                    text,
+                    Text("Runtime.Error.Title"),
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Error
+                );
+
+        return result == MessageBoxResult.Yes;
     }
 }

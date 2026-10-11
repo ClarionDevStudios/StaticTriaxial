@@ -128,4 +128,9 @@
   <sys:String x:Key="Startup.Failed.Summary">程序启动时发生错误，无法继续运行。</sys:String>
   <sys:String x:Key="Startup.Failed.Detail">错误信息：{0}</sys:String>
   <sys:String x:Key="Startup.Failed.LogHint">详细信息已写入日志文件，请把它提供给开发人员：</sys:String>
+  <sys:String x:Key="Runtime.Error.Title">界面发生未处理异常</sys:String>
+  <sys:String x:Key="Runtime.Error.Summary">界面线程发生未处理异常，刚才的操作可能没有完成。</sys:String>
+  <sys:String x:Key="Runtime.Error.Detail">异常信息：{0}</sys:String>
+  <sys:String x:Key="Runtime.Error.LogHint">详细堆栈已写入日志文件：</sys:String>
+  <sys:String x:Key="Runtime.Error.Question">是否退出程序？点「是」立即退出；点「否」忽略这次异常继续运行（界面可能已处于不一致状态，建议先保存数据）。</sys:String>
 </ResourceDictionary>
