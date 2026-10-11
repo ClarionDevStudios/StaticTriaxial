@@ -1,6 +1,7 @@
 namespace ANX.Tools.Gr3Probe;
 
 using System.Globalization;
+using System.Diagnostics;
 using System.Text;
 using ANX.Core;
 using ANX.Communication;
@@ -55,6 +56,18 @@ internal static class Program
         if (Array.IndexOf(args, "--speed-calib") >= 0)
         {
             return await RunSpeedCalibrationAsync(host, port, localPort, waitMs);
+        }
+
+        // 会话保活观测（只读）：--watch <秒> [--heartbeat <秒>]
+        if (GetArg(args, "--watch") is { } watchSeconds)
+        {
+            return await RunWatchAsync(
+                host,
+                port,
+                localPort,
+                int.Parse(watchSeconds, CultureInfo.InvariantCulture),
+                double.Parse(GetArg(args, "--heartbeat") ?? "0", CultureInfo.InvariantCulture)
+            );
         }
 
         var codec = new Gr3FrameCodec();
@@ -348,6 +361,76 @@ internal static class Program
         Console.WriteLine("判读要点：");
         Console.WriteLine("  · ② 正转=True、反转=False；⑤ 反转=True、正转=False；③⑥ 两位都 False。");
         Console.WriteLine("  · ④ 清零前位移应偏离 0（正转已让工作台离开起点），清零后回到 ~0。");
+        return 0;
+    }
+
+    /// <summary>
+    /// 只读观测会话保活：联机后保持 N 秒，每秒打印收到的帧数；`--heartbeat <秒>` 时周期性发 CBH 心跳。
+    /// 用途：确认"PC 沉默多久会被下位机回收会话"（2026-10-11 实测约 60 秒后停流）。
+    /// </summary>
+    private static async Task<int> RunWatchAsync(
+        string host,
+        int port,
+        int localPort,
+        int seconds,
+        double heartbeatSeconds
+    )
+    {
+        Console.WriteLine(
+            $"=== 会话保活观测（只读，{seconds}s"
+                + (heartbeatSeconds > 0 ? $"，每 {heartbeatSeconds:0.#}s 发一次 CBH 心跳" : "，不发心跳")
+                + "）==="
+        );
+
+        await using var channel = new UdpChannel(new UdpChannelOptions(host, port, localPort));
+        await using var controller = new Gr3DeviceController(
+            channel,
+            pressChannelIndex: 1,
+            displaceChannelIndex: 1
+        );
+
+        var frames = 0;
+        var lastSample = default(TestSample);
+        controller.SampleReceived += (_, sample) => lastSample = sample;
+        channel.DataReceived += (_, e) =>
+        {
+            var span = e.Data.Span;
+            while (Gr3FrameCodec.TryDecodeFrame(span, out DecodedFrame _, out var consumed))
+            {
+                frames++;
+                span = span[consumed..];
+            }
+        };
+
+        await controller.ConnectAsync();
+        Console.WriteLine("联机成功（A0 已收到）");
+
+        var clock = Stopwatch.StartNew();
+        var nextBeat = heartbeatSeconds;
+        var previousFrames = 0;
+        for (var s = 1; s <= seconds; s++)
+        {
+            await Task.Delay(1000);
+
+            var total = frames;
+            var rate = total - previousFrames;
+            previousFrames = total;
+
+            Console.WriteLine(
+                $"{clock.Elapsed.TotalSeconds,5:0}s  本秒 {rate,4} 帧  累计 {total,7} 帧"
+                    + $"  机器 0x{(byte)controller.LastMachineStatus:X2}"
+                    + $"  位移 {lastSample.Displacement,8:F3} mm"
+                    + (rate == 0 ? "   ← 本秒没有数据" : string.Empty)
+            );
+
+            if (heartbeatSeconds > 0 && clock.Elapsed.TotalSeconds >= nextBeat)
+            {
+                await controller.HeartbeatAsync();
+                nextBeat += heartbeatSeconds;
+            }
+        }
+
+        Console.WriteLine($"结束：{seconds}s 内共收 {frames} 帧。");
         return 0;
     }
 

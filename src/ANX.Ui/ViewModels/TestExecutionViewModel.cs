@@ -103,6 +103,16 @@ public partial class TestExecutionViewModel : ViewModelBase
     private readonly List<CurvePoint> _curve = [];
     private readonly Dictionary<string, double> _peaks = new(StringComparer.Ordinal);
     private TestSequencer? _sequencer;
+    private readonly MotorStallGuard _stallGuard = new();
+
+    /// <summary>
+    /// 数据流断了就收尾：下位机 60 秒收不到下行帧会回收会话（真机实测），
+    /// 断线时软件不能挂着"运行中"空等。20ms 一拍 → 100 拍 ≈ 2 秒。
+    /// </summary>
+    private readonly CommunicationLostGuard _communicationGuard = new(maxConsecutiveMisses: 100);
+
+    private int _receivedSampleCount;
+    private int _lastSeenSampleCount;
     private CancellationTokenSource? _cts;
     private string? _sheetId;
     private int _sampleCounter;
@@ -392,15 +402,31 @@ public partial class TestExecutionViewModel : ViewModelBase
         CurveCleared?.Invoke(this, EventArgs.Empty);
 
         // 运行参数从**参数表**来（接触阈值 / 破坏判据 / 确认帧数 / 加载速率），不再用写死的默认值
-        var profile = await _execution.LoadProfileAsync();
+        var requested = await _execution.LoadProfileAsync();
+
+        // 位移闸门必须落在**设备量程**之内：顶过位移传感器量程会压坏传感器
+        //（现场量程 25.000mm，而闸门曾写死 50mm —— 空载时一直往上顶，靠操作员手动停机才没顶坏）
+        var profile = requested.ClampDisplacementToDeviceRange(_device?.DisplacementRangeMillimeters);
+        if (profile.MaxDisplacementMM < requested.MaxDisplacementMM)
+        {
+            Append(string.Format(CultureInfo.CurrentCulture, L("Exec.DisplacementClamped"), profile.MaxDisplacementMM));
+        }
+
         var sequencer = new TestSequencer(profile);
         _sequencer = sequencer;
+        _stallGuard.Reset();
+        _communicationGuard.Reset();
+        _lastSeenSampleCount = _receivedSampleCount;
         sequencer.Start();
 
         var finished = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         // 设备帧只落到"最新一帧"；判定与界面刷新由控制循环按 20ms 节拍推进
-        void OnSample(object? sender, TestSample sample) => _latestSample = sample;
+        void OnSample(object? sender, TestSample sample)
+        {
+            _latestSample = sample;
+            _receivedSampleCount++;
+        }
 
         var device = _device!;
         device.SampleReceived += OnSample;
@@ -433,6 +459,37 @@ public partial class TestExecutionViewModel : ViewModelBase
                     while (!controlToken.IsCancellationRequested)
                     {
                         _ = await controlLoop.WaitForNextTickAsync(controlToken).ConfigureAwait(false);
+
+                        var sampleArrived = _receivedSampleCount != _lastSeenSampleCount;
+                        _lastSeenSampleCount = _receivedSampleCount;
+
+                        // 数据流断了（下位机静默超时 / 拔网线）：软件必须收尾，不能挂在"运行中"空等
+                        if (_communicationGuard.Register(sequencer.Phase, sampleArrived))
+                        {
+                            sequencer.Stop(TestStopReason.CommunicationLost);
+                            _ = System.Windows.Application.Current?.Dispatcher.InvokeAsync(
+                                () => Append(L("Exec.CommunicationLost"))
+                            );
+                            finished.TrySetResult(true);
+                            return;
+                        }
+
+                        // 命令在加载而机器不转（手动停机 / 撞限位 / 伺服保护）：立刻收尾
+                        if (
+                            _stallGuard.Register(
+                                sequencer.Phase,
+                                device.IsMotorRunning,
+                                ControlPeriod.TotalSeconds
+                            )
+                        )
+                        {
+                            sequencer.Stop(TestStopReason.DeviceError);
+                            _ = System.Windows.Application.Current?.Dispatcher.InvokeAsync(
+                                () => Append(L("Exec.MotorStalled"))
+                            );
+                            finished.TrySetResult(true);
+                            return;
+                        }
 
                         if (_latestSample is not { } latest)
                         {

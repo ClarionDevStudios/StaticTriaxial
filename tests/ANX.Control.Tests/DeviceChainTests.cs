@@ -172,6 +172,42 @@ public sealed class DeviceChainTests
     }
 
     /// <summary>
+    /// 心跳保活：下位机 60 秒收不到任何下行帧就回收会话（2026-10-11 真机实测：A2 流整段停掉、
+    /// 机器一并停住），所以联机期间必须自动发 CBH；断开后要停。
+    /// </summary>
+    [Fact]
+    public async Task 联机期间应周期性发心跳断开后停止()
+    {
+        var channel = new FakeChannel();
+        await using var controller = new Gr3DeviceController(channel)
+        {
+            HeartbeatInterval = TimeSpan.FromMilliseconds(30),
+        };
+
+        var connect = controller.ConnectAsync();
+        channel.Feed(Gr3FrameCodec.BuildDatagram(Gr3Constants.UplinkSystemInfo, BuildSystemInfoPayload(), 1));
+        await connect;
+
+        var deadline = DateTime.UtcNow.AddSeconds(2);
+        while (
+            channel.SentFrames.Count(frame => frame[10] == Gr3Constants.DownlinkHeartbeat) < 3
+            && DateTime.UtcNow < deadline
+        )
+        {
+            await Task.Delay(20);
+        }
+
+        var beats = channel.SentFrames.Count(frame => frame[10] == Gr3Constants.DownlinkHeartbeat);
+        Assert.True(beats >= 3, $"联机后 2 秒内只发了 {beats} 次心跳");
+
+        await controller.DisconnectAsync();
+
+        var sentAtDisconnect = channel.SentFrames.Count;
+        await Task.Delay(200);
+        Assert.Equal(sentAtDisconnect, channel.SentFrames.Count);
+    }
+
+    /// <summary>
     /// A0H 数据域（56 B）：版本 + 压力通道量程(4×Int32) + 位移通道量程(4×Int32) +
     /// 压力小数位(4) + 位移小数位(4) + 压力量纲(4) + 位移量纲(4) + 微米有效(4) + 围压有效(1)。
     /// </summary>

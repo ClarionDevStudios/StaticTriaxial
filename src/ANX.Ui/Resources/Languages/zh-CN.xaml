@@ -155,4 +155,7 @@
   <sys:String x:Key="Exec.JogNeedConnect">还没联机 —— 先点「联机」，再操作工作台</sys:String>
   <sys:String x:Key="Exec.ContactDetected">接触成立：位移清零，切换到试验速率</sys:String>
   <sys:String x:Key="Exec.PhaseRangeStopped">量程停机，按曲线峰值结算</sys:String>
+  <sys:String x:Key="Exec.DisplacementClamped">位移闸门已收敛到设备量程的 {0:0.###} mm —— 不得超过位移传感器量程，超了会压坏传感器</sys:String>
+  <sys:String x:Key="Exec.MotorStalled">设备电机已停转（手动停机 / 限位 / 伺服保护），本轮已中止</sys:String>
+  <sys:String x:Key="Exec.CommunicationLost">通讯中断超过 2 秒，本轮已中止</sys:String>
 </ResourceDictionary>

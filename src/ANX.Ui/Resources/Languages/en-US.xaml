@@ -155,4 +155,7 @@
   <sys:String x:Key="Exec.JogNeedConnect">Not connected - click Connect first, then use the worktable buttons</sys:String>
   <sys:String x:Key="Exec.ContactDetected">Contact detected: displacement zeroed, switching to test speed</sys:String>
   <sys:String x:Key="Exec.PhaseRangeStopped">Range stop; settled by curve peak</sys:String>
+  <sys:String x:Key="Exec.DisplacementClamped">Displacement limit clamped to {0:0.###} mm of the device range — exceeding the sensor range damages it</sys:String>
+  <sys:String x:Key="Exec.MotorStalled">Device motor stopped (manual stop / limit / servo protection); run aborted</sys:String>
+  <sys:String x:Key="Exec.CommunicationLost">No data for over 2 seconds; run aborted</sys:String>
 </ResourceDictionary>

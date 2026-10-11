@@ -28,6 +28,8 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
     private TaskCompletionSource<Gr3AckStatus>? _ackWaiter;
     private TaskCompletionSource<bool>? _systemInfoWaiter;
     private bool _subscribed;
+    private CancellationTokenSource? _heartbeatCts;
+    private Task? _heartbeatLoop;
 
     public Gr3DeviceController(
         ICommChannel channel,
@@ -45,6 +47,25 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
     public string DeviceName => $"GR-3（{_channel.DisplayName}）";
 
     public bool IsConnected => SystemInfo is not null;
+
+    /// <summary>
+    /// 位移通道量程（mm）= A0H 里该通道的"量程 / 10^小数位"。真机 2026-10-11 实测 25.000mm，
+    /// 而位移闸门当时写的是 50mm（比传感器量程宽一倍）—— 靠操作员手动停机才没顶坏传感器。
+    /// </summary>
+    public double? DisplacementRangeMillimeters =>
+        SystemInfo is { } info
+        && _displaceChannelIndex >= 0
+        && _displaceChannelIndex < info.DisplaceChannels.Count
+            ? info.DisplaceChannels[_displaceChannelIndex].ToEngineeringValue(
+                info.DisplaceChannels[_displaceChannelIndex].Scale
+            )
+            : null;
+
+    /// <summary>电机是否在运转（机器状态位 Bit3 正转 / Bit4 反转）。未联机时为 null。</summary>
+    public bool? IsMotorRunning =>
+        IsConnected
+            ? (LastMachineStatus & (Gr3MachineStatus.MotorForward | Gr3MachineStatus.MotorReverse)) != 0
+            : null;
 
     /// <summary>A0H 系统配置（决定原始码值怎么换算成工程量）。</summary>
     public Gr3A0SystemInfo? SystemInfo { get; private set; }
@@ -142,13 +163,22 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
         {
             throw new TimeoutException($"联机超时：{_timeout.TotalSeconds:0.#}s 内未收到 A0 系统配置");
         }
+
+        StartHeartbeat();
     }
 
     public async Task DisconnectAsync()
     {
+        await StopHeartbeatAsync().ConfigureAwait(false);
         Unsubscribe();
         await _channel.CloseAsync().ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// 心跳周期（CBH 会话保活）。下位机 **60 秒**收不到任何下行帧就回收会话（2026-10-11 真机实测，
+    /// 表现为 A2 流整段停掉、机器一并停住），这里取 2 秒、留足余量。测试可改小。
+    /// </summary>
+    public TimeSpan HeartbeatInterval { get; set; } = TimeSpan.FromSeconds(2);
 
     public double SpeedMillimetersPerMinute { get; private set; } = 50.0;
 
@@ -230,8 +260,68 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
     public Task ResetAsync(CancellationToken cancellationToken = default) =>
         SendAndWaitAckAsync(Gr3DownlinkCommands.Zero(0x80, 0xFF), cancellationToken);
 
+    /// <summary>
+    /// CBH 心跳（**会话保活**）。协议把 CB 叫"心跳保活"：PC 长时间不发任何下行帧时，
+    /// 下位机会回收会话 —— 2026-10-11 真机实测约 **60 秒**后 A2 流直接停掉（机器也一并停住），
+    /// 而重新发 C0 联机立刻恢复。所以运行期间必须周期性发本指令。
+    /// </summary>
+    public Task HeartbeatAsync(CancellationToken cancellationToken = default) =>
+        SendAndWaitAckAsync(Gr3DownlinkCommands.Heartbeat(), cancellationToken);
+
+    /// <summary>联机成功后启动心跳循环（幂等）。</summary>
+    private void StartHeartbeat()
+    {
+        if (_heartbeatLoop is not null)
+        {
+            return;
+        }
+
+        _heartbeatCts = new CancellationTokenSource();
+        var token = _heartbeatCts.Token;
+
+        _heartbeatLoop = Task.Run(async () =>
+        {
+            using var timer = new PeriodicTimer(HeartbeatInterval);
+            try
+            {
+                while (await timer.WaitForNextTickAsync(token).ConfigureAwait(false))
+                {
+                    // 只发不等应答：应答通道（_ackWaiter）是"一条命令一个应答"，心跳不能去抢它
+                    await SendAsync(Gr3DownlinkCommands.Heartbeat(), token).ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // 断开 / 释放时的正常停机
+            }
+            catch (Exception)
+            {
+                // 心跳是尽力而为：发不出去也不打断业务，链路真断了会先由数据流表现出来
+            }
+        });
+    }
+
+    private async Task StopHeartbeatAsync()
+    {
+        if (_heartbeatCts is null)
+        {
+            return;
+        }
+
+        await _heartbeatCts.CancelAsync().ConfigureAwait(false);
+        if (_heartbeatLoop is not null)
+        {
+            await _heartbeatLoop.ConfigureAwait(false);
+        }
+
+        _heartbeatCts.Dispose();
+        _heartbeatCts = null;
+        _heartbeatLoop = null;
+    }
+
     public async ValueTask DisposeAsync()
     {
+        await StopHeartbeatAsync().ConfigureAwait(false);
         Unsubscribe();
         await _channel.DisposeAsync().ConfigureAwait(false);
     }

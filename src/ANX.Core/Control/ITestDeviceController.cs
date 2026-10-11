@@ -13,6 +13,20 @@ public interface ITestDeviceController
     bool IsConnected { get; }
 
     /// <summary>
+    /// 位移通道量程（mm，来自设备配置 A0H 的"位移通道量程"字段）。**试验的位移闸门不得超过它**：
+    /// 顶过传感器量程会压坏位移传感器（用户 2026-10-11 明确，现场为 25.000mm）。
+    /// 设备不上报时为 null。
+    /// </summary>
+    double? DisplacementRangeMillimeters { get; }
+
+    /// <summary>
+    /// 电机是否在运转（取自机器状态位 Bit3/Bit4）。命令在加载而这里连续为 false，
+    /// 说明设备被手动停止 / 撞限位 / 伺服保护 —— 软件必须知道，不能继续空等。
+    /// 设备不上报时为 null。
+    /// </summary>
+    bool? IsMotorRunning { get; }
+
+    /// <summary>
     /// 试验已进行的秒数（接触清零后起算）。**由控制循环每拍推进** —— A2H 帧本身不带时间戳，
     /// 阶段机的超时与复位计时都以它为准（与现役线程用自己秒表计时同义）。
     /// </summary>
