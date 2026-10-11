@@ -188,7 +188,7 @@
       </ui:Card>
 
       <ui:Card Grid.Column="1" Margin="0,0,8,0" Padding="8" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch">
-        <sp:WpfPlot x:Name="RealtimePlot" VerticalAlignment="Stretch" />
+        <sp:WpfPlot x:Name="RealtimePlot" MinHeight="240" VerticalAlignment="Stretch" />
       </ui:Card>
 
       <ui:Card Grid.Column="2" Padding="12" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch">
@@ -205,11 +205,20 @@
             Command="{Binding ViewModel.ClearLogCommand}"
             Content="{DynamicResource Exec.ClearInfo}"
           />
+          <!--
+            DockPanel 的填充项：高度必须**有上限**。
+            操控信息是逐条追加的，不给上限它会随内容无限长高、把整页撑高
+            （实测：空列表时页面高 739，追加 300 条后 12380）。
+            上限之内由列表自己滚动。
+          -->
           <ListBox
             Margin="0,8,0,0"
+            MaxHeight="240"
             FontFamily="Consolas, Courier New"
             FontSize="12"
             ItemsSource="{Binding ViewModel.Log}"
+            ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+            ScrollViewer.VerticalScrollBarVisibility="Auto"
           />
         </DockPanel>
       </ui:Card>
