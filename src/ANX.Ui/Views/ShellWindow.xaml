@@ -19,6 +19,7 @@
   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
   WindowBackdropType="Mica"
   WindowCornerPreference="Round"
+  WindowState="Maximized"
   WindowStartupLocation="CenterScreen"
   mc:Ignorable="d"
 >
