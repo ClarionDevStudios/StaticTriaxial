@@ -69,14 +69,24 @@
       <ItemsControl Grid.Column="0" ItemsSource="{Binding ViewModel.Cards}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
-            <UniformGrid Rows="1" />
+            <!--
+              卡片按内容取宽。原来是 UniformGrid（等分撑满整行），每张卡都被拉得很宽、数字周围全是空白。
+              宽度按"放得下数字 + 放得下标签"定（数值是 0.### 格式，最长约 8 位；标签最长是"最大弯拉应变 με"）。
+              WrapPanel 让卡片靠左排、窗口变窄时自动换行；多出来的宽度留给下面的曲线图。
+            -->
+            <WrapPanel />
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate>
-            <ui:Card Margin="0,0,8,0" Padding="12">
+            <ui:Card
+              Width="120"
+              MinHeight="92"
+              Margin="0,0,8,8"
+              Padding="10"
+            >
               <StackPanel>
-                <TextBlock Style="{StaticResource FieldLabelStyle}">
+                <TextBlock Style="{StaticResource FieldLabelStyle}" TextWrapping="Wrap">
                   <Run Text="{Binding DisplayName, Mode=OneWay}" />
                   <Run Text=" " />
                   <Run Text="{Binding Unit, Mode=OneWay}" />
