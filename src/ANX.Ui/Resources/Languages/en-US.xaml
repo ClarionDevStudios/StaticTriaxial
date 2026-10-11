@@ -133,4 +133,5 @@
   <sys:String x:Key="Runtime.Error.Detail">Exception: {0}</sys:String>
   <sys:String x:Key="Runtime.Error.LogHint">The full stack trace has been written to the log file:</sys:String>
   <sys:String x:Key="Runtime.Error.Question">Exit the application? Choose Yes to exit now, or No to ignore this exception and keep running (the interface may be inconsistent; save your work first).</sys:String>
+  <sys:String x:Key="Runtime.Error.ThrottleNote">The same exception is reported only once per {0} seconds; later occurrences are written to the log only.</sys:String>
 </ResourceDictionary>

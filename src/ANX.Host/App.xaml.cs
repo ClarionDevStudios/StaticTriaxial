@@ -27,6 +27,15 @@ using AppThemeService = ANX.Ui.Services.ThemeService;
 /// <summary>宿主应用：组装 DI / 日志 / 导航 / 本地化 / 主题，然后交给 ApplicationHostService 开窗。</summary>
 public partial class App
 {
+    /// <summary>同一异常在此时间窗内只问用户一次（防止界面异常反复发生时的弹框风暴）。</summary>
+    private static readonly TimeSpan ErrorPromptThrottleWindow = TimeSpan.FromSeconds(30);
+
+    /// <summary>节流表的容量上限（按时间淘汰最旧的，防止签名无限增长）。</summary>
+    private const int MaxThrottleSignatures = 16;
+
+    /// <summary>异常签名 → 上次提示时间。签名 = 异常类型 + 消息（不含堆栈），同一处反复出错才算"同一异常"。</summary>
+    private static readonly Dictionary<string, DateTime> PromptedErrors = new(StringComparer.Ordinal);
+
     private static readonly IHost AppHost = BuildHost();
 
     /// <summary>全局服务定位器（只在宿主层使用；其余工程走构造注入）。</summary>
@@ -272,6 +281,21 @@ public partial class App
         // 两种选择都算"已处理"，否则 WPF 在处理器返回后会按未处理异常终止进程。
         e.Handled = true;
 
+        // 同一异常短时间内反复发生：不再打扰用户，按"继续运行"处理（日志里仍然每次都有 ERR）
+        var signature = BuildErrorSignature(e.Exception);
+        var now = DateTime.UtcNow;
+
+        if (IsThrottled(signature, now))
+        {
+            Log.Warning(
+                "同一异常在 {Window} 秒内重复出现，只写日志、不再提示",
+                (int)ErrorPromptThrottleWindow.TotalSeconds
+            );
+            return;
+        }
+
+        RememberPrompt(signature, now);
+
         var shouldExit = true;
 
         try
@@ -294,6 +318,51 @@ public partial class App
         Log.Information("界面线程未处理异常：用户选择继续运行");
     }
 
+    /// <summary>异常签名：类型 + 消息（截断），不含堆栈 —— 同一处反复出错才算"同一异常"。</summary>
+    private static string BuildErrorSignature(Exception ex)
+    {
+        const int maxMessageLength = 300;
+        var message = ex.Message ?? string.Empty;
+
+        return message.Length > maxMessageLength
+            ? $"{ex.GetType().FullName}: {message[..maxMessageLength]}"
+            : $"{ex.GetType().FullName}: {message}";
+    }
+
+    private static bool IsThrottled(string signature, DateTime now)
+    {
+        lock (PromptedErrors)
+        {
+            return PromptedErrors.TryGetValue(signature, out var last)
+                && now - last < ErrorPromptThrottleWindow;
+        }
+    }
+
+    /// <summary>记下"刚提示过"，顺带剪掉过期项、按时间淘汰最旧的，控制表的大小。</summary>
+    private static void RememberPrompt(string signature, DateTime now)
+    {
+        lock (PromptedErrors)
+        {
+            PromptedErrors[signature] = now;
+
+            foreach (
+                var stale in PromptedErrors
+                    .Where(entry => now - entry.Value >= ErrorPromptThrottleWindow)
+                    .Select(entry => entry.Key)
+                    .ToArray()
+            )
+            {
+                _ = PromptedErrors.Remove(stale);
+            }
+
+            while (PromptedErrors.Count > MaxThrottleSignatures)
+            {
+                var oldest = PromptedErrors.OrderBy(entry => entry.Value).First().Key;
+                _ = PromptedErrors.Remove(oldest);
+            }
+        }
+    }
+
     /// <summary>
     /// 问用户：带着这次异常继续跑，还是退出。返回 <c>true</c> 表示退出。
     /// 「是 / 否」的按钮文案由系统提供，所以选项含义写进正文里，不让人去猜。
@@ -312,6 +381,11 @@ public partial class App
             string.Empty,
             Text("Runtime.Error.LogHint"),
             AppPaths.ResolveCurrentLogFile(),
+            string.Empty,
+            string.Format(
+                Text("Runtime.Error.ThrottleNote"),
+                (int)ErrorPromptThrottleWindow.TotalSeconds
+            ),
             string.Empty,
             Text("Runtime.Error.Question")
         );
