@@ -43,7 +43,7 @@ public partial class App
             .Enrich.FromLogContext()
             .WriteTo.Console()
             .WriteTo.File(
-                Path.Combine(logDirectory, "anx-.log"),
+                AppPaths.ResolveLogSinkPath(),
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 14,
                 shared: true
@@ -174,57 +174,91 @@ public partial class App
         catch (SchemaVersionMismatchException ex)
         {
             // 可预期的失败：把"哪个库、差多少、下一步做什么"讲清楚，然后**正常退出**。
-            // 不向上抛 —— 否则 WPF 的未处理异常会再盖一个原始错误框，用户还是看不懂。
             logger.LogError(ex, "启动失败：数据库架构版本不匹配");
-            ShowSchemaMismatchDialog(ex);
+            ShowStartupFailureDialog(Text("Startup.SchemaMismatch.Title"), BuildSchemaMismatchText(ex));
             Shutdown(1);
             return;
         }
         catch (Exception ex)
         {
+            // 其它启动失败（DI / 主题 / 启动服务等任一环节）：给一句人话 + 日志文件路径，
+            // 堆栈留在日志里。同样不向上抛 —— 否则 WPF 会再盖一个原始错误框。
             logger.LogError(ex, "启动失败");
-            throw;
+            ShowStartupFailureDialog(Text("Startup.Failed.Title"), BuildUnexpectedFailureText(ex));
+            Shutdown(1);
+            return;
         }
     }
 
-    /// <summary>
-    /// 建库版本对不上时的提示框：库版本 / 程序要求 / 要备份的文件，逐条给出。
-    /// 这里用系统 MessageBox 而不是 WPF-UI 的对话框 —— 此刻外壳还没建起来（没有可用的
-    /// 宿主窗口与内容对话框宿主），而这条提示必须在任何窗口之前就能弹出来。
-    /// </summary>
-    private void ShowSchemaMismatchDialog(SchemaVersionMismatchException mismatch)
-    {
-        var localization = Services.GetRequiredService<ILocalizationService>();
-
-        // 换行在代码里拼：XAML/BAML 会把资源文本里的 CR/LF 归一化掉，写进资源留不住
-        var text = string.Join(
+    /// <summary>库版本对不上：库版本 / 程序要求 / 要备份的文件，逐条给出。</summary>
+    private static string BuildSchemaMismatchText(SchemaVersionMismatchException mismatch) =>
+        string.Join(
+            // 换行在代码里拼：XAML/BAML 会把资源文本里的 CR/LF 归一化掉，写进资源留不住
             Environment.NewLine,
-            localization.GetString("Startup.SchemaMismatch.Summary"),
+            Text("Startup.SchemaMismatch.Summary"),
             string.Empty,
             string.Format(
-                localization.GetString("Startup.SchemaMismatch.Versions"),
+                Text("Startup.SchemaMismatch.Versions"),
                 mismatch.DatabaseVersion,
                 mismatch.RequiredVersion
             ),
             string.Empty,
-            localization.GetString("Startup.SchemaMismatch.Hint"),
+            Text("Startup.SchemaMismatch.Hint"),
             mismatch.DatabasePath
         );
 
-        MessageBox.Show(
-            text,
-            localization.GetString("Startup.SchemaMismatch.Title"),
-            MessageBoxButton.OK,
-            MessageBoxImage.Warning
+    /// <summary>其它启动失败：错误信息 + 日志文件路径（细节在日志里，这里不铺堆栈）。</summary>
+    private static string BuildUnexpectedFailureText(Exception ex)
+    {
+        var detail = string.IsNullOrWhiteSpace(ex.Message) ? ex.GetType().FullName! : ex.Message;
+
+        return string.Join(
+            Environment.NewLine,
+            Text("Startup.Failed.Summary"),
+            string.Empty,
+            string.Format(Text("Startup.Failed.Detail"), detail),
+            string.Empty,
+            Text("Startup.Failed.LogHint"),
+            AppPaths.ResolveCurrentLogFile()
         );
+    }
+
+    /// <summary>
+    /// 启动失败的统一提示框。此刻外壳还没建起来（没有宿主窗口、也没有内容对话框宿主），
+    /// 所以用系统 MessageBox —— 它必须在任何窗口之前就能弹出来。
+    /// </summary>
+    private static void ShowStartupFailureDialog(string title, string text) =>
+        MessageBox.Show(text, title, MessageBoxButton.OK, MessageBoxImage.Warning);
+
+    /// <summary>
+    /// 取资源文案；本地化服务本身没起来时退回键名 —— 提示框不能再抛第二次异常。
+    /// 真走到这一步时，提示框里的"日志文件路径"仍会照常显示，用户依然有线索。
+    /// </summary>
+    private static string Text(string key)
+    {
+        try
+        {
+            var value = Services.GetRequiredService<ILocalizationService>().GetString(key);
+            return string.IsNullOrWhiteSpace(value) ? key : value;
+        }
+        catch (Exception)
+        {
+            return key;
+        }
     }
 
     private async void OnExit(object sender, ExitEventArgs e)
     {
-        Log.Information("退出");
+        // 分阶段记日志：退出路径一旦慢（曾见失败路径耗时 60s），先看是哪一段
+        Log.Information("退出：开始收尾，退出码 {ExitCode}", e.ApplicationExitCode);
 
+        Log.Information("退出：停止宿主…");
         await AppHost.StopAsync();
+
+        Log.Information("退出：释放宿主…");
         AppHost.Dispose();
+
+        Log.Information("退出：刷新日志…");
         await Log.CloseAndFlushAsync();
     }
 

@@ -124,4 +124,8 @@
   <sys:String x:Key="Startup.SchemaMismatch.Summary">The database schema version does not match, so the application cannot start.</sys:String>
   <sys:String x:Key="Startup.SchemaMismatch.Versions">Database version: {0}, required version: {1}</sys:String>
   <sys:String x:Key="Startup.SchemaMismatch.Hint">This project does not migrate data. Back up the file below, delete it, then start the application again (a new database will be created):</sys:String>
+  <sys:String x:Key="Startup.Failed.Title">Startup failed</sys:String>
+  <sys:String x:Key="Startup.Failed.Summary">An error occurred while starting the application, so it cannot continue.</sys:String>
+  <sys:String x:Key="Startup.Failed.Detail">Error: {0}</sys:String>
+  <sys:String x:Key="Startup.Failed.LogHint">Details have been written to the log file; please provide it to the developer:</sys:String>
 </ResourceDictionary>

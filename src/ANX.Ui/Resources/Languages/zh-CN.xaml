@@ -124,4 +124,8 @@
   <sys:String x:Key="Startup.SchemaMismatch.Summary">数据库结构版本不匹配，程序无法启动。</sys:String>
   <sys:String x:Key="Startup.SchemaMismatch.Versions">库版本：{0}，程序要求：{1}</sys:String>
   <sys:String x:Key="Startup.SchemaMismatch.Hint">本项目不做数据迁移。请先备份下面这个文件，再把它删除后重新启动程序（程序会自动重建新库）：</sys:String>
+  <sys:String x:Key="Startup.Failed.Title">启动失败</sys:String>
+  <sys:String x:Key="Startup.Failed.Summary">程序启动时发生错误，无法继续运行。</sys:String>
+  <sys:String x:Key="Startup.Failed.Detail">错误信息：{0}</sys:String>
+  <sys:String x:Key="Startup.Failed.LogHint">详细信息已写入日志文件，请把它提供给开发人员：</sys:String>
 </ResourceDictionary>
