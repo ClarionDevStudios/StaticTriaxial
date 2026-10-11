@@ -26,7 +26,6 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
     private TaskCompletionSource<Gr3AckStatus>? _ackWaiter;
     private TaskCompletionSource<bool>? _systemInfoWaiter;
     private bool _subscribed;
-    private double _elapsedSeconds;
 
     public Gr3DeviceController(
         ICommChannel channel,
@@ -50,6 +49,12 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
 
     /// <summary>A4H 设备信息。</summary>
     public Gr3DeviceInfo? DeviceInfo { get; private set; }
+
+    /// <summary>最近一帧 A2H 的控制器状态寄存器（用于观察电机 / 限位 / 控温位）。</summary>
+    public Gr3MachineStatus LastMachineStatus { get; private set; }
+
+    /// <summary>最近一帧 A2H 的试验状态寄存器。</summary>
+    public Gr3TestStatus LastTestStatus { get; private set; }
 
     public event EventHandler<TestSample>? SampleReceived;
 
@@ -104,6 +109,8 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
                 break;
 
             case Gr3Constants.UplinkRealtimeData when Gr3UplinkParser.TryParseRealtimeData(frame, out var data):
+                LastMachineStatus = data.MachineStatus;
+                LastTestStatus = data.TestStatus;
                 SampleReceived?.Invoke(
                     this,
                     ToSample(data, SystemInfo, _pressChannelIndex, _displaceChannelIndex, ElapsedSeconds)
@@ -148,6 +155,22 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
         SpeedMillimetersPerMinute = millimetersPerMinute;
         return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// 点动电机（C4H）：<paramref name="order"/> 取
+    /// <see cref="Gr3Constants.MotorOrderStop"/> / <see cref="Gr3Constants.MotorOrderForwardUp"/> /
+    /// <see cref="Gr3Constants.MotorOrderReverseDown"/>。工作台上升 / 下降按钮走这里。
+    /// </summary>
+    public Task JogAsync(byte order, CancellationToken cancellationToken = default) =>
+        SendAndWaitAckAsync(
+            Gr3DownlinkCommands.MotorLoad(
+                order,
+                (ushort)Math.Round(SpeedMillimetersPerMinute) == 0
+                    ? (ushort)50
+                    : (ushort)Math.Round(SpeedMillimetersPerMinute)
+            ),
+            cancellationToken
+        );
 
     /// <summary>启动：先 C1 进试验模式（选通道），再 C4 让电机上升加载。</summary>
     public async Task StartAsync(CancellationToken cancellationToken = default)

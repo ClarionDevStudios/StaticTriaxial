@@ -107,7 +107,9 @@ public partial class App
                     sp.GetRequiredService<ILocalizationService>(),
                     sp.GetRequiredService<ITestExecution>(),
                     sp.GetService<ITestDeviceController>(),
-                    sp.GetRequiredService<ICurrentSheetContext>()
+                    sp.GetRequiredService<ICurrentSheetContext>(),
+                    sp.GetRequiredService<INavigationService>(),
+                    sp.GetRequiredService<IReportExportService>()
                 ));
                 _ = services.AddSingleton<TestExecutionPage>();
 

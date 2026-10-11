@@ -16,7 +16,7 @@ public partial class HomeViewModel : ViewModelBase
     [
         ("M1", "Home.M1", true),
         ("M2", "Home.M2", true),
-        ("M3", "Home.M3", false),
+        ("M3", "Home.M3", true),
         ("M4", "Home.M4", false),
     ];
 

@@ -29,29 +29,26 @@
       <ui:Button
         Margin="4,0,0,0"
         Appearance="Secondary"
-        Command="{Binding ViewModel.NewSheetCommand}"
+        Command="{Binding ViewModel.OpenSheetSelectionCommand}"
         Content="{DynamicResource Exec.NewSheet}"
       />
       <ui:Button
         Margin="4,0,0,0"
         Appearance="Secondary"
+        Command="{Binding ViewModel.OpenMachineSettingsCommand}"
         Content="{DynamicResource Exec.TestParams}"
-        IsEnabled="False"
-        ToolTip="{DynamicResource Exec.ToDo}"
       />
       <ui:Button
         Margin="4,0,0,0"
         Appearance="Secondary"
+        Command="{Binding ViewModel.PrintReportCommand}"
         Content="{DynamicResource Exec.Print}"
-        IsEnabled="False"
-        ToolTip="{DynamicResource Exec.ToDo}"
       />
       <ui:Button
         Margin="4,0,0,0"
         Appearance="Secondary"
+        Command="{Binding ViewModel.OpenHistoryCommand}"
         Content="{DynamicResource Exec.History}"
-        IsEnabled="False"
-        ToolTip="{DynamicResource Exec.ToDo}"
       />
       <ui:Button
         Margin="4,0,0,0"
@@ -136,16 +133,14 @@
               <ui:Button
                 Margin="0,0,4,0"
                 Appearance="Secondary"
+                Command="{Binding ViewModel.OpenSampleEditorCommand}"
                 Content="{DynamicResource Exec.NewSample}"
-                IsEnabled="False"
-                ToolTip="{DynamicResource Exec.ToDo}"
               />
               <ui:Button
                 Margin="0,0,4,0"
                 Appearance="Secondary"
+                Command="{Binding ViewModel.OpenSampleEditorCommand}"
                 Content="{DynamicResource Exec.EditSample}"
-                IsEnabled="False"
-                ToolTip="{DynamicResource Exec.ToDo}"
               />
               <ui:Button
                 Appearance="Secondary"

@@ -24,7 +24,7 @@
   <sys:String x:Key="Home.StatusTodo">未开始</sys:String>
   <sys:String x:Key="Home.CurrentMilestone">当前里程碑</sys:String>
   <sys:String x:Key="Home.BoundaryTitle">M1 已知边界</sys:String>
-  <sys:String x:Key="Home.BoundaryText">系统设置的持久化尚未接入（IAppSettingsService 只有契约，还没实现）——重启后语言与主题会回到默认值。协议层（GR-3 帧编解码 + UDP 通道）已在 M2 打通并过了真机；控制、存储、报表三层目前只有契约，M3 起逐个落地。</sys:String>
+  <sys:String x:Key="Home.BoundaryText">M1~M3 已落地：GR-3 帧编解码与 UDP 通道（过真机）、上行解析、控制引擎与模拟器、T0715 判定与组统计、三表建库与写入层、标签制报表（中英两套出厂模板）、以及界面五个页面。仍未做的：真机空载试电机方向字与复位、系统设置持久化（IAppSettingsService 只有契约）、M4 的第二个方法（马歇尔）。</sys:String>
 
   <sys:String x:Key="Settings.Title">系统设置</sys:String>
   <sys:String x:Key="Settings.TabPreferences">界面偏好</sys:String>
@@ -42,7 +42,6 @@
 
   <sys:String x:Key="Nav.Execution">试验执行</sys:String>
   <sys:String x:Key="Exec.NewSheet">新建试验</sys:String>
-  <sys:String x:Key="Exec.NewSheetHint">已清空当前试验单，下一次启动试验会新建一张单</sys:String>
   <sys:String x:Key="Exec.TestParams">试验参数</sys:String>
   <sys:String x:Key="Exec.Print">打印报表</sys:String>
   <sys:String x:Key="Exec.History">历史数据</sys:String>
@@ -117,4 +116,5 @@
   <sys:String x:Key="Param.Loaded">已载入当前参数</sys:String>
   <sys:String x:Key="Param.Saved">已保存</sys:String>
   <sys:String x:Key="Param.SaveFailed">保存失败</sys:String>
+  <sys:String x:Key="Exec.NoSheet">还没有试验单（先"新建试验"或去试验单页选一张）</sys:String>
 </ResourceDictionary>

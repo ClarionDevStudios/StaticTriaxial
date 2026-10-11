@@ -5,6 +5,7 @@ using ANX.Control;
 using ANX.Core;
 using ANX.Core.Control;
 using ANX.Ui.Services;
+using Wpf.Ui;
 
 /// <summary>一张实时指标卡（界面用，值随采样刷新）。</summary>
 public partial class MetricCard(MetricDefinition definition) : ObservableObject
@@ -32,6 +33,8 @@ public partial class TestExecutionViewModel : ViewModelBase
     private readonly ITestExecution _execution;
     private readonly ITestDeviceController? _device;
     private readonly ICurrentSheetContext? _currentSheet;
+    private readonly INavigationService? _navigation;
+    private readonly IReportExportService? _exporter;
     private readonly List<CurvePoint> _curve = [];
     private readonly Dictionary<string, double> _peaks = new(StringComparer.Ordinal);
     private TestSequencer? _sequencer;
@@ -43,13 +46,17 @@ public partial class TestExecutionViewModel : ViewModelBase
         ILocalizationService localization,
         ITestExecution execution,
         ITestDeviceController? device = null,
-        ICurrentSheetContext? currentSheet = null
+        ICurrentSheetContext? currentSheet = null,
+        INavigationService? navigation = null,
+        IReportExportService? exporter = null
     )
         : base(localization)
     {
         _execution = execution;
         _device = device;
         _currentSheet = currentSheet;
+        _navigation = navigation;
+        _exporter = exporter;
 
         foreach (var definition in execution.Metrics)
         {
@@ -154,14 +161,44 @@ public partial class TestExecutionViewModel : ViewModelBase
     [RelayCommand]
     private void ClearLog() => Log.Clear();
 
-    /// <summary>新建试验单（下一次"启动试验"会建一张新单；试样计数归零）。</summary>
+    /// <summary>去试验单页（新建 / 选择已有）。</summary>
     [RelayCommand]
-    private void NewSheet()
+    private void OpenSheetSelection() =>
+        _navigation?.Navigate(typeof(Views.Pages.SheetSelectionPage));
+
+    /// <summary>去参数配置页。</summary>
+    [RelayCommand]
+    private void OpenMachineSettings() =>
+        _navigation?.Navigate(typeof(Views.Pages.MachineSettingsPage));
+
+    /// <summary>去试样编辑页。</summary>
+    [RelayCommand]
+    private void OpenSampleEditor() =>
+        _navigation?.Navigate(typeof(Views.Pages.SampleEditorPage));
+
+    /// <summary>去历史数据页（报表导出的入口在那里）。</summary>
+    [RelayCommand]
+    private void OpenHistory() => _navigation?.Navigate(typeof(Views.Pages.HistoryPage));
+
+    /// <summary>打印当前试验单的报表 —— 与历史页导出**同一套实现**，只是目标不同（当前 vs 选中）。</summary>
+    [RelayCommand]
+    private async Task PrintReportAsync()
     {
-        _sheetId = null;
-        _sampleCounter = 0;
-        SheetText = string.Empty;
-        Append(L("Exec.NewSheetHint"));
+        if (_sheetId is null || _exporter is null)
+        {
+            Append(L("Exec.NoSheet"));
+            return;
+        }
+
+        try
+        {
+            var path = await _exporter.ExportAsync(_sheetId, "zh-CN");
+            Append($"{L("History.Exported")} {path}");
+        }
+        catch (Exception ex)
+        {
+            Append($"{L("History.ExportFailed")}: {ex.Message}");
+        }
     }
 
     private async Task RunOneSampleAsync()

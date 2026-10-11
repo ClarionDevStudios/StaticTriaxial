@@ -43,6 +43,12 @@ internal static class Program
         );
         Console.WriteLine();
 
+        // 电机空载试（会真的动工作台）—— 必须显式加 --motor-test 才走这条
+        if (Array.IndexOf(args, "--motor-test") >= 0)
+        {
+            return await RunMotorTestAsync(host, port, localPort, waitMs);
+        }
+
         var codec = new Gr3FrameCodec();
 
         await using var channel = new UdpChannel(new UdpChannelOptions(host, port, localPort));
@@ -252,6 +258,73 @@ internal static class Program
 
     private static string ToHex(ReadOnlySpan<byte> bytes) =>
         string.Join(' ', bytes.ToArray().Select(b => b.ToString("X2", CultureInfo.InvariantCulture)));
+
+    /// <summary>
+    /// 电机空载试：联机 → 读状态 → C4 正转 1 秒 → C4 停止 → C3 清零 → 再读状态。
+    /// **会真的动工作台**，只在显式传 `--motor-test` 时执行。
+    /// </summary>
+    private static async Task<int> RunMotorTestAsync(string host, int port, int localPort, int waitMs)
+    {
+        Console.WriteLine("=== 电机空载试（会真的动工作台：请空载、且行程上下都留余量）===");
+        Console.WriteLine($"远端 {host}:{port}   本地端口 {localPort}");
+
+        await using var channel = new UdpChannel(new UdpChannelOptions(host, port, localPort));
+        await using var controller = new Gr3DeviceController(
+            channel,
+            pressChannelIndex: 1,
+            displaceChannelIndex: 1
+        );
+
+        try
+        {
+            await controller.ConnectAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"联机失败：{ex.Message}");
+            return 2;
+        }
+
+        Console.WriteLine("联机成功（A0 已收到）");
+        await Task.Delay(Math.Max(800, waitMs));
+        ReportStatus("联机后", controller);
+
+        await controller.JogAsync(Gr3Constants.MotorOrderForwardUp);
+        Console.WriteLine("已发 C4H 正转上升");
+        await Task.Delay(1000);
+        ReportStatus("C4 正转中", controller);
+
+        await controller.JogAsync(Gr3Constants.MotorOrderStop);
+        Console.WriteLine("已发 C4H 停止");
+        await Task.Delay(Math.Max(800, waitMs));
+        ReportStatus("C4 停止后", controller);
+
+        await controller.ResetAsync();
+        Console.WriteLine("已发 C3H 清零");
+        await Task.Delay(Math.Max(800, waitMs));
+        ReportStatus("C3 清零后", controller);
+
+        Console.WriteLine();
+        Console.WriteLine("判读要点：C4 正转中应看到「正转=True、反转=False」；停止后两位都为 False。");
+        return 0;
+    }
+
+    /// <summary>打印最近一帧 A2 的状态位。</summary>
+    private static void ReportStatus(string label, Gr3DeviceController controller)
+    {
+        var status = controller.LastMachineStatus;
+
+        Console.WriteLine(
+            $"  {label}：机器状态 0x{(byte)status:X2}"
+                + $"（压力过载={status.HasFlag(Gr3MachineStatus.PressureOverload)}"
+                + $" 上限位={status.HasFlag(Gr3MachineStatus.DisplacementUpperLimit)}"
+                + $" 下限位={status.HasFlag(Gr3MachineStatus.DisplacementLowerLimit)}"
+                + $" 正转={status.HasFlag(Gr3MachineStatus.MotorForward)}"
+                + $" 反转={status.HasFlag(Gr3MachineStatus.MotorReverse)}"
+                + $" 控温={status.HasFlag(Gr3MachineStatus.TemperatureControlActive)}）"
+                + $"  试验状态 0x{(byte)controller.LastTestStatus:X2}"
+        );
+    }
 
     private static string? GetArg(string[] args, string name)
     {

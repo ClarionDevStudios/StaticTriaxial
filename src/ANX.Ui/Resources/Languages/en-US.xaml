@@ -24,7 +24,7 @@
   <sys:String x:Key="Home.StatusTodo">Not started</sys:String>
   <sys:String x:Key="Home.CurrentMilestone">Current milestone</sys:String>
   <sys:String x:Key="Home.BoundaryTitle">M1 known boundaries</sys:String>
-  <sys:String x:Key="Home.BoundaryText">Settings persistence is not wired up yet (IAppSettingsService is only a contract), so language and theme fall back to defaults after a restart. The protocol layer (GR-3 framing + UDP channel) landed in M2 and was verified against the real controller; control, storage and reporting are still contracts only and land from M3 onwards.</sys:String>
+  <sys:String x:Key="Home.BoundaryText">M1-M3 have landed: GR-3 framing and the UDP channel (verified on the real controller), uplink parsing, the control engine and simulator, T0715 analysis and group statistics, the three-table schema and write layer, label-based reporting (zh/en factory templates), and five UI pages. Still open: on-machine check of the motor direction word and reset, settings persistence, and the second method (Marshall) in M4.</sys:String>
 
   <sys:String x:Key="Settings.Title">Settings</sys:String>
   <sys:String x:Key="Settings.TabPreferences">Preferences</sys:String>
@@ -42,7 +42,6 @@
 
   <sys:String x:Key="Nav.Execution">Test run</sys:String>
   <sys:String x:Key="Exec.NewSheet">New sheet</sys:String>
-  <sys:String x:Key="Exec.NewSheetHint">Current sheet cleared; the next run starts a new one</sys:String>
   <sys:String x:Key="Exec.TestParams">Parameters</sys:String>
   <sys:String x:Key="Exec.Print">Print report</sys:String>
   <sys:String x:Key="Exec.History">History</sys:String>
@@ -117,4 +116,5 @@
   <sys:String x:Key="Param.Loaded">Current values loaded</sys:String>
   <sys:String x:Key="Param.Saved">Saved</sys:String>
   <sys:String x:Key="Param.SaveFailed">Save failed</sys:String>
+  <sys:String x:Key="Exec.NoSheet">No test sheet yet (create one or pick an existing sheet)</sys:String>
 </ResourceDictionary>
