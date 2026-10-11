@@ -2,6 +2,7 @@ namespace ANX.Host;
 
 using System.IO;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Threading;
 using ANX.Ui.Services;
 using ANX.Ui.ViewModels;
