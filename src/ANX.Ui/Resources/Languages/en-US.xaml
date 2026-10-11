@@ -92,7 +92,6 @@
   <sys:String x:Key="History.Samples">Specimens</sys:String>
   <sys:String x:Key="History.Fields">Specimen fields</sys:String>
 
-  <sys:String x:Key="Nav.Sheet">Test sheet</sys:String>
   <sys:String x:Key="Sheet.New">New sheet</sys:String>
   <sys:String x:Key="Sheet.Existing">Use an existing sheet</sys:String>
   <sys:String x:Key="Sheet.Project">Project</sys:String>
@@ -107,8 +106,6 @@
   <sys:String x:Key="Sheet.SelectFirst">Select a test sheet first</sys:String>
   <sys:String x:Key="Exec.SheetSelected">Using sheet</sys:String>
 
-  <sys:String x:Key="Nav.SampleEditor">Specimen</sys:String>
-  <sys:String x:Key="Nav.Machine">Parameters</sys:String>
   <sys:String x:Key="Sample.Title">Specimen dimensions</sys:String>
   <sys:String x:Key="Mach.Title">Machine and control parameters</sys:String>
   <sys:String x:Key="Param.Save">Save</sys:String>

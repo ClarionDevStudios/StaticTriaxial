@@ -92,7 +92,6 @@
   <sys:String x:Key="History.Samples">试件</sys:String>
   <sys:String x:Key="History.Fields">试件字段</sys:String>
 
-  <sys:String x:Key="Nav.Sheet">试验单</sys:String>
   <sys:String x:Key="Sheet.New">新建试验单</sys:String>
   <sys:String x:Key="Sheet.Existing">选择已有试验单</sys:String>
   <sys:String x:Key="Sheet.Project">项目名称</sys:String>
@@ -107,8 +106,6 @@
   <sys:String x:Key="Sheet.SelectFirst">请先选择一张试验单</sys:String>
   <sys:String x:Key="Exec.SheetSelected">已采用试验单</sys:String>
 
-  <sys:String x:Key="Nav.SampleEditor">试样编辑</sys:String>
-  <sys:String x:Key="Nav.Machine">参数配置</sys:String>
   <sys:String x:Key="Sample.Title">试样尺寸</sys:String>
   <sys:String x:Key="Mach.Title">机器与控制参数</sys:String>
   <sys:String x:Key="Param.Save">保存</sys:String>
