@@ -9,13 +9,32 @@
 
 ## 构建（本机实测约定）
 
+**直接跑仓库里的脚本，别手敲 dotnet**：
+
 ```powershell
-$env:DOTNET_CLI_HOME = 'E:\AiStudy\CodeX\.dotnetcli'   # 否则模板引擎缓存写工作区外，报 Access denied
-dotnet build ANX.slnx -m:1                              # 必须 -m:1，并行还原会静默失败
-dotnet test  ANX.slnx -m:1
+pwsh -NoProfile -File .\build.ps1                 # 也可以 -Configuration Release
+pwsh -NoProfile -File .\test.ps1
 ```
 
-NuGet 走工程内 `NuGet.config`（`<clear />` + 本机缓存离线源），不依赖公网。
+脚本干三件事：设 `DOTNET_CLI_HOME`、加 `-m:1`、调 `dotnet`。手敲的话要写成：
+
+```powershell
+$env:DOTNET_CLI_HOME = 'E:\AiStudy\CodeX\.dotnetcli'
+dotnet build ANX.slnx -m:1
+```
+
+三个坑（都实测过，缺一个就出事）：
+
+1. **`DOTNET_CLI_HOME` 必须设**。它不只影响模板引擎缓存（默认会往工作区外的
+   `C:\Users\<用户>\.templateengine` 写，报 Access denied），**还会改变 NuGet 的全局包目录**
+   （不设 → `C:\Users\<用户>\.nuget\packages`；设了 → `$DOTNET_CLI_HOME\.nuget\packages`）。
+   本工程 FlexCel 7.26.0 依赖的 `SkiaSharp 3.119.2` **只存在于后者**，而工程 `NuGet.config`
+   用 `<clear />` 清掉了用户级的 nuget.org 源 —— 所以漏设这个变量会在还原阶段报
+   `NU1103 找不到稳定包 SkiaSharp`（看着像"源里没有"，其实是查错了目录）。
+   排查第一步永远是 `dotnet nuget locals global-packages --list`，看当前真正生效的是哪个目录。
+2. **一律 `-m:1`**：并行还原在本机会静默失败（0 警告 0 错误，但产物没生成）。
+3. NuGet 走工程内 `NuGet.config`（`<clear />` + 本机缓存离线源 + FlexCel 零售包目录），不依赖公网。
+   要补新的包：`dotnet restore ANX.slnx -m:1 --force -s https://api.nuget.org/v3/index.json`（一次联网，之后仍可离线还原）。
 
 ## 里程碑
 
