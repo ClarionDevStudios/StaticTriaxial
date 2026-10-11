@@ -168,11 +168,6 @@ public partial class TestExecutionViewModel : ViewModelBase
 
         try
         {
-            // 点动期间让数值卡跟着动：操作者要"点着看接触"（荷载、位移）。
-            // 先减后加，重复点按也不会把同一处理器挂两遍。
-            _device.SampleReceived -= OnJogSample;
-            _device.SampleReceived += OnJogSample;
-
             await _device.JogAsync(direction);
             Append(L(direction == JogDirection.Up ? "Exec.JogUp" : "Exec.JogDown"));
         }
@@ -193,7 +188,6 @@ public partial class TestExecutionViewModel : ViewModelBase
         try
         {
             await _device.StopAsync();
-            _device.SampleReceived -= OnJogSample;
             Append(L("Exec.JogStopped"));
         }
         catch (Exception ex)
@@ -207,8 +201,33 @@ public partial class TestExecutionViewModel : ViewModelBase
 
     private void UpdateCanJog() => CanJog = !IsRunning && _device?.IsConnected == true;
 
-    /// <summary>点动采样：只刷新数值卡，不画曲线 —— 曲线归试验那一轮。</summary>
-    private void OnJogSample(object? sender, TestSample sample) => UpdateCards(sample);
+    /// <summary>
+    /// 进入执行页就开始把设备的实时采样刷到数值卡上 —— 不跑试验时也能随时看到当前荷载 / 位移
+    /// （操作者要"看着数值接近试件"）。离开页面退订；曲线只在跑试验时画，所以这里只刷卡片。
+    /// </summary>
+    public void BeginLiveReadout()
+    {
+        if (_device is null)
+        {
+            return;
+        }
+
+        // 先减后加：重复进入页面不会把同一处理器挂两遍
+        _device.SampleReceived -= OnLiveSample;
+        _device.SampleReceived += OnLiveSample;
+    }
+
+    /// <summary>离开执行页：停止实时刷新。</summary>
+    public void EndLiveReadout()
+    {
+        if (_device is not null)
+        {
+            _device.SampleReceived -= OnLiveSample;
+        }
+    }
+
+    /// <summary>实时采样：只刷新数值卡，不画曲线 —— 曲线归试验那一轮。</summary>
+    private void OnLiveSample(object? sender, TestSample sample) => UpdateCards(sample);
 
     /// <summary>开始 / 停止一个试件。</summary>
     [RelayCommand]

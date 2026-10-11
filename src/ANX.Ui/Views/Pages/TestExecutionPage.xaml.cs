@@ -47,6 +47,7 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
         Loaded += (_, _) =>
         {
             ApplyChartStyle(_theme.CurrentTheme);
+            ViewModel.BeginLiveReadout();
 
             // 盯住**可见区**的尺寸变化。注意不能盯页面的直接父元素（ContentPresenter）：
             // 它的高度跟着内容走，会形成环路。外层 ScrollViewer 的视口才是被约束住的真值。
@@ -60,6 +61,9 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
 
             UpdatePageHeight();
         };
+
+        // 离开页面就退订实时刷新（换页后别再空转刷卡片）
+        Unloaded += (_, _) => ViewModel.EndLiveReadout();
 
         // 窗口大小一变，重新把页面高度对到可见区
         SizeChanged += (_, _) => UpdatePageHeight();
