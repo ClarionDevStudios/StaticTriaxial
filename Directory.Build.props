@@ -14,11 +14,4 @@
     <SatelliteResourceLanguages>zh-Hans;en</SatelliteResourceLanguages>
   </PropertyGroup>
 
-  <!--
-    模拟器只在 Debug 构建里编译。
-    Release（正式）构建不定义 SIMULATOR：相关源文件不参与编译，通道只剩串口与 UDP。
-  -->
-  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
-    <DefineConstants>$(DefineConstants);SIMULATOR</DefineConstants>
-  </PropertyGroup>
 </Project>

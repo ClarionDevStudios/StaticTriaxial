@@ -31,7 +31,7 @@ public sealed class SimulatorChainTests
         // 每 20ms 喂一帧，最多 30 秒
         while (seconds <= 30.0 && !finished)
         {
-            var sample = SimulatedDeviceController.SampleAt(seconds, peakLoadKN: 9.0, displacementAtPeakMM: 5.0);
+            var sample = SampleCurve.At(seconds, peakLoadKN: 9.0, displacementAtPeakMM: 5.0);
             finished = !sequencer.OnSample(sample);
             seconds += 0.02;
         }

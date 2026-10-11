@@ -157,14 +157,15 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
     }
 
     /// <summary>
-    /// 点动电机（C4H）：<paramref name="order"/> 取
-    /// <see cref="Gr3Constants.MotorOrderStop"/> / <see cref="Gr3Constants.MotorOrderForwardUp"/> /
-    /// <see cref="Gr3Constants.MotorOrderReverseDown"/>。工作台上升 / 下降按钮走这里。
+    /// 点动工作台（C4H）：方向字 1=正转上升 / 2=反转下降，速度取当前设定
+    /// （没设过就用 50mm/min）。执行页的"工作台上升 / 下降"按钮走这里。
     /// </summary>
-    public Task JogAsync(byte order, CancellationToken cancellationToken = default) =>
+    public Task JogAsync(JogDirection direction, CancellationToken cancellationToken = default) =>
         SendAndWaitAckAsync(
             Gr3DownlinkCommands.MotorLoad(
-                order,
+                direction == JogDirection.Up
+                    ? Gr3Constants.MotorOrderForwardUp
+                    : Gr3Constants.MotorOrderReverseDown,
                 (ushort)Math.Round(SpeedMillimetersPerMinute) == 0
                     ? (ushort)50
                     : (ushort)Math.Round(SpeedMillimetersPerMinute)

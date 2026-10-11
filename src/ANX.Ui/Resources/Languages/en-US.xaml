@@ -146,4 +146,11 @@
   <sys:String x:Key="Method.T0715.Elapsed">Elapsed time</sys:String>
   <sys:String x:Key="Method.T0715.CurveTitle">Specimen {0}</sys:String>
   <sys:String x:Key="Exec.PeakFormat">Peak {0}</sys:String>
+
+  <!-- Worktable jog (press and hold to run, release to stop) -->
+  <sys:String x:Key="Exec.JogUp">Worktable moving up</sys:String>
+  <sys:String x:Key="Exec.JogDown">Worktable moving down</sys:String>
+  <sys:String x:Key="Exec.JogStopped">Worktable stopped</sys:String>
+  <sys:String x:Key="Exec.JogFailed">Jog failed</sys:String>
+  <sys:String x:Key="Exec.JogNeedConnect">Not connected - click Connect first, then use the worktable buttons</sys:String>
 </ResourceDictionary>

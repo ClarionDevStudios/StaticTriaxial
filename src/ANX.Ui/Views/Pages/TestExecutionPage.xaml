@@ -104,16 +104,20 @@
           Height="54"
           Appearance="Secondary"
           Content="{DynamicResource Exec.WorktableUp}"
-          IsEnabled="False"
-          ToolTip="{DynamicResource Exec.ToDo}"
+          IsEnabled="{Binding ViewModel.CanJog}"
+          LostMouseCapture="OnJogButtonReleased"
+          PreviewMouseLeftButtonDown="OnJogUpButtonPressed"
+          PreviewMouseLeftButtonUp="OnJogButtonReleased"
         />
         <ui:Button
           Height="54"
           Margin="0,8,0,0"
           Appearance="Secondary"
           Content="{DynamicResource Exec.WorktableDown}"
-          IsEnabled="False"
-          ToolTip="{DynamicResource Exec.ToDo}"
+          IsEnabled="{Binding ViewModel.CanJog}"
+          LostMouseCapture="OnJogButtonReleased"
+          PreviewMouseLeftButtonDown="OnJogDownButtonPressed"
+          PreviewMouseLeftButtonUp="OnJogButtonReleased"
         />
       </StackPanel>
     </Grid>

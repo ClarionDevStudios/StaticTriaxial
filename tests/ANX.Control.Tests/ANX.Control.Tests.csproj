@@ -17,8 +17,4 @@
     <ProjectReference Include="..\..\src\ANX.Protocol\ANX.Protocol.csproj" />
   </ItemGroup>
 
-  <!-- 模拟器只在 Debug 编译，用到它的用例同样只在 Debug 编译 -->
-  <ItemGroup Condition="'$(Configuration)' != 'Debug'">
-    <Compile Remove="SimulatorChainTests.cs" />
-  </ItemGroup>
 </Project>

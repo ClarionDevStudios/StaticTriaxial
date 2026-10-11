@@ -1,0 +1,15 @@
+<Project>
+  <!--
+    模拟器只在 Debug 构建里编译：Release（正式）不定义 SIMULATOR，
+    `SimulatedDeviceController.cs` 不参与编译（见 ANX.Communication.csproj 的 Compile Remove），
+    Host 里注册模拟器的那段也用 `#if SIMULATOR` 关掉。
+
+    ⚠ 必须写在 **.targets** 里，不能写在 Directory.Build.props：
+    `.props` 在 SDK 之前求值，此时 `$(DefineConstants)` 还是空的，加进去的 SIMULATOR
+    会被 SDK 随后设置的 `DEBUG;TRACE` 覆盖掉（实测过：Host 的 DefineConstants 只剩 TRACE;DEBUG，
+    于是应用在 Debug 下根本没注册设备）。`.targets` 在 SDK 之后求值，才留得住。
+  -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <DefineConstants>$(DefineConstants);SIMULATOR</DefineConstants>
+  </PropertyGroup>
+</Project>

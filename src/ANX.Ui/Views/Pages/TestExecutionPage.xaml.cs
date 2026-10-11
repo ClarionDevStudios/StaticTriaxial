@@ -1,9 +1,11 @@
 namespace ANX.Ui.Views.Pages;
 
 using ANX.Core;
+using ANX.Core.Control;
 using ANX.Ui.Charts;
 using ANX.Ui.Services;
 using ANX.Ui.ViewModels;
+using System.Windows.Input;
 using Wpf.Ui.Abstractions.Controls;
 
 /// <summary>
@@ -43,6 +45,42 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
     }
 
     public TestExecutionViewModel ViewModel { get; }
+
+    /// <summary>是否正在点动（避免"松开"与"失去鼠标捕获"各停一次、日志打两遍）。</summary>
+    private bool _jogging;
+
+    private void OnJogUpButtonPressed(object sender, MouseButtonEventArgs e) =>
+        BeginJog(JogDirection.Up, sender);
+
+    private void OnJogDownButtonPressed(object sender, MouseButtonEventArgs e) =>
+        BeginJog(JogDirection.Down, sender);
+
+    private void BeginJog(JogDirection direction, object sender)
+    {
+        if (_jogging || sender is not UIElement element)
+        {
+            return;
+        }
+
+        _jogging = true;
+
+        // 自己抓鼠标捕获：这样即使松开时指针已移出按钮，也能收到 LostMouseCapture 把电停掉
+        _ = element.CaptureMouse();
+        _ = ViewModel.BeginJogAsync(direction);
+    }
+
+    private void OnJogButtonReleased(object sender, MouseEventArgs e) => EndJog();
+
+    private void EndJog()
+    {
+        if (!_jogging)
+        {
+            return;
+        }
+
+        _jogging = false;
+        _ = ViewModel.EndJogAsync();
+    }
 
     private void OnCurvePointAdded(object? sender, CurvePoint point)
     {

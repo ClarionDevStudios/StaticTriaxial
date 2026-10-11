@@ -115,6 +115,10 @@ public partial class TestExecutionViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isRunning;
 
+    /// <summary>能不能点动工作台：已联机，且没有在跑试验（免得手动点动和加载抢电机）。</summary>
+    [ObservableProperty]
+    private bool _canJog;
+
     /// <summary>曲线新增了一个点（页面据此重绘）。</summary>
     public event EventHandler<CurvePoint>? CurvePointAdded;
 
@@ -141,6 +145,7 @@ public partial class TestExecutionViewModel : ViewModelBase
             await _device.ConnectAsync();
             ConnectionText = L("Exec.Connected");
             Append($"{L("Exec.Connected")} · {_device.DeviceName}");
+            UpdateCanJog();
         }
         catch (Exception ex)
         {
@@ -148,6 +153,62 @@ public partial class TestExecutionViewModel : ViewModelBase
             Append($"{L("Exec.ConnectFailed")}: {ex.Message}");
         }
     }
+
+    /// <summary>
+    /// 按住"工作台上升"：界面在鼠标按下时调用，松开时调 <see cref="EndJogAsync"/>。
+    /// 走设备契约的 <see cref="ITestDeviceController.JogAsync"/> —— 界面不认识 GR-3 的 C4 方向字。
+    /// </summary>
+    public async Task BeginJogAsync(JogDirection direction)
+    {
+        if (_device is null || !_device.IsConnected)
+        {
+            Append(L("Exec.JogNeedConnect"));
+            return;
+        }
+
+        try
+        {
+            // 点动期间让数值卡跟着动：操作者要"点着看接触"（荷载、位移）。
+            // 先减后加，重复点按也不会把同一处理器挂两遍。
+            _device.SampleReceived -= OnJogSample;
+            _device.SampleReceived += OnJogSample;
+
+            await _device.JogAsync(direction);
+            Append(L(direction == JogDirection.Up ? "Exec.JogUp" : "Exec.JogDown"));
+        }
+        catch (Exception ex)
+        {
+            Append($"{L("Exec.JogFailed")}: {ex.Message}");
+        }
+    }
+
+    /// <summary>松开工作台按钮（或鼠标移出按钮）：停止点动。</summary>
+    public async Task EndJogAsync()
+    {
+        if (_device is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _device.StopAsync();
+            _device.SampleReceived -= OnJogSample;
+            Append(L("Exec.JogStopped"));
+        }
+        catch (Exception ex)
+        {
+            Append($"{L("Exec.JogFailed")}: {ex.Message}");
+        }
+    }
+
+    /// <summary>点动按钮的可用性：联机中、且没在跑试验。</summary>
+    partial void OnIsRunningChanged(bool value) => UpdateCanJog();
+
+    private void UpdateCanJog() => CanJog = !IsRunning && _device?.IsConnected == true;
+
+    /// <summary>点动采样：只刷新数值卡，不画曲线 —— 曲线归试验那一轮。</summary>
+    private void OnJogSample(object? sender, TestSample sample) => UpdateCards(sample);
 
     /// <summary>开始 / 停止一个试件。</summary>
     [RelayCommand]
@@ -338,12 +399,18 @@ public partial class TestExecutionViewModel : ViewModelBase
 
     private void UpdateLiveValues(TestSample sample)
     {
-        SetCard("load", sample.Load, sample.Load);
-        SetCard("displacement", sample.Displacement, sample.Displacement);
-        SetCard("elapsed", sample.ElapsedSeconds, sample.ElapsedSeconds);
+        UpdateCards(sample);
 
         _curve.Add(new CurvePoint(sample.Displacement, sample.Load));
         CurvePointAdded?.Invoke(this, new CurvePoint(sample.Displacement, sample.Load));
+    }
+
+    /// <summary>刷新数值卡（荷载 / 位移 / 时间）；点动与跑试验共用。</summary>
+    private void UpdateCards(TestSample sample)
+    {
+        SetCard("load", sample.Load, sample.Load);
+        SetCard("displacement", sample.Displacement, sample.Displacement);
+        SetCard("elapsed", sample.ElapsedSeconds, sample.ElapsedSeconds);
     }
 
     private void SetCard(string key, double value, double peakCandidate)

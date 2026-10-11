@@ -52,7 +52,7 @@ public sealed class DeviceChainTests
 
         while (seconds <= 30.0 && !finished)
         {
-            var sample = SimulatedDeviceController.SampleAt(seconds, 9.0, 5.0);
+            var sample = SampleCurve.At(seconds, 9.0, 5.0);
             controller.ElapsedSeconds = seconds;
             channel.Feed(
                 Gr3FrameCodec.BuildDatagram(

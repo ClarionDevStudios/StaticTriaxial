@@ -27,6 +27,12 @@ public interface ITestDeviceController
     /// <summary>启动加载。</summary>
     Task StartAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// 点动工作台（手动上升 / 下降）。**按住运行、松开停止**由界面实现：
+    /// 按下时调本方法，松开时调 <see cref="StopAsync"/>。
+    /// </summary>
+    Task JogAsync(JogDirection direction, CancellationToken cancellationToken = default);
+
     /// <summary>停止电机。</summary>
     Task StopAsync(CancellationToken cancellationToken = default);
 

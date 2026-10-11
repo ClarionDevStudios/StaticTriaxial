@@ -15,4 +15,9 @@
     <ProjectReference Include="..\..\src\ANX.Protocol\ANX.Protocol.csproj" />
     <ProjectReference Include="..\..\src\ANX.Communication\ANX.Communication.csproj" />
   </ItemGroup>
+
+  <!-- 模拟器只在 Debug 编译（见 Directory.Build.props），用到它的用例同样只在 Debug 编译 -->
+  <ItemGroup Condition="'$(Configuration)' != 'Debug'">
+    <Compile Remove="Channels\SimulatedDeviceJogTests.cs" />
+  </ItemGroup>
 </Project>

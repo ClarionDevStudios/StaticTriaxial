@@ -146,4 +146,11 @@
   <sys:String x:Key="Method.T0715.Elapsed">试验持续时间</sys:String>
   <sys:String x:Key="Method.T0715.CurveTitle">试件 {0}</sys:String>
   <sys:String x:Key="Exec.PeakFormat">峰值 {0}</sys:String>
+
+  <!-- 工作台点动（按住运行、松开停止） -->
+  <sys:String x:Key="Exec.JogUp">工作台上升中</sys:String>
+  <sys:String x:Key="Exec.JogDown">工作台下降中</sys:String>
+  <sys:String x:Key="Exec.JogStopped">工作台已停止</sys:String>
+  <sys:String x:Key="Exec.JogFailed">点动失败</sys:String>
+  <sys:String x:Key="Exec.JogNeedConnect">还没联机 —— 先点「联机」，再操作工作台</sys:String>
 </ResourceDictionary>

@@ -16,6 +16,8 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
     private readonly double _timeScale;
     private CancellationTokenSource? _cts;
     private Task? _loop;
+    private JogDirection? _jogDirection;
+    private double _jogDisplacementMM;
 
     public SimulatedDeviceController(
         double peakLoadKN = 9.0,
@@ -64,8 +66,20 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// 点动工作台：按当前速度移动、荷载近似为 0（空载）。
+    /// 复用同一套采样循环与停止逻辑，所以界面"按住上升 / 松开停止"在模拟器上也看得到位移在动。
+    /// </summary>
+    public Task JogAsync(JogDirection direction, CancellationToken cancellationToken = default)
+    {
+        _jogDirection = direction;
+        return StartAsync(cancellationToken);
+    }
+
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
+        _jogDirection = null;
+
         if (_cts is not null)
         {
             await _cts.CancelAsync().ConfigureAwait(false);
@@ -92,20 +106,6 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
         _cts?.Dispose();
     }
 
-    /// <summary>
-    /// 纯函数形式的采样曲线（便于测试与回放）：6 秒线性加载到峰值，之后 2 秒内回落 35%
-    /// —— 用来触发阶段机的破坏判定（荷载下降超过阈值并连续确认）。
-    /// </summary>
-    public static TestSample SampleAt(double seconds, double peakLoadKN, double displacementAtPeakMM)
-    {
-        var displacement = displacementAtPeakMM * seconds / 6.0;
-        var load = seconds <= 6.0
-            ? peakLoadKN * seconds / 6.0
-            : peakLoadKN - peakLoadKN * 0.35 * (seconds - 6.0) / 2.0;
-
-        return new TestSample(load, displacement, seconds);
-    }
-
     private async Task RunAsync(CancellationToken token)
     {
         var seconds = 0.0;
@@ -114,7 +114,12 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
         {
             while (!token.IsCancellationRequested)
             {
-                SampleReceived?.Invoke(this, SampleAt(seconds, _peakLoadKN, _displacementAtPeakMM));
+                SampleReceived?.Invoke(
+                    this,
+                    _jogDirection is { } direction
+                        ? JogSample(direction, seconds)
+                        : SampleCurve.At(seconds, _peakLoadKN, _displacementAtPeakMM)
+                );
                 // timeScale 让测试可以加速：每等 _sampleIntervalSeconds，仿真时间前进 _sampleIntervalSeconds × timeScale
                 seconds += _sampleIntervalSeconds * _timeScale;
                 await Task.Delay(TimeSpan.FromSeconds(_sampleIntervalSeconds), token).ConfigureAwait(false);
@@ -124,5 +129,17 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
         {
             // 正常停止
         }
+    }
+
+    /// <summary>点动采样：上升位移增、下降位移减（不越过 0），空载荷载≈0。</summary>
+    private TestSample JogSample(JogDirection direction, double seconds)
+    {
+        var travelMM =
+            SpeedMillimetersPerMinute / 60.0 * _sampleIntervalSeconds * _timeScale;
+
+        _jogDisplacementMM += direction == JogDirection.Up ? travelMM : -travelMM;
+        _jogDisplacementMM = Math.Max(0, _jogDisplacementMM);
+
+        return new TestSample(0.01, _jogDisplacementMM, seconds);
     }
 }

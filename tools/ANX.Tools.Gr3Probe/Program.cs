@@ -5,6 +5,7 @@ using System.Text;
 using ANX.Communication;
 using ANX.Communication.Channels;
 using ANX.Core.Protocol;
+using ANX.Core.Control;
 using ANX.Protocol.Gr3;
 
 /// <summary>
@@ -289,12 +290,12 @@ internal static class Program
         await Task.Delay(Math.Max(800, waitMs));
         ReportStatus("联机后", controller);
 
-        await controller.JogAsync(Gr3Constants.MotorOrderForwardUp);
+        await controller.JogAsync(JogDirection.Up);
         Console.WriteLine("已发 C4H 正转上升");
         await Task.Delay(1000);
         ReportStatus("C4 正转中", controller);
 
-        await controller.JogAsync(Gr3Constants.MotorOrderStop);
+        await controller.StopAsync();
         Console.WriteLine("已发 C4H 停止");
         await Task.Delay(Math.Max(800, waitMs));
         ReportStatus("C4 停止后", controller);
