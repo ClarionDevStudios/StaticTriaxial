@@ -151,8 +151,8 @@ public sealed class DeviceChainTests
         Assert.Equal(0x01, frame[12]);
         Assert.Equal(0xF4, frame[13]);
 
-        // 点动倍率：现役点动 = 试验速率 × 10
-        Assert.Equal(5000, Gr3MotorSpeed.JogToWire(50));
+        // 超上限一律截断：现役的点动倍率（试验速率 × 10）会算出 500mm/min，落在这里就是 500 而不是 5000
+        Assert.Equal(500, Gr3MotorSpeed.ToWire(500));
     }
 
     [Fact]
@@ -161,7 +161,13 @@ public sealed class DeviceChainTests
         Assert.Equal(500, Gr3MotorSpeed.ToWire(50));
         Assert.Equal(100, Gr3MotorSpeed.ToWire(10));
         Assert.Equal(0, Gr3MotorSpeed.ToWire(0));
-        Assert.Equal(ushort.MaxValue, Gr3MotorSpeed.ToWire(100_000));
+        Assert.Equal(0, Gr3MotorSpeed.ToWire(-5));
+
+        // 电机上限 50mm/min：超了伺服会宕机（用户 2026-10-11），所以一律截断到 500
+        Assert.Equal(50.0, Gr3MotorSpeed.MaxMillimetersPerMinute);
+        Assert.Equal(500, Gr3MotorSpeed.ToWire(60));
+        Assert.Equal(500, Gr3MotorSpeed.ToWire(100_000));
+
         Assert.Equal(50.0, Gr3MotorSpeed.FromWire(500), 6);
     }
 

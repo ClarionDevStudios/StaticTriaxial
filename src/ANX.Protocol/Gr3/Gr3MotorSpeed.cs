@@ -13,13 +13,25 @@ namespace ANX.Protocol.Gr3;
 /// </remarks>
 public static class Gr3MotorSpeed
 {
+    /// <summary>
+    /// 电机最高速率（mm/min）—— **硬上限，超了伺服会宕机**（用户 2026-10-11 明确）。
+    /// 各试验速率、点动速率都不得超过它；<see cref="ToWire"/> 会静默截断到这里，
+    /// 免得某处参数写错就把伺服打停。
+    /// </summary>
+    /// <remarks>
+    /// 现场实测（2026-10-11）：按 ×10 换算出 200 mm/min 的字段值下发后，工作台**完全不动** ——
+    /// 与"超速触发伺服保护"一致。T 0715 弯曲的试验速率 50mm/min 正好等于本上限，属合法值。
+    /// </remarks>
+    public const double MaxMillimetersPerMinute = 50.0;
+
     /// <summary>1 mm/min 对应多少个「速度字段」单位（现役值 10 → 一个单位 = 0.1 mm/min）。</summary>
     public const double UnitsPerMillimeterPerMinute = 10.0;
 
-    /// <summary>手动点动的加速倍率：现役点动 = 试验速率 × 本倍率（"快速调整试样位置"）。</summary>
-    public const double JogMultiplier = 10.0;
-
-    /// <summary>速率(mm/min) → C4/C5 速度字段值（Uint16，超上限截断）。</summary>
+    /// <summary>
+    /// 速率(mm/min) → C4/C5 速度字段值（Uint16）。
+    /// 输入先按 <see cref="MaxMillimetersPerMinute"/> 截断（≤0 记 0），再乘
+    /// <see cref="UnitsPerMillimeterPerMinute"/>；字段本身还有 Uint16 上限。
+    /// </summary>
     public static ushort ToWire(double millimetersPerMinute)
     {
         if (millimetersPerMinute <= 0)
@@ -27,14 +39,12 @@ public static class Gr3MotorSpeed
             return 0;
         }
 
-        var value = Math.Round(millimetersPerMinute * UnitsPerMillimeterPerMinute);
+        var clamped = Math.Min(millimetersPerMinute, MaxMillimetersPerMinute);
+        var value = Math.Round(clamped * UnitsPerMillimeterPerMinute);
         return value >= ushort.MaxValue ? ushort.MaxValue : (ushort)value;
     }
 
     /// <summary>速度字段值 → 速率(mm/min)（用于显示 / 核对 / 标定）。</summary>
     public static double FromWire(ushort wireValue) => wireValue / UnitsPerMillimeterPerMinute;
 
-    /// <summary>手动点动速率：试验速率 × <see cref="JogMultiplier"/> → 速度字段值。</summary>
-    public static ushort JogToWire(double testSpeedMillimetersPerMinute) =>
-        ToWire(testSpeedMillimetersPerMinute * JogMultiplier);
 }

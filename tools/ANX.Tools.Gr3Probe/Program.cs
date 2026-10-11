@@ -361,8 +361,8 @@ internal static class Program
         var steps = new (double MmPerMin, double Seconds)[]
         {
             (5.0, 6.0),
+            (20.0, 3.0),
             (50.0, 1.5),
-            (200.0, 0.6),
         };
 
         Console.WriteLine("=== 速率标定（会真的动工作台：请空载、上下留行程余量）===");
@@ -370,6 +370,10 @@ internal static class Program
         Console.WriteLine(
             $"换算假设：下发值 = 速率 × {Gr3MotorSpeed.UnitsPerMillimeterPerMinute:0.#}"
                 + $"（1 单位 = {1 / Gr3MotorSpeed.UnitsPerMillimeterPerMinute:0.###} mm/min，现役值）"
+        );
+        Console.WriteLine(
+            $"⚠ 电机上限 {Gr3MotorSpeed.MaxMillimetersPerMinute:0.#} mm/min，超过会让伺服宕机；"
+                + "ToWire 会截断到上限，所以本模式不会超速。"
         );
         Console.WriteLine();
 

@@ -154,8 +154,9 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
 
     /// <summary>
     /// 手动点动（工作台上升 / 下降按钮）用的速率，mm/min。
-    /// **与现役的差异（待用户定）**：现役点动 = 试验速率 × 10 倍率（弯曲 50mm/min 参数 → 500mm/min 点动，
-    /// 注释写明"刻意加速，快速调整试样位置"）；我们先保守地固定 50mm/min，等真机确认行程余量后再对齐。
+    /// 默认 50mm/min = 电机上限（见 <see cref="Gr3MotorSpeed.MaxMillimetersPerMinute"/>）。
+    /// **不照搬现役的点动倍率**：现役点动 = 试验速率 × 10（弯曲 50mm/min 参数 → 500mm/min），
+    /// 超过 50mm/min 的硬上限会让伺服宕机，所以这里固定在上限内。
     /// </summary>
     public double JogSpeedMillimetersPerMinute { get; set; } = 50.0;
 
