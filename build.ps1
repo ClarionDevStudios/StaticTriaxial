@@ -14,6 +14,13 @@ param(
 $ErrorActionPreference = 'Stop'
 $env:DOTNET_CLI_HOME = 'E:\AiStudy\CodeX\.dotnetcli'
 
+# 关掉 MSBuild 的「节点复用」。
+# 默认行为是构建结束后 worker 节点留在后台等下一次构建（空闲 15 分钟才自退），
+# 实测连跑几次 build/test 就攒下 19 个 MSBuild + 1 个 VBCSCompiler、合计约 1.9 GB 内存，
+# 而且它们会一直占着输出 DLL，导致应用在运行中时构建失败（MSB3021/MSB3027）。
+# 关掉之后：构建结束即刻回收，代价是每次多花一点启动开销。
+$env:MSBUILDDISABLENODEREUSE = '1'
+
 Write-Host "DOTNET_CLI_HOME = $env:DOTNET_CLI_HOME"
 dotnet build "$PSScriptRoot\ANX.slnx" -m:1 -c $Configuration --nologo
 exit $LASTEXITCODE
