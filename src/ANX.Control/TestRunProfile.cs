@@ -22,10 +22,11 @@ public sealed record TestRunProfile
     public double MaxDisplacementMM { get; init; } = 50.0;
 
     /// <summary>
-    /// 位移闸门的安全系数：闸门取设备量程的这个比例。
-    /// **顶到量程末端会压坏位移传感器**（用户 2026-10-11 明确，现场量程 25.000mm），所以留 5% 余量。
+    /// 位移闸门的安全系数：闸门取设备量程的这个比例（默认 0.95，即留 5% 余量）。
+    /// **顶到量程末端会压坏位移传感器**（用户 2026-10-11 明确，现场量程 25.000mm），所以要留余量；
+    /// 系数由方法从**参数表**给出（用户 2026-10-12 要求可调），取值被夹在 0.1~1.0（>1 就等于放开保护）。
     /// </summary>
-    public const double DisplacementRangeSafetyFactor = 0.95;
+    public double DisplacementRangeSafetyFactor { get; init; } = 0.95;
 
     /// <summary>
     /// 把位移闸门收敛到设备量程的安全范围内。`deviceRangeMillimeters` 为 null（设备不上报）时原样返回。
@@ -36,7 +37,7 @@ public sealed record TestRunProfile
     {
         var limit =
             deviceRangeMillimeters is { } range && range > 0
-                ? range * DisplacementRangeSafetyFactor
+                ? range * Math.Clamp(DisplacementRangeSafetyFactor, 0.1, 1.0)
                 : double.PositiveInfinity;
 
         return MaxDisplacementMM <= limit ? this : this with { MaxDisplacementMM = limit };

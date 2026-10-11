@@ -31,6 +31,12 @@ public sealed class BendingParameters(ParameterStore store) : ITestParameters
     /// <summary>破坏确认连续帧数。</summary>
     public const string BreakConfirmKey = "BreakConfirmSamples";
 
+    /// <summary>
+    /// 位移闸门安全系数（×设备量程）。默认 0.95 —— 顶过位移传感器量程会压坏传感器
+    ///（用户 2026-10-11 明确；现场量程 25.000mm），2026-10-12 要求做成现场可调。
+    /// </summary>
+    public const string DisplacementSafetyFactorKey = "DisplacementSafetyFactor";
+
     /// <summary>试件尺寸类参数（试样编辑页只显示这些）。</summary>
     public static readonly string[] SampleKeys = [SpanLengthKey, SampleWidthKey, SampleHeightKey];
 
@@ -41,6 +47,7 @@ public sealed class BendingParameters(ParameterStore store) : ITestParameters
         ContactLoadKey,
         BreakDropKey,
         BreakConfirmKey,
+        DisplacementSafetyFactorKey,
     ];
 
     public string MethodCode => "T0715";
@@ -54,6 +61,7 @@ public sealed class BendingParameters(ParameterStore store) : ITestParameters
         new(ContactLoadKey, "接触判定阈值", "kN", "0.05"),
         new(BreakDropKey, "破坏判据（荷载下降量）", "kN", "0.3"),
         new(BreakConfirmKey, "破坏确认帧数", "帧", "3"),
+        new(DisplacementSafetyFactorKey, "位移闸门安全系数（×设备量程）", "×", "0.95"),
     ];
 
     public Task<IReadOnlyDictionary<string, string>> LoadAsync(

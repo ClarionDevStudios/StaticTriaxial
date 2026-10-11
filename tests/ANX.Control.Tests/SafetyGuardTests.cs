@@ -27,7 +27,23 @@ public sealed class SafetyGuardTests
         // 设备量程非法（<=0）→ 原样，避免把闸门算成 0 或负数
         Assert.Equal(50.0, profile.ClampDisplacementToDeviceRange(0).MaxDisplacementMM);
 
-        Assert.Equal(0.95, TestRunProfile.DisplacementRangeSafetyFactor);
+        Assert.Equal(0.95, new TestRunProfile().DisplacementRangeSafetyFactor);
+    }
+
+    [Fact]
+    public void 位移闸门安全系数可由参数给出并夹在安全区间()
+    {
+        // 现场把系数调成 0.8 → 25 × 0.8 = 20
+        var tighter = new TestRunProfile { MaxDisplacementMM = 50.0, DisplacementRangeSafetyFactor = 0.8 };
+        Assert.Equal(20.0, tighter.ClampDisplacementToDeviceRange(25.0).MaxDisplacementMM, 6);
+
+        // 系数 >1 等于放开保护：夹到 1.0（闸门最多等于量程）
+        var loosened = new TestRunProfile { MaxDisplacementMM = 50.0, DisplacementRangeSafetyFactor = 1.5 };
+        Assert.Equal(25.0, loosened.ClampDisplacementToDeviceRange(25.0).MaxDisplacementMM, 6);
+
+        // 系数 <=0 会算出 0 或负数（等于一开就跑不动）：夹到 0.1
+        var broken = new TestRunProfile { MaxDisplacementMM = 50.0, DisplacementRangeSafetyFactor = 0 };
+        Assert.Equal(2.5, broken.ClampDisplacementToDeviceRange(25.0).MaxDisplacementMM, 6);
     }
 
     [Fact]

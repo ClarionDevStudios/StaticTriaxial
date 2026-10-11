@@ -37,11 +37,12 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
         ResetSeconds = 5.0,
         LoadRateMillimetersPerMinute = 50.0,
         ApproachSpeedMillimetersPerMinute = 10.0,
+        DisplacementRangeSafetyFactor = 0.95,
     };
 
     /// <summary>
-    /// 按参数表装配运行参数：接触阈值 / 破坏判据 / 确认帧数 / 加载速率都取存下来的值
-    /// （没存过就用参数定义的默认值）。量程与超时仍用本方法的常量。
+    /// 按参数表装配运行参数：接触阈值 / 破坏判据 / 确认帧数 / 加载速率 / 位移闸门安全系数
+    /// 都取存下来的值（没存过就用参数定义的默认值）。荷载量程与超时仍用本方法的常量。
     /// </summary>
     public async Task<TestRunProfile> LoadProfileAsync(CancellationToken cancellationToken = default)
     {
@@ -61,6 +62,10 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
             LoadRateMillimetersPerMinute = parameters.GetDouble(
                 values,
                 BendingParameters.LoadRateKey
+            ),
+            DisplacementRangeSafetyFactor = parameters.GetDouble(
+                values,
+                BendingParameters.DisplacementSafetyFactorKey
             ),
         };
     }

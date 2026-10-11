@@ -33,7 +33,7 @@ public sealed class BendingParametersTests : IDisposable
         var parameters = CreateParameters();
 
         Assert.Equal(3, parameters.Definitions.Count(d => d.Group == ParameterGroup.Sample));
-        Assert.Equal(4, parameters.Definitions.Count(d => d.Group == ParameterGroup.Machine));
+        Assert.Equal(5, parameters.Definitions.Count(d => d.Group == ParameterGroup.Machine));
 
         var values = await parameters.LoadAsync();
         Assert.Equal("200", values[BendingParameters.SpanLengthKey]);
@@ -96,6 +96,49 @@ public sealed class BendingParametersTests : IDisposable
         var rows = sheets.ReadDetailRows(sheetId, ["SampleID", "SampleHeight"]);
         Assert.Equal(2, rows.Count);
         Assert.Equal(40, Convert.ToDouble(rows[1]["SampleHeight"]));
+    }
+
+    /// <summary>
+    /// 位移闸门安全系数进了参数表（用户 2026-10-12 要求现场可调）：默认 0.95、
+    /// 归在机器参数组（参数配置页可见）、能装配进运行参数并驱动位移闸门。
+    /// </summary>
+    [Fact]
+    public async Task 位移闸门安全系数应可从参数表调整()
+    {
+        var module = new BendingPersistenceModule();
+        var initializer = new DatabaseInitializer(
+            new StorageOptions(Path.Combine(_directory, "anx.db")),
+            [module]
+        );
+        initializer.Initialize();
+        var parameters = new BendingParameters(new ParameterStore(initializer));
+        var execution = new BendingExecution(
+            new TestSheetService(initializer, new SheetNumberGenerator(initializer), [module]),
+            parameters
+        );
+
+        // 默认 0.95，且归入机器参数（参数配置页）
+        var definition = parameters.Definitions.First(d =>
+            string.Equals(d.Key, BendingParameters.DisplacementSafetyFactorKey, StringComparison.Ordinal)
+        );
+        Assert.Equal("0.95", definition.DefaultValue);
+        Assert.Contains(BendingParameters.DisplacementSafetyFactorKey, BendingParameters.MachineKeys);
+        Assert.DoesNotContain(BendingParameters.DisplacementSafetyFactorKey, BendingParameters.SampleKeys);
+
+        var byDefault = await execution.LoadProfileAsync();
+        Assert.Equal(0.95, byDefault.DisplacementRangeSafetyFactor, 6);
+
+        // 现场改成 0.8 → 装配出来的运行参数跟着变，25mm 量程算出 20mm 闸门
+        await parameters.SaveAsync(
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [BendingParameters.DisplacementSafetyFactorKey] = "0.8",
+            }
+        );
+
+        var adjusted = await execution.LoadProfileAsync();
+        Assert.Equal(0.8, adjusted.DisplacementRangeSafetyFactor, 6);
+        Assert.Equal(20.0, adjusted.ClampDisplacementToDeviceRange(25.0).MaxDisplacementMM, 6);
     }
 
     private BendingParameters CreateParameters()
