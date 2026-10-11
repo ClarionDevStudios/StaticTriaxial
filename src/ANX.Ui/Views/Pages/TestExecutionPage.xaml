@@ -15,58 +15,14 @@
   <Grid Margin="16,12,16,12">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
-      <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
-
-    <!-- ① 顶部按钮条（照现役：标题栏右侧一排按钮） -->
-    <!-- 顶部按钮：两组各两个、组内上下排列，两组整体靠右（右边缘对齐） -->
-    <Grid Grid.Row="0" HorizontalAlignment="Right">
+    <!-- ① 实时数据区：指标卡 + 工作台按钮 + 两组功能按钮（照现役布局） -->
+    <Grid Grid.Row="0">
       <Grid.ColumnDefinitions>
+        <!-- 卡片按内容取宽；工作台按钮紧贴其右；再右是两组功能按钮；剩余宽度留给下面的曲线图 -->
         <ColumnDefinition Width="Auto" />
-        <ColumnDefinition Width="Auto" />
-      </Grid.ColumnDefinitions>
-
-      <!-- 第一组：新建试验 / 试验参数 -->
-      <StackPanel Grid.Column="0" VerticalAlignment="Top">
-        <ui:Button
-          MinWidth="96"
-          Appearance="Secondary"
-          Command="{Binding ViewModel.OpenSheetSelectionCommand}"
-          Content="{DynamicResource Exec.NewSheet}"
-        />
-        <ui:Button
-          MinWidth="96"
-          Margin="0,6,0,0"
-          Appearance="Secondary"
-          Command="{Binding ViewModel.OpenMachineSettingsCommand}"
-          Content="{DynamicResource Exec.TestParams}"
-        />
-      </StackPanel>
-
-      <!-- 第二组：打印报表 / 历史数据 -->
-      <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Top">
-        <ui:Button
-          MinWidth="96"
-          Appearance="Secondary"
-          Command="{Binding ViewModel.PrintReportCommand}"
-          Content="{DynamicResource Exec.Print}"
-        />
-        <ui:Button
-          MinWidth="96"
-          Margin="0,6,0,0"
-          Appearance="Secondary"
-          Command="{Binding ViewModel.OpenHistoryCommand}"
-          Content="{DynamicResource Exec.History}"
-        />
-      </StackPanel>
-    </Grid>
-
-    <!-- ② 实时数据区：指标卡 + 工作台按钮（照现役布局） -->
-    <Grid Grid.Row="1" Margin="0,12,0,0">
-      <Grid.ColumnDefinitions>
-        <!-- 卡片列按内容取宽（原来是 *，会撑满整行），按钮紧贴其右侧，剩余宽度留给下面的曲线图 -->
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="*" />
@@ -145,10 +101,54 @@
           VerticalAlignment="Stretch"
         />
       </StackPanel>
+
+      <!--
+        两组功能按钮，放在工作台按钮右侧：组内上下排列，两组左右并排（组内按钮等宽、两组右边缘对齐）。
+      -->
+      <Grid Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Top">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <!-- 第一组：新建试验 / 试验参数 -->
+        <StackPanel Grid.Column="0">
+          <ui:Button
+            MinWidth="96"
+            Appearance="Secondary"
+            Command="{Binding ViewModel.OpenSheetSelectionCommand}"
+            Content="{DynamicResource Exec.NewSheet}"
+          />
+          <ui:Button
+            MinWidth="96"
+            Margin="0,6,0,0"
+            Appearance="Secondary"
+            Command="{Binding ViewModel.OpenMachineSettingsCommand}"
+            Content="{DynamicResource Exec.TestParams}"
+          />
+        </StackPanel>
+
+        <!-- 第二组：打印报表 / 历史数据 -->
+        <StackPanel Grid.Column="1" Margin="8,0,0,0">
+          <ui:Button
+            MinWidth="96"
+            Appearance="Secondary"
+            Command="{Binding ViewModel.PrintReportCommand}"
+            Content="{DynamicResource Exec.Print}"
+          />
+          <ui:Button
+            MinWidth="96"
+            Margin="0,6,0,0"
+            Appearance="Secondary"
+            Command="{Binding ViewModel.OpenHistoryCommand}"
+            Content="{DynamicResource Exec.History}"
+          />
+        </StackPanel>
+      </Grid>
     </Grid>
 
     <!-- ③ 三栏：左（试样与操作）/ 中（曲线）/ 右（状态与日志） -->
-    <Grid Grid.Row="2" Margin="0,12,0,0">
+    <Grid Grid.Row="1" Margin="0,12,0,0">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="300" />
         <ColumnDefinition Width="*" />
@@ -250,7 +250,7 @@
     </Grid>
 
     <!-- ④ 底部状态栏：左边连接状态，右侧数据流按钮 -->
-    <Grid Grid.Row="3" Margin="0,10,0,0">
+    <Grid Grid.Row="2" Margin="0,10,0,0">
       <StackPanel HorizontalAlignment="Left" Orientation="Horizontal">
         <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource Exec.Connection}" />
         <TextBlock
