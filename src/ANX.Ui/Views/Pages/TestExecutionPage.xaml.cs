@@ -35,6 +35,10 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
         themeService.ThemeChanged += (_, themeName) => ApplyChartStyle(themeName);
         localizationService.LanguageChanged += (_, _) => ApplyChartStyle(_theme.CurrentTheme);
 
+        // 本页不在前台时切了语言/主题，控件不会重绘（WpfPlot 留着旧位图）——
+        // 每次重新显示都重刷一次，免得回来看到的是旧字。
+        Loaded += (_, _) => ApplyChartStyle(_theme.CurrentTheme);
+
         ApplyChartStyle(_theme.CurrentTheme);
     }
 

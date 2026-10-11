@@ -24,7 +24,7 @@ public static class CurveChartTheme
     private const string LightFigureFallback = "#FFFFFF";
     private const string LightDataFallback = "#FAFAFA";
 
-    private static bool _fontConfigured;
+    private static string? _chineseFont;
 
     /// <summary>
     /// 用一段中文样本让 ScottPlot 自己挑一款系统字体 —— 比写死"微软雅黑"稳：
@@ -32,16 +32,7 @@ public static class CurveChartTheme
     /// 离屏报表渲染器（`ANX.Reporting.CurveImageRenderer`）用的是同一手法；两边各持一份，
     /// 是为了不让 Ui 去依赖 Reporting。
     /// </summary>
-    public static void EnsureChineseFont()
-    {
-        if (_fontConfigured)
-        {
-            return;
-        }
-
-        Fonts.Default = Fonts.Detect("跨中挠度 荷载 试件 试验");
-        _fontConfigured = true;
-    }
+    public static void EnsureChineseFont() => Fonts.Default = ChineseFontName();
 
     /// <summary>把当前主题的配色应用到图上，并把中文字体准备好。</summary>
     public static void Apply(WpfPlot plot, string themeName)
@@ -53,25 +44,27 @@ public static class CurveChartTheme
         var dark = !string.Equals(themeName, "Light", StringComparison.OrdinalIgnoreCase);
         var style = plot.Plot.GetStyle();
 
-        // 图背景 / 数据区：优先用卡片背景，退到窗口背景，最后才是兜底色
+        // 图背景 / 数据区：只用**不透明**的主题底色。
+        // 注意别用 WinUI 的"卡片填充色"（CardBackgroundFillColorDefault 之类）—— 那是半透明白，
+        // 当成不透明色会让深色主题下出现一整块白底（TryResolve 现在会跳过半透明画刷）。
         var figure = Resolve(
             ["ApplicationBackgroundBrush", "SolidBackgroundFillColorBaseBrush"],
             dark ? DarkFigureFallback : LightFigureFallback
         );
         var data = Resolve(
-            ["CardBackgroundFillColorDefaultBrush", "ControlFillColorDefaultBrush", "ApplicationBackgroundBrush"],
+            ["SolidBackgroundFillColorBaseBrush", "LayerFillColorDefaultBrush", "ApplicationBackgroundBrush"],
             dark ? DarkDataFallback : LightDataFallback
         );
 
         style.FigureBackgroundColor = figure;
         style.DataBackgroundColor = data;
 
-        // 坐标轴线与刻度文字、网格、图例：主题里没有就保持 ScottPlot 原值（不硬编码）
-        var axis = TryResolve("TextFillColorSecondaryBrush");
-        if (axis is not null)
+        // 文字色用**不透明**的主题文字画刷：WPF-UI 的次级文字色是半透明白，直接用会按不透明处理成黑。
+        var textColor =
+            TryResolve("TextFillColorPrimaryBrush") ?? TryResolve("TextFillColorSecondaryBrush");
+        if (textColor is not null)
         {
-            style.AxisColor = axis;
-            plot.Plot.Axes.Color(axis.Value);
+            style.AxisColor = textColor;
         }
 
         var grid = TryResolve("ControlStrokeColorDefaultBrush");
@@ -91,10 +84,56 @@ public static class CurveChartTheme
         style.LegendBackgroundColor = data;
 
         plot.Plot.SetStyle(style);
+
+        // 字体与字色必须**在 SetStyle 之后**装：SetStyle 会按样式把轴标签的字色刷回默认值
+        // （实测：先设红再 SetStyle，最终字色是黑）。
+        if (textColor is not null)
+        {
+            plot.Plot.Axes.Color(textColor.Value);
+        }
+
+        ApplyAxisText(plot.Plot, ChineseFontName(), textColor);
         plot.Refresh();
     }
 
     /// <summary>按候选键顺序取第一个能解析出来的主题颜色；全都没有就用兜底色。</summary>
+    private static string ChineseFontName() =>
+        _chineseFont ??= Fonts.Detect("跨中挠度 荷载 试件 试验");
+
+    /// <summary>
+    /// 把字体与字色装到图上所有会显示文字的标签（四轴刻度 + 轴名 + 标题 + 图例）。
+    /// 两件事必须显式做，否则中文变方框 / 字色不对：
+    /// ① 光设 <c>Fonts.Default</c> 不够 —— WpfPlot 在 `InitializeComponent` 时就建好了这些标签对象，
+    /// 之后改静态默认值不会回头生效；
+    /// ② <c>Axes.Color(...)</c> 只管刻度文字，**不管轴名**，轴名得单独给字色。
+    /// </summary>
+    private static void ApplyAxisText(Plot plot, string fontName, Color? textColor)
+    {
+        ApplyAxisText(plot.Axes.Bottom, fontName, textColor);
+        ApplyAxisText(plot.Axes.Left, fontName, textColor);
+        ApplyAxisText(plot.Axes.Top, fontName, textColor);
+        ApplyAxisText(plot.Axes.Right, fontName, textColor);
+
+        ApplyLabelText(plot.Axes.Title.Label, fontName, textColor);
+        plot.Legend.FontName = fontName;
+    }
+
+    private static void ApplyAxisText(IAxis axis, string fontName, Color? textColor)
+    {
+        ApplyLabelText(axis.TickLabelStyle, fontName, textColor);
+        ApplyLabelText(axis.Label, fontName, textColor);
+    }
+
+    private static void ApplyLabelText(LabelStyle label, string fontName, Color? textColor)
+    {
+        label.FontName = fontName;
+
+        if (textColor is not null)
+        {
+            label.ForeColor = textColor.Value;
+        }
+    }
+
     private static Color Resolve(string[] brushKeys, string fallbackHex)
     {
         foreach (var key in brushKeys)
@@ -115,7 +154,11 @@ public static class CurveChartTheme
     /// </summary>
     private static Color? TryResolve(string brushKey)
     {
-        if (System.Windows.Application.Current?.TryFindResource(brushKey) is WpfSolidColorBrush brush)
+        // 半透明画刷直接当"取不到"：曲线图的底色不能用半透明色
+        if (
+            System.Windows.Application.Current?.TryFindResource(brushKey) is WpfSolidColorBrush brush
+            && brush.Color.A == 0xFF
+        )
         {
             return Color.FromHex($"#{brush.Color.R:X2}{brush.Color.G:X2}{brush.Color.B:X2}");
         }

@@ -28,6 +28,9 @@ public partial class HistoryPage : INavigableView<HistoryViewModel>
         themeService.ThemeChanged += (_, themeName) => ApplyChartStyle(themeName);
         localizationService.LanguageChanged += (_, _) => ApplyChartStyle(_theme.CurrentTheme);
 
+        // 同上（原因见 TestExecutionPage）：重新显示时重刷一次
+        Loaded += (_, _) => ApplyChartStyle(_theme.CurrentTheme);
+
         ApplyChartStyle(_theme.CurrentTheme);
     }
 
