@@ -35,9 +35,33 @@ public partial class ShellViewModel : ViewModelBase
         [
             new NavigationViewItem
             {
+                Content = L("Nav.Sheet"),
+                Icon = new SymbolIcon { Symbol = SymbolRegular.DocumentTable24 },
+                TargetPageType = typeof(Views.Pages.SheetSelectionPage),
+            },
+            new NavigationViewItem
+            {
                 Content = L("Nav.Execution"),
                 Icon = new SymbolIcon { Symbol = SymbolRegular.Beaker24 },
                 TargetPageType = typeof(Views.Pages.TestExecutionPage),
+            },
+            new NavigationViewItem
+            {
+                Content = L("Nav.History"),
+                Icon = new SymbolIcon { Symbol = SymbolRegular.History24 },
+                TargetPageType = typeof(Views.Pages.HistoryPage),
+            },
+            new NavigationViewItem
+            {
+                Content = L("Nav.SampleEditor"),
+                Icon = new SymbolIcon { Symbol = SymbolRegular.Ruler24 },
+                TargetPageType = typeof(Views.Pages.SampleEditorPage),
+            },
+            new NavigationViewItem
+            {
+                Content = L("Nav.Machine"),
+                Icon = new SymbolIcon { Symbol = SymbolRegular.SettingsCogMultiple24 },
+                TargetPageType = typeof(Views.Pages.MachineSettingsPage),
             },
             new NavigationViewItem
             {

@@ -11,4 +11,8 @@ internal static class AppPaths
     /// <summary>数据库：程序目录下的 Bins\Data\anx.db（沿用现役的 Bins\ 产物约定）。</summary>
     public static string ResolveDatabasePath() =>
         Path.Combine(AppContext.BaseDirectory, "Bins", "Data", "anx.db");
+
+    /// <summary>报表与曲线图产物根：程序目录下的 Bins\Report（沿用现役约定）。</summary>
+    public static string ResolveReportRoot() =>
+        Path.Combine(AppContext.BaseDirectory, "Bins", "Report");
 }

@@ -16,8 +16,11 @@ public static class SchemaBuilder
     /// <summary>框架自有表：单号流水（前缀 + 日期 → 当天已用到的流水号）。</summary>
     public const string SheetSequenceTable = "SheetSequence";
 
+    /// <summary>框架自有表：方法参数（方法代号 + 参数键 → 参数值）。</summary>
+    public const string ParameterTable = "TestParameterConfig";
+
     /// <summary>建库时写入的架构版本；对不上就报错提示"备份后重建"，不做迁移。</summary>
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     /// <summary>框架自有表的建表 SQL（幂等）。</summary>
     public static IEnumerable<string> BuildFrameworkTables()
@@ -34,6 +37,16 @@ public static class SchemaBuilder
                 SheetDate    TEXT    NOT NULL,
                 LastSequence INTEGER NOT NULL,
                 PRIMARY KEY (Prefix, SheetDate)
+            );
+            """;
+
+        // 参数集中配置：方法代号 + 参数键 → 参数值（键值对，不给每个参数建强类型列）
+        yield return $"""
+            CREATE TABLE IF NOT EXISTS {ParameterTable} (
+                MethodCode TEXT NOT NULL,
+                ParamKey   TEXT NOT NULL,
+                ParamValue TEXT,
+                PRIMARY KEY (MethodCode, ParamKey)
             );
             """;
     }

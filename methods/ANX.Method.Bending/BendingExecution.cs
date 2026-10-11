@@ -8,7 +8,8 @@ using ANX.Storage;
 /// T 0715 的执行实现：把界面要的能力（建单 / 判定一个试件 / 收尾一组）接到
 /// 已有的判定器与存储上。界面只认 <see cref="ITestExecution"/>。
 /// </summary>
-public sealed class BendingExecution(TestSheetService sheets) : ITestExecution
+public sealed class BendingExecution(TestSheetService sheets, BendingParameters? parameters = null)
+    : ITestExecution
 {
     private readonly Dictionary<string, List<BendingSampleResult>> _resultsBySheet = new(StringComparer.Ordinal);
 
@@ -48,6 +49,23 @@ public sealed class BendingExecution(TestSheetService sheets) : ITestExecution
         CancellationToken cancellationToken = default
     ) => sheets.CreateAsync(MethodCode, projectName, numberPrefix, cancellationToken);
 
+    /// <summary>下一个试件号 = 现有明细里最大的数字号 + 1（没有则 1）。</summary>
+    public Task<string> NextSampleIdAsync(string sheetId, CancellationToken cancellationToken = default)
+    {
+        var rows = sheets.ReadDetailRows(sheetId, ["SampleID"]);
+        var max = 0;
+        foreach (var row in rows)
+        {
+            var text = Convert.ToString(row["SampleID"], System.Globalization.CultureInfo.InvariantCulture);
+            if (int.TryParse(text, out var value) && value > max)
+            {
+                max = value;
+            }
+        }
+
+        return Task.FromResult((max + 1).ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
     public async Task<IReadOnlyDictionary<string, double>?> CompleteSampleAsync(
         string sheetId,
         string sampleId,
@@ -60,8 +78,15 @@ public sealed class BendingExecution(TestSheetService sheets) : ITestExecution
             return null;
         }
 
-        // 试件尺寸先按规范表 T 0715-1 的常用规格；接界面参数页时改为从试验单读
-        var result = BendingAnalyzer.Analyze(curve, 200, 30, 35);
+        // 试件尺寸与跨径从参数配置里读（试样编辑页可改），不再硬编码
+        var values = parameters is null
+            ? null
+            : await parameters.LoadAsync(cancellationToken).ConfigureAwait(false);
+        var span = values is null ? 200.0 : parameters!.GetDouble(values, BendingParameters.SpanLengthKey);
+        var width = values is null ? 30.0 : parameters!.GetDouble(values, BendingParameters.SampleWidthKey);
+        var height = values is null ? 35.0 : parameters!.GetDouble(values, BendingParameters.SampleHeightKey);
+
+        var result = BendingAnalyzer.Analyze(curve, span, width, height);
 
         await sheets
             .AppendSampleAsync(
@@ -70,8 +95,8 @@ public sealed class BendingExecution(TestSheetService sheets) : ITestExecution
                 curve,
                 new Dictionary<string, double>(StringComparer.Ordinal)
                 {
-                    ["SampleWidth"] = 30,
-                    ["SampleHeight"] = 35,
+                    ["SampleWidth"] = width,
+                    ["SampleHeight"] = height,
                     ["PeakLoadValue"] = result.PeakLoadKN,
                     ["PeakDeflection"] = result.PeakDeflectionMM,
                     ["OriginCorrection"] = result.OriginCorrectionMM,

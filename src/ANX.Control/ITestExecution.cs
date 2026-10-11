@@ -38,6 +38,9 @@ public interface ITestExecution
     /// <summary>建一张新试验单，返回单号。</summary>
     Task<string> CreateSheetAsync(string projectName, string numberPrefix, CancellationToken cancellationToken = default);
 
+    /// <summary>取该试验单下一个可用的试件号（避免在已有单上跑新试件时覆盖旧数据）。</summary>
+    Task<string> NextSampleIdAsync(string sheetId, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// 一个试件跑完：用曲线做判定并落库。
     /// </summary>

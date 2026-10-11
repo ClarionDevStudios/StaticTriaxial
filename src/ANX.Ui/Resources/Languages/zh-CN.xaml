@@ -74,4 +74,47 @@
   <sys:String x:Key="Exec.WorktableUp">工作台上升</sys:String>
   <sys:String x:Key="Exec.WorktableDown">工作台下降</sys:String>
   <sys:String x:Key="Exec.ToDo">待做</sys:String>
+
+  <sys:String x:Key="Nav.History">历史数据</sys:String>
+  <sys:String x:Key="History.Keyword">关键字</sys:String>
+  <sys:String x:Key="History.Query">查询</sys:String>
+  <sys:String x:Key="History.Export">导出报表（中文）</sys:String>
+  <sys:String x:Key="History.ExportEn">导出报表（英文）</sys:String>
+  <sys:String x:Key="History.Ready">就绪</sys:String>
+  <sys:String x:Key="History.Found">找到</sys:String>
+  <sys:String x:Key="History.SheetsUnit">张试验单</sys:String>
+  <sys:String x:Key="History.SelectSheetFirst">请先选中一张试验单</sys:String>
+  <sys:String x:Key="History.Exported">已导出</sys:String>
+  <sys:String x:Key="History.ExportFailed">导出失败</sys:String>
+  <sys:String x:Key="History.ColSheetId">试验单号</sys:String>
+  <sys:String x:Key="History.ColProject">项目名称</sys:String>
+  <sys:String x:Key="History.ColDate">日期</sys:String>
+  <sys:String x:Key="History.ColSamples">试件数</sys:String>
+  <sys:String x:Key="History.Samples">试件</sys:String>
+  <sys:String x:Key="History.Fields">试件字段</sys:String>
+
+  <sys:String x:Key="Nav.Sheet">试验单</sys:String>
+  <sys:String x:Key="Sheet.New">新建试验单</sys:String>
+  <sys:String x:Key="Sheet.Existing">选择已有试验单</sys:String>
+  <sys:String x:Key="Sheet.Project">项目名称</sys:String>
+  <sys:String x:Key="Sheet.Prefix">单号前缀</sys:String>
+  <sys:String x:Key="Sheet.Confirm">确定</sys:String>
+  <sys:String x:Key="Sheet.Cancel">取消</sys:String>
+  <sys:String x:Key="Sheet.Ready">就绪</sys:String>
+  <sys:String x:Key="Sheet.LoadExisting">刷新列表</sys:String>
+  <sys:String x:Key="Sheet.Loaded">已加载</sys:String>
+  <sys:String x:Key="Sheet.Created">已新建</sys:String>
+  <sys:String x:Key="Sheet.Selected">已选定</sys:String>
+  <sys:String x:Key="Sheet.SelectFirst">请先选择一张试验单</sys:String>
+  <sys:String x:Key="Exec.SheetSelected">已采用试验单</sys:String>
+
+  <sys:String x:Key="Nav.SampleEditor">试样编辑</sys:String>
+  <sys:String x:Key="Nav.Machine">参数配置</sys:String>
+  <sys:String x:Key="Sample.Title">试样尺寸</sys:String>
+  <sys:String x:Key="Mach.Title">机器与控制参数</sys:String>
+  <sys:String x:Key="Param.Save">保存</sys:String>
+  <sys:String x:Key="Param.Reload">重新载入</sys:String>
+  <sys:String x:Key="Param.Loaded">已载入当前参数</sys:String>
+  <sys:String x:Key="Param.Saved">已保存</sys:String>
+  <sys:String x:Key="Param.SaveFailed">保存失败</sys:String>
 </ResourceDictionary>

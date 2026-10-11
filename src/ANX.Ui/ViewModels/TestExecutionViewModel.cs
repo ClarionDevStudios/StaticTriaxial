@@ -31,6 +31,7 @@ public partial class TestExecutionViewModel : ViewModelBase
 {
     private readonly ITestExecution _execution;
     private readonly ITestDeviceController? _device;
+    private readonly ICurrentSheetContext? _currentSheet;
     private readonly List<CurvePoint> _curve = [];
     private readonly Dictionary<string, double> _peaks = new(StringComparer.Ordinal);
     private TestSequencer? _sequencer;
@@ -41,12 +42,14 @@ public partial class TestExecutionViewModel : ViewModelBase
     public TestExecutionViewModel(
         ILocalizationService localization,
         ITestExecution execution,
-        ITestDeviceController? device = null
+        ITestDeviceController? device = null,
+        ICurrentSheetContext? currentSheet = null
     )
         : base(localization)
     {
         _execution = execution;
         _device = device;
+        _currentSheet = currentSheet;
 
         foreach (var definition in execution.Metrics)
         {
@@ -163,14 +166,23 @@ public partial class TestExecutionViewModel : ViewModelBase
 
     private async Task RunOneSampleAsync()
     {
+        // 试验单页选过单就用它；否则自己建一张
+        if (_currentSheet?.SheetId is { Length: > 0 } selected
+            && !string.Equals(selected, _sheetId, StringComparison.Ordinal))
+        {
+            _sheetId = selected;
+            Append($"{L("Exec.SheetSelected")} {selected}");
+        }
+
         _sheetId ??= await _execution.CreateSheetAsync(
-            projectName: L("Exec.DefaultProject"),
+            projectName: _currentSheet?.ProjectName ?? L("Exec.DefaultProject"),
             numberPrefix: "WT"
         );
         SheetText = _sheetId;
 
+        // 试件号由方法侧按库里已有明细算，避免覆盖同号试件
+        var sampleId = await _execution.NextSampleIdAsync(_sheetId);
         _sampleCounter++;
-        var sampleId = _sampleCounter.ToString(CultureInfo.InvariantCulture);
 
         ResetLiveValues();
         _curve.Clear();

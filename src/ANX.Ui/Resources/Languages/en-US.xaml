@@ -74,4 +74,47 @@
   <sys:String x:Key="Exec.WorktableUp">Worktable up</sys:String>
   <sys:String x:Key="Exec.WorktableDown">Worktable down</sys:String>
   <sys:String x:Key="Exec.ToDo">To do</sys:String>
+
+  <sys:String x:Key="Nav.History">History</sys:String>
+  <sys:String x:Key="History.Keyword">Keyword</sys:String>
+  <sys:String x:Key="History.Query">Search</sys:String>
+  <sys:String x:Key="History.Export">Export report (zh)</sys:String>
+  <sys:String x:Key="History.ExportEn">Export report (en)</sys:String>
+  <sys:String x:Key="History.Ready">Ready</sys:String>
+  <sys:String x:Key="History.Found">Found</sys:String>
+  <sys:String x:Key="History.SheetsUnit">sheets</sys:String>
+  <sys:String x:Key="History.SelectSheetFirst">Select a test sheet first</sys:String>
+  <sys:String x:Key="History.Exported">Exported</sys:String>
+  <sys:String x:Key="History.ExportFailed">Export failed</sys:String>
+  <sys:String x:Key="History.ColSheetId">Sheet ID</sys:String>
+  <sys:String x:Key="History.ColProject">Project</sys:String>
+  <sys:String x:Key="History.ColDate">Date</sys:String>
+  <sys:String x:Key="History.ColSamples">Specimens</sys:String>
+  <sys:String x:Key="History.Samples">Specimens</sys:String>
+  <sys:String x:Key="History.Fields">Specimen fields</sys:String>
+
+  <sys:String x:Key="Nav.Sheet">Test sheet</sys:String>
+  <sys:String x:Key="Sheet.New">New sheet</sys:String>
+  <sys:String x:Key="Sheet.Existing">Use an existing sheet</sys:String>
+  <sys:String x:Key="Sheet.Project">Project</sys:String>
+  <sys:String x:Key="Sheet.Prefix">Number prefix</sys:String>
+  <sys:String x:Key="Sheet.Confirm">OK</sys:String>
+  <sys:String x:Key="Sheet.Cancel">Cancel</sys:String>
+  <sys:String x:Key="Sheet.Ready">Ready</sys:String>
+  <sys:String x:Key="Sheet.LoadExisting">Refresh list</sys:String>
+  <sys:String x:Key="Sheet.Loaded">Loaded</sys:String>
+  <sys:String x:Key="Sheet.Created">Created</sys:String>
+  <sys:String x:Key="Sheet.Selected">Selected</sys:String>
+  <sys:String x:Key="Sheet.SelectFirst">Select a test sheet first</sys:String>
+  <sys:String x:Key="Exec.SheetSelected">Using sheet</sys:String>
+
+  <sys:String x:Key="Nav.SampleEditor">Specimen</sys:String>
+  <sys:String x:Key="Nav.Machine">Parameters</sys:String>
+  <sys:String x:Key="Sample.Title">Specimen dimensions</sys:String>
+  <sys:String x:Key="Mach.Title">Machine and control parameters</sys:String>
+  <sys:String x:Key="Param.Save">Save</sys:String>
+  <sys:String x:Key="Param.Reload">Reload</sys:String>
+  <sys:String x:Key="Param.Loaded">Current values loaded</sys:String>
+  <sys:String x:Key="Param.Saved">Saved</sys:String>
+  <sys:String x:Key="Param.SaveFailed">Save failed</sys:String>
 </ResourceDictionary>

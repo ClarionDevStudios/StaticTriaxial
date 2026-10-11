@@ -50,6 +50,7 @@ public sealed class BendingReportBuilder(
         string sheetId,
         string templatePath,
         string outputRoot,
+        string culture = "zh-CN",
         CancellationToken cancellationToken = default
     )
     {
@@ -103,7 +104,8 @@ public sealed class BendingReportBuilder(
             ["Device.TestDate"] = Format(main["CreatedOn"]),
         };
 
-        var reportPath = Path.Combine(sheetDirectory, "实验报告.xlsx");
+        // 文件名带语种：中英两套模板各出一份、互不覆盖（"已生成报表不追溯"是既定口径）
+        var reportPath = Path.Combine(sheetDirectory, $"实验报告.{culture}.xlsx");
         await exporter
             .ExportAsync(
                 new ReportRequest("T0715", templatePath, reportPath, fields, detailRows),

@@ -91,6 +91,9 @@ public partial class App
                 ));
                 _ = services.AddSingleton<SheetNumberGenerator>();
                 _ = services.AddSingleton<TestSheetService>();
+                _ = services.AddSingleton<ParameterStore>();
+                _ = services.AddSingleton<BendingParameters>();
+                _ = services.AddSingleton<ITestParameters>(sp => sp.GetRequiredService<BendingParameters>());
                 _ = services.AddSingleton<ITestExecution, BendingExecution>();
 
 #if SIMULATOR
@@ -103,9 +106,46 @@ public partial class App
                 _ = services.AddSingleton(sp => new TestExecutionViewModel(
                     sp.GetRequiredService<ILocalizationService>(),
                     sp.GetRequiredService<ITestExecution>(),
-                    sp.GetService<ITestDeviceController>()
+                    sp.GetService<ITestDeviceController>(),
+                    sp.GetRequiredService<ICurrentSheetContext>()
                 ));
                 _ = services.AddSingleton<TestExecutionPage>();
+
+                // 当前试验单上下文 + 试验单页
+                _ = services.AddSingleton<ICurrentSheetContext, CurrentSheetContext>();
+                _ = services.AddSingleton(sp => new SheetSelectionViewModel(
+                    sp.GetRequiredService<ILocalizationService>(),
+                    sp.GetRequiredService<ITestExecution>(),
+                    sp.GetRequiredService<ITestSheetBrowser>(),
+                    sp.GetRequiredService<ICurrentSheetContext>(),
+                    sp.GetRequiredService<INavigationService>()
+                ));
+                _ = services.AddSingleton<SheetSelectionPage>();
+
+                // 历史数据页（查单 / 读明细 / 读曲线 / 导出报表）
+                _ = services.AddSingleton<ITestSheetBrowser, BendingSheetBrowser>();
+                _ = services.AddSingleton<IReportExportService>(sp => new BendingReportExportService(
+                    sp.GetRequiredService<TestSheetService>(),
+                    AppPaths.ResolveReportRoot()
+                ));
+                _ = services.AddSingleton(sp => new HistoryViewModel(
+                    sp.GetRequiredService<ILocalizationService>(),
+                    sp.GetRequiredService<ITestSheetBrowser>(),
+                    sp.GetRequiredService<IReportExportService>()
+                ));
+                _ = services.AddSingleton<HistoryPage>();
+
+                // 试样编辑页 / 参数配置页（同一套参数编辑逻辑，按分组区分）
+                _ = services.AddSingleton(sp => new SampleEditorViewModel(
+                    sp.GetRequiredService<ILocalizationService>(),
+                    sp.GetRequiredService<ITestParameters>()
+                ));
+                _ = services.AddSingleton(sp => new MachineSettingsViewModel(
+                    sp.GetRequiredService<ILocalizationService>(),
+                    sp.GetRequiredService<ITestParameters>()
+                ));
+                _ = services.AddSingleton<SampleEditorPage>();
+                _ = services.AddSingleton<MachineSettingsPage>();
             }
         );
 
