@@ -33,8 +33,23 @@ public sealed class TestSequencer(TestRunProfile? profile = null)
     /// <summary>运行参数。</summary>
     public TestRunProfile Profile => _profile;
 
-    /// <summary>是否可以结算：正常完成且曲线非空。</summary>
-    public bool CanSettle => StopReason == TestStopReason.Completed && _curve.Count > 0;
+    /// <summary>
+    /// 是否可以结算。与现役线程一致：**量程停机也算**（已捕获破坏点的按峰值结算；
+    /// 未捕获的按"无明显峰值"结束，由判定器取曲线最大荷载结算），只要曲线非空即可。
+    /// 超时与人工停止不算。
+    /// </summary>
+    public bool CanSettle
+    {
+        get
+        {
+            var settleable =
+                StopReason == TestStopReason.Completed
+                || StopReason == TestStopReason.LoadRangeExceeded
+                || StopReason == TestStopReason.DisplacementRangeExceeded;
+
+            return settleable && _curve.Count > 0;
+        }
+    }
 
     /// <summary>是否已结束（完成或中止）。</summary>
     public bool IsFinished => StopReason != TestStopReason.None;

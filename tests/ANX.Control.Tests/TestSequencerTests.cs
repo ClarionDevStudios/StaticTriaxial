@@ -92,6 +92,29 @@ public sealed class TestSequencerTests
         Assert.False(sequencer.CanSettle);
     }
 
+    [Theory]
+    [InlineData(60.0, 1.0, TestStopReason.LoadRangeExceeded)]
+    [InlineData(1.0, 99.0, TestStopReason.DisplacementRangeExceeded)]
+    public void 量程停机但已经记到曲线时应可结算(
+        double load,
+        double displacement,
+        TestStopReason expected
+    )
+    {
+        // 与现役语义一致：量程触发时若已捕获破坏点 → 按峰值结算；
+        // 未捕获（无明显峰值）→ 也结束，由判定器取曲线最大荷载结算。两者都要求曲线非空。
+        var sequencer = Start();
+        sequencer.OnSample(new TestSample(0.6, 0.5, 0.1)); // 接触 → 开始记曲线
+        sequencer.OnSample(new TestSample(9.0, 2.0, 0.2));
+        sequencer.OnSample(new TestSample(9.2, 2.5, 0.3));
+
+        Assert.False(sequencer.OnSample(new TestSample(load, displacement, 1.0)));
+
+        Assert.Equal(expected, sequencer.StopReason);
+        Assert.True(sequencer.CanSettle);
+        Assert.Equal(9.2, sequencer.Peak.Load, 1e-9);
+    }
+
     [Fact]
     public void 接触阶段超时应中止()
     {

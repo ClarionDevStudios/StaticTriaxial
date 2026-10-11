@@ -507,6 +507,8 @@ public partial class TestExecutionViewModel : ViewModelBase
         {
             TestStopReason.Completed => L("Exec.PhaseCompleted"),
             TestStopReason.None => L("Exec.PhaseIdle"),
+            TestStopReason.LoadRangeExceeded or TestStopReason.DisplacementRangeExceeded =>
+                $"{L("Exec.PhaseRangeStopped")}（{sequencer.StopReason}）",
             _ => $"{L("Exec.PhaseAborted")}（{sequencer.StopReason}）",
         };
 
