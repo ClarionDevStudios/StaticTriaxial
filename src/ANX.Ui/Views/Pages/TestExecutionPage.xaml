@@ -206,14 +206,16 @@
             Content="{DynamicResource Exec.ClearInfo}"
           />
           <!--
-            DockPanel 的填充项：高度必须**有上限**。
-            操控信息是逐条追加的，不给上限它会随内容无限长高、把整页撑高
+            DockPanel 的填充项：高度必须**有上限**，否则它会随内容无限长高、把整页撑高
             （实测：空列表时页面高 739，追加 300 条后 12380）。
-            上限之内由列表自己滚动。
+            上限按**窗口高度的 30%** 分配（在 code-behind 里设，见 UpdateLogHeight）：
+            窗口变大它就变高，但永远有上限；上限之内由列表自己滚动。
+            注：试过用 `RelativeSource AncestorType=Window` 绑定，在这个宿主持下取不到窗口，
+            绑定静默失效（列表又长回去了），所以改成代码设。
           -->
           <ListBox
+            x:Name="InfoList"
             Margin="0,8,0,0"
-            MaxHeight="240"
             FontFamily="Consolas, Courier New"
             FontSize="12"
             ItemsSource="{Binding ViewModel.Log}"

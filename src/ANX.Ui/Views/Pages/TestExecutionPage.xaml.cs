@@ -14,6 +14,9 @@ using Wpf.Ui.Abstractions.Controls;
 /// </summary>
 public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
 {
+    /// <summary>"操控信息"列表占窗口高度的比例。</summary>
+    private const double LogHeightShare = 0.3;
+
     private readonly List<CurvePoint> _points = [];
     private readonly IThemeService _theme;
 
@@ -39,12 +42,33 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
 
         // 本页不在前台时切了语言/主题，控件不会重绘（WpfPlot 留着旧位图）——
         // 每次重新显示都重刷一次，免得回来看到的是旧字。
-        Loaded += (_, _) => ApplyChartStyle(_theme.CurrentTheme);
+        Loaded += (_, _) =>
+        {
+            ApplyChartStyle(_theme.CurrentTheme);
+            UpdateLogHeight();
+        };
+
+        // 窗口大小一变，信息区跟着按比例变（上限也就跟着变）
+        SizeChanged += (_, _) => UpdateLogHeight();
 
         ApplyChartStyle(_theme.CurrentTheme);
     }
 
     public TestExecutionViewModel ViewModel { get; }
+
+    /// <summary>
+    /// "操控信息"列表按窗口高度的 30% 分配高度上限。
+    /// 列表是逐条追加的，没有上限会把整页撑高（实测 300 条时页面 739 → 12380）；
+    /// 取窗口高度而不是本页高度：本页高度正是会被列表撑高的那个量，不能当基准。
+    /// </summary>
+    private void UpdateLogHeight()
+    {
+        var window = Window.GetWindow(this);
+        if (window is not null && window.ActualHeight > 0)
+        {
+            InfoList.MaxHeight = window.ActualHeight * LogHeightShare;
+        }
+    }
 
     /// <summary>是否正在点动（避免"松开"与"失去鼠标捕获"各停一次、日志打两遍）。</summary>
     private bool _jogging;
