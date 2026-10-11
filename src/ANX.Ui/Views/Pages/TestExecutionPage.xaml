@@ -62,31 +62,28 @@
     <!-- ② 实时数据区：指标卡 + 工作台按钮（照现役布局） -->
     <Grid Grid.Row="1" Margin="0,12,0,0">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*" />
+        <!-- 卡片列按内容取宽（原来是 *，会撑满整行），按钮紧贴其右侧，剩余宽度留给下面的曲线图 -->
         <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" />
       </Grid.ColumnDefinitions>
 
       <ItemsControl Grid.Column="0" ItemsSource="{Binding ViewModel.Cards}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
             <!--
-              卡片按内容取宽。原来是 UniformGrid（等分撑满整行），每张卡都被拉得很宽、数字周围全是空白。
-              宽度按"放得下数字 + 放得下标签"定（数值是 0.### 格式，最长约 8 位；标签最长是"最大弯拉应变 με"）。
-              WrapPanel 让卡片靠左排、窗口变窄时自动换行；多出来的宽度留给下面的曲线图。
+              卡片按内容取宽：每张的宽度由"标签一行 + 数值"里更宽的那个决定，所以标签不会折行、
+              数字也放得下；"峰值"那一行无论有没有都用 Hidden 占位，于是七张卡的高度由内容统一决定。
+              WrapPanel 让卡片靠左排、窗口变窄时自动换行。
             -->
             <WrapPanel />
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate>
-            <ui:Card
-              Width="120"
-              MinHeight="92"
-              Margin="0,0,8,8"
-              Padding="10"
-            >
+            <ui:Card MinWidth="96" Margin="0,0,8,0" Padding="10">
               <StackPanel>
-                <TextBlock Style="{StaticResource FieldLabelStyle}" TextWrapping="Wrap">
+                <TextBlock Style="{StaticResource FieldLabelStyle}">
                   <Run Text="{Binding DisplayName, Mode=OneWay}" />
                   <Run Text=" " />
                   <Run Text="{Binding Unit, Mode=OneWay}" />
@@ -101,7 +98,7 @@
                   Margin="0,2,0,0"
                   Style="{StaticResource FieldLabelStyle}"
                   Text="{Binding PeakText, Mode=OneWay}"
-                  Visibility="{Binding ShowPeak, Converter={StaticResource BoolToVisibility}}"
+                  Visibility="{Binding ShowPeak, Converter={StaticResource HiddenWhenFalse}}"
                 />
               </StackPanel>
             </ui:Card>
