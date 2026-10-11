@@ -8,10 +8,12 @@ using ANX.Ui.ViewModels;
 using ANX.Ui.Views;
 using ANX.Ui.Views.Pages;
 using ANX.Communication.Channels;
+using ANX.Communication;
 using ANX.Control;
 using ANX.Core.Control;
 using ANX.Core.Methods;
 using ANX.Method.Bending;
+using ANX.Protocol.Gr3;
 using ANX.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -32,6 +34,11 @@ public partial class App
 
     /// <summary>节流表的容量上限（按时间淘汰最旧的，防止签名无限增长）。</summary>
     private const int MaxThrottleSignatures = 16;
+
+    /// <summary>现场 GR-3 控制器的 UDP 地址（现役同款默认值；将来挪进设置页）。</summary>
+    private const string DeviceHost = "192.168.0.122";
+
+    private const int DevicePort = 5001;
 
     /// <summary>异常签名 → 上次提示时间。签名 = 异常类型 + 消息（不含堆栈），同一处反复出错才算"同一异常"。</summary>
     private static readonly Dictionary<string, DateTime> PromptedErrors = new(StringComparer.Ordinal);
@@ -105,12 +112,31 @@ public partial class App
                 _ = services.AddSingleton<ITestParameters>(sp => sp.GetRequiredService<BendingParameters>());
                 _ = services.AddSingleton<ITestExecution, BendingExecution>();
 
+                // 设备：默认连**现场真机**（GR-3 控制器走 UDP，地址沿用现役）。
+                // 想在没有硬件时试跑，设环境变量 ANX_USE_SIMULATOR=1（模拟器只在 Debug 构建里存在）。
+                _ = services.AddSingleton<ITestDeviceController>(_ =>
+                {
 #if SIMULATOR
-                _ = services.AddSingleton<ITestDeviceController>(new SimulatedDeviceController(
-                    sampleIntervalSeconds: 0.02,
-                    timeScale: 5.0
-                ));
+                    if (
+                        string.Equals(
+                            Environment.GetEnvironmentVariable("ANX_USE_SIMULATOR"),
+                            "1",
+                            StringComparison.Ordinal
+                        )
+                    )
+                    {
+                        return new SimulatedDeviceController(
+                            sampleIntervalSeconds: 0.02,
+                            timeScale: 5.0
+                        );
+                    }
 #endif
+                    return new Gr3DeviceController(
+                        new UdpChannel(new UdpChannelOptions(DeviceHost, DevicePort, DevicePort)),
+                        pressChannelIndex: 1,
+                        displaceChannelIndex: 1
+                    );
+                });
 
                 _ = services.AddSingleton(sp => new TestExecutionViewModel(
                     sp.GetRequiredService<ILocalizationService>(),
@@ -180,6 +206,19 @@ public partial class App
             await AppHost.StartAsync();
 
             logger.LogInformation("启动完成，日志目录：{LogDirectory}", AppPaths.ResolveLogDirectory());
+
+            // 启动即连真机。连不上**只记警告、不拦启动**：现场可能还没上电，
+            // 执行页上的「联机」按钮随时可以重试（状态栏会显示未连接）。
+            try
+            {
+                await Services
+                    .GetRequiredService<TestExecutionViewModel>()
+                    .ConnectCommand.ExecuteAsync(null);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "启动时联机失败，可在执行页点「联机」重试");
+            }
         }
         catch (SchemaVersionMismatchException ex)
         {
