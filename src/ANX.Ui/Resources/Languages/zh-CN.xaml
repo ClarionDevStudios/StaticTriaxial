@@ -117,6 +117,28 @@
   <sys:String x:Key="Param.Loaded">已载入当前参数</sys:String>
   <sys:String x:Key="Param.Saved">已保存</sys:String>
   <sys:String x:Key="Param.SaveFailed">保存失败</sys:String>
+  <sys:String x:Key="Param.UnsavedChanges">有未保存的修改</sys:String>
+  <sys:String x:Key="Param.ConfirmTitle">确认</sys:String>
+  <sys:String x:Key="Param.ReloadConfirm">「{0}」有未保存的修改，重新载入会丢弃它们。继续？</sys:String>
+  <sys:String x:Key="Param.RestoreDefaults">恢复默认</sys:String>
+  <sys:String x:Key="Param.RestoreDefaultsConfirm">把「{0}」的参数恢复为默认值？当前编辑内容会被丢弃（恢复后仍需点保存）。</sys:String>
+  <sys:String x:Key="Param.RestoreDefaultsDone">已恢复默认值（尚未保存）</sys:String>
+  <sys:String x:Key="Param.Invalid">有 {0} 项不合法，未保存</sys:String>
+  <sys:String x:Key="Param.RangeHint">范围 {0} ~ {1}</sys:String>
+  <sys:String x:Key="Param.Error.Required">不能为空</sys:String>
+  <sys:String x:Key="Param.Error.NotANumber">请输入数字</sys:String>
+  <sys:String x:Key="Param.Error.OutOfRange">超出范围（{0} ~ {1}）</sys:String>
+  <sys:String x:Key="Param.Error.InvalidSwitch">只能填 0（关闭）或 1（启用）</sys:String>
+  <sys:String x:Key="Param.Scope.Runtime">运行期（试验过程中生效）</sys:String>
+  <sys:String x:Key="Param.Scope.Runtime.Hint">点保存后，在下一次「开始试验」时装载进控制循环。</sys:String>
+  <sys:String x:Key="Param.Scope.Computation">计算期（判定 / 重算时生效）</sys:String>
+  <sys:String x:Key="Param.Scope.Computation.Hint">点保存后，在下一次结算或「按当前参数重算」时生效（历史数据页可重算已存曲线）。</sys:String>
+  <sys:String x:Key="Param.Scope.Acquisition">采集口径（数据从哪里来）</sys:String>
+  <sys:String x:Key="Param.Scope.Acquisition.Hint">点保存后，在下一次联机装载时生效。</sys:String>
+  <sys:String x:Key="Param.Scope.Presentation">记录与显示</sys:String>
+  <sys:String x:Key="Param.Scope.Presentation.Hint">点保存后影响曲线记录策略与界面刷新。</sys:String>
+  <sys:String x:Key="Mach.Description">机器与控制参数：运行期参数在「开始试验」时装载，计算期参数在判定 / 重算时读取。保存后对下一次试验或下一次结算生效，正在跑的那一轮不中途变参数。</sys:String>
+  <sys:String x:Key="Sample.Description">试件尺寸与跨径只在判定（计算）时使用。改完保存后，可在历史数据页用「按当前参数重算」让已存试验数据跟着更新。</sys:String>
   <sys:String x:Key="Exec.NoSheet">还没有试验单（先"新建试验"或去试验单页选一张）</sys:String>
 
   <!-- 启动期提示：建库时架构版本对不上，弹框后程序正常退出 -->

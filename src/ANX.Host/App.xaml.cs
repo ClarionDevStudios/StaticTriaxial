@@ -223,6 +223,7 @@ public partial class App
             {
                 logger.LogWarning(ex, "启动时联机失败，可在执行页点「联机」重试");
             }
+
         }
         catch (SchemaVersionMismatchException ex)
         {

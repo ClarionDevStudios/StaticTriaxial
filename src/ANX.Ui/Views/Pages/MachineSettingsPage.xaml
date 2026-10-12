@@ -14,66 +14,67 @@
   <Grid Margin="24,20,24,20">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
-      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
     <TextBlock Grid.Row="0" Style="{StaticResource PageTitleStyle}" Text="{Binding ViewModel.Title}" />
 
-    <ui:Card
-      Grid.Row="1"
-      Width="620"
-      Margin="0,16,0,0"
-      Padding="20"
-      HorizontalAlignment="Left"
-      VerticalAlignment="Top"
-      VerticalContentAlignment="Top"
-    >
-      <ItemsControl ItemsSource="{Binding ViewModel.Rows}">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate>
-            <Grid Margin="0,0,0,12">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="240" />
-                <ColumnDefinition Width="180" />
-                <ColumnDefinition Width="*" />
-              </Grid.ColumnDefinitions>
-              <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{Binding DisplayName}" />
-              <TextBox Grid.Column="1" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
-              <TextBlock
-                Grid.Column="2"
-                Margin="10,0,0,0"
-                Style="{StaticResource FieldLabelStyle}"
-                Text="{Binding Unit}"
-              />
-            </Grid>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-    </ui:Card>
+    <!-- 说明 + 工具条：这页参数在哪些时点生效、以及保存 / 重新载入 / 恢复默认 -->
+    <StackPanel Grid.Row="1" Margin="0,6,0,0">
+      <TextBlock
+        MaxWidth="980"
+        HorizontalAlignment="Left"
+        Style="{StaticResource PageSubtitleStyle}"
+        Text="{Binding ViewModel.Description}"
+      />
 
-    <StackPanel Grid.Row="2" Margin="0,16,0,0" HorizontalAlignment="Left" Orientation="Horizontal">
-      <ui:Button
-        Width="110"
-        Appearance="Primary"
-        Command="{Binding ViewModel.SaveCommand}"
-        Content="{DynamicResource Param.Save}"
-      />
-      <ui:Button
-        Width="110"
-        Margin="8,0,0,0"
-        Appearance="Secondary"
-        Command="{Binding ViewModel.ReloadCommand}"
-        Content="{DynamicResource Param.Reload}"
-      />
+      <StackPanel Margin="0,14,0,0" HorizontalAlignment="Left" Orientation="Horizontal">
+        <ui:Button
+          Width="110"
+          Appearance="Primary"
+          Command="{Binding ViewModel.SaveCommand}"
+          Content="{DynamicResource Param.Save}"
+        />
+        <ui:Button
+          Width="110"
+          Margin="8,0,0,0"
+          Appearance="Secondary"
+          Command="{Binding ViewModel.ReloadCommand}"
+          Content="{DynamicResource Param.Reload}"
+        />
+        <ui:Button
+          Width="130"
+          Margin="8,0,0,0"
+          Appearance="Secondary"
+          Command="{Binding ViewModel.RestoreDefaultsCommand}"
+          Content="{DynamicResource Param.RestoreDefaults}"
+        />
+        <TextBlock
+          Margin="14,0,0,0"
+          VerticalAlignment="Center"
+          Style="{StaticResource FieldLabelStyle}"
+          Text="{DynamicResource Param.UnsavedChanges}"
+          Visibility="{Binding ViewModel.HasChanges, Converter={StaticResource BoolToVisibility}}"
+        />
+        <!-- 状态贴近工具条：页面宿给的是无限高度，放在页尾会被窗口裁掉 -->
+        <TextBlock
+          Margin="14,0,0,0"
+          VerticalAlignment="Center"
+          Style="{StaticResource MonoTextStyle}"
+          Text="{Binding ViewModel.Status, Mode=OneWay}"
+        />
+      </StackPanel>
     </StackPanel>
 
-    <TextBlock
-      Grid.Row="3"
-      Margin="0,10,0,0"
-      Style="{StaticResource MonoTextStyle}"
-      Text="{Binding ViewModel.Status, Mode=OneWay}"
+    <!-- 参数按"作用时点"分区（运行期 / 计算期 / …），每区一张卡 -->
+    <ItemsControl
+      Grid.Row="2"
+      Margin="0,16,0,0"
+      HorizontalAlignment="Left"
+      ItemTemplate="{StaticResource ParameterGroupTemplate}"
+      ItemsSource="{Binding ViewModel.Groups}"
     />
   </Grid>
 </Page>

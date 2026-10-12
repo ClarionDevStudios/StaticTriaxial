@@ -76,17 +76,34 @@ public sealed class BendingParameters(ParameterStore store) : ITestParameters
 
     public IReadOnlyList<ParameterDefinition> Definitions { get; } =
     [
-        new(SpanLengthKey, "跨径 L", "mm", "200", ParameterGroup.Sample),
-        new(SampleWidthKey, "试件宽度 b", "mm", "30", ParameterGroup.Sample),
-        new(SampleHeightKey, "试件高度 h", "mm", "35", ParameterGroup.Sample),
-        new(LoadRateKey, "加载速率", "mm/min", "50"),
-        new(ContactLoadKey, "接触判定阈值", "kN", "0.05"),
-        new(BreakDropKey, "破坏判据（荷载下降量）", "kN", "0.3"),
-        new(BreakConfirmKey, "破坏确认帧数", "帧", "3"),
-        new(DisplacementSafetyFactorKey, "位移闸门安全系数（×设备量程）", "×", "0.95"),
-        new(LoadSafetyFactorKey, "荷载闸门安全系数（×设备量程）", "×", "0.95"),
-        new(EnableOriginCorrectionKey, "启用曲线原点修正（1 启用 / 0 关闭）", "", "1"),
-        new(JogSpeedKey, "平台升降速率（工作台按钮）", "mm/min", "50"),
+        // 试件尺寸：判定（计算期）用
+        new(SpanLengthKey, "跨径 L", "mm", "200", ParameterGroup.Sample,
+            ParameterKind.Number, 10, 1000, ParameterScope.Computation),
+        new(SampleWidthKey, "试件宽度 b", "mm", "30", ParameterGroup.Sample,
+            ParameterKind.Number, 1, 500, ParameterScope.Computation),
+        new(SampleHeightKey, "试件高度 h", "mm", "35", ParameterGroup.Sample,
+            ParameterKind.Number, 1, 500, ParameterScope.Computation),
+
+        // 运行期：装配进 TestRunProfile，控制循环实时用
+        // 加载速率上限 = 电机硬上限 50mm/min（超了伺服宕机，用户 2026-10-11）
+        new(LoadRateKey, "加载速率", "mm/min", "50",
+            Kind: ParameterKind.Number, Minimum: 0.1, Maximum: 50, Scope: ParameterScope.Runtime),
+        new(ContactLoadKey, "接触判定阈值", "kN", "0.05",
+            Kind: ParameterKind.Number, Minimum: 0.001, Maximum: 50, Scope: ParameterScope.Runtime),
+        new(BreakDropKey, "破坏判据（荷载下降量）", "kN", "0.3",
+            Kind: ParameterKind.Number, Minimum: 0, Maximum: 50, Scope: ParameterScope.Runtime),
+        new(BreakConfirmKey, "破坏确认帧数", "帧", "3",
+            Kind: ParameterKind.Number, Minimum: 1, Maximum: 100, Scope: ParameterScope.Runtime),
+        new(DisplacementSafetyFactorKey, "位移闸门安全系数（×设备量程）", "×", "0.95",
+            Kind: ParameterKind.Number, Minimum: 0.1, Maximum: 1.0, Scope: ParameterScope.Runtime),
+        new(LoadSafetyFactorKey, "荷载闸门安全系数（×设备量程）", "×", "0.95",
+            Kind: ParameterKind.Number, Minimum: 0.1, Maximum: 1.0, Scope: ParameterScope.Runtime),
+        new(JogSpeedKey, "平台升降速率（工作台按钮）", "mm/min", "50",
+            Kind: ParameterKind.Number, Minimum: 0.1, Maximum: 50, Scope: ParameterScope.Runtime),
+
+        // 计算期：判定 / 重算时用
+        new(EnableOriginCorrectionKey, "启用曲线原点修正", "", "1",
+            Kind: ParameterKind.Switch, Scope: ParameterScope.Computation),
     ];
 
     public Task<IReadOnlyDictionary<string, string>> LoadAsync(

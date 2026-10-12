@@ -10,17 +10,54 @@ public enum ParameterGroup
     Sample = 1,
 }
 
+/// <summary>参数值的编辑类型：界面据此选控件（数字框 / 开关 / 文本框）。</summary>
+public enum ParameterKind
+{
+    /// <summary>数值（可用 <see cref="ParameterDefinition.Minimum"/> / <see cref="ParameterDefinition.Maximum"/> 限定范围）。</summary>
+    Number = 0,
+
+    /// <summary>开关，值存 `1`/`0`（界面给复选框）。</summary>
+    Switch = 1,
+
+    /// <summary>自由文本。</summary>
+    Text = 2,
+}
+
+/// <summary>参数的作用时点（界面据此分组与提示"什么时候生效"）。</summary>
+public enum ParameterScope
+{
+    /// <summary>运行期：装配进 TestRunProfile，控制循环 / 阶段机在试验过程中用。</summary>
+    Runtime = 0,
+
+    /// <summary>计算期：判定与重算时用（试件尺寸、原点修正…）。</summary>
+    Computation = 1,
+
+    /// <summary>采集口径：数据从哪个通道 / 传感器来。</summary>
+    Acquisition = 2,
+
+    /// <summary>记录与显示：曲线记录策略、界面抽样。</summary>
+    Presentation = 3,
+}
+
 /// <summary>一个方法参数的声明（界面据此生成编辑控件，方法只声明"我有哪些参数"）。</summary>
 /// <param name="Key">参数键（入库用，发布后不改名）。</param>
 /// <param name="DisplayName">显示名。</param>
 /// <param name="Unit">单位符号，无量纲留空。</param>
 /// <param name="DefaultValue">默认值（库里没有该键时用它）。</param>
+/// <param name="Kind">编辑类型（数字 / 开关 / 文本）。</param>
+/// <param name="Minimum">数值下限（仅 <see cref="ParameterKind.Number"/> 有意义）。</param>
+/// <param name="Maximum">数值上限（仅 <see cref="ParameterKind.Number"/> 有意义）。</param>
+/// <param name="Scope">作用时点（界面分组与提示用）。</param>
 public sealed record ParameterDefinition(
     string Key,
     string DisplayName,
     string Unit,
     string DefaultValue,
-    ParameterGroup Group = ParameterGroup.Machine
+    ParameterGroup Group = ParameterGroup.Machine,
+    ParameterKind Kind = ParameterKind.Number,
+    double? Minimum = null,
+    double? Maximum = null,
+    ParameterScope Scope = ParameterScope.Runtime
 );
 
 /// <summary>

@@ -117,6 +117,28 @@
   <sys:String x:Key="Param.Loaded">Current values loaded</sys:String>
   <sys:String x:Key="Param.Saved">Saved</sys:String>
   <sys:String x:Key="Param.SaveFailed">Save failed</sys:String>
+  <sys:String x:Key="Param.UnsavedChanges">Unsaved changes</sys:String>
+  <sys:String x:Key="Param.ConfirmTitle">Confirm</sys:String>
+  <sys:String x:Key="Param.ReloadConfirm">"{0}" has unsaved changes; reloading discards them. Continue?</sys:String>
+  <sys:String x:Key="Param.RestoreDefaults">Restore defaults</sys:String>
+  <sys:String x:Key="Param.RestoreDefaultsConfirm">Restore defaults for "{0}"? Current edits will be discarded (you still need to save).</sys:String>
+  <sys:String x:Key="Param.RestoreDefaultsDone">Defaults restored (not saved yet)</sys:String>
+  <sys:String x:Key="Param.Invalid">{0} value(s) invalid; not saved</sys:String>
+  <sys:String x:Key="Param.RangeHint">range {0} ~ {1}</sys:String>
+  <sys:String x:Key="Param.Error.Required">Required</sys:String>
+  <sys:String x:Key="Param.Error.NotANumber">Enter a number</sys:String>
+  <sys:String x:Key="Param.Error.OutOfRange">Out of range ({0} ~ {1})</sys:String>
+  <sys:String x:Key="Param.Error.InvalidSwitch">Use 0 (off) or 1 (on)</sys:String>
+  <sys:String x:Key="Param.Scope.Runtime">Runtime (effective during the test)</sys:String>
+  <sys:String x:Key="Param.Scope.Runtime.Hint">After saving, loaded into the control loop on the next Start.</sys:String>
+  <sys:String x:Key="Param.Scope.Computation">Computation (settlement / recompute)</sys:String>
+  <sys:String x:Key="Param.Scope.Computation.Hint">After saving, effective on the next settlement or "recompute with current parameters" (History page can recompute stored curves).</sys:String>
+  <sys:String x:Key="Param.Scope.Acquisition">Acquisition (where data comes from)</sys:String>
+  <sys:String x:Key="Param.Scope.Acquisition.Hint">After saving, effective on the next connect.</sys:String>
+  <sys:String x:Key="Param.Scope.Presentation">Recording and display</sys:String>
+  <sys:String x:Key="Param.Scope.Presentation.Hint">After saving, affects curve recording and UI refresh.</sys:String>
+  <sys:String x:Key="Mach.Description">Machine and control parameters: runtime values are loaded at Start, computation values are read when settling or recomputing. Saving takes effect on the next run or settlement; a running test is not changed mid-flight.</sys:String>
+  <sys:String x:Key="Sample.Description">Specimen dimensions and span are used only when computing results. After saving, use "Recompute with current parameters" on the History page to update stored data.</sys:String>
   <sys:String x:Key="Exec.NoSheet">No test sheet yet (create one or pick an existing sheet)</sys:String>
 
   <!-- Startup notice: the database schema version does not match; show it, then exit normally -->
