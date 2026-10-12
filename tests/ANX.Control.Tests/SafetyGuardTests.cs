@@ -46,6 +46,33 @@ public sealed class SafetyGuardTests
         Assert.Equal(2.5, broken.ClampDisplacementToDeviceRange(25.0).MaxDisplacementMM, 6);
     }
 
+    /// <summary>
+    /// 荷载闸门 = **设备压力量程 × 安全系数**（用户 2026-10-12 定的口径）；
+    /// 取不到设备量程时回落现役常量 50kN（`MAX_LOAD_LIMIT_KN`）。
+    /// </summary>
+    [Fact]
+    public void 荷载闸门应按设备压力量程乘系数()
+    {
+        var profile = new TestRunProfile();
+
+        // 真机压力量程 100.000kN → 闸门 95kN
+        Assert.Equal(95.0, profile.ClampLoadToDeviceRange(100.0).MaxLoadKN, 6);
+        Assert.Equal(0.95, profile.LoadRangeSafetyFactor, 6);
+
+        // 取不到设备量程 → 回落现役常量 50kN
+        Assert.Equal(50.0, profile.ClampLoadToDeviceRange(null).MaxLoadKN, 6);
+        Assert.Equal(50.0, profile.ClampLoadToDeviceRange(0).MaxLoadKN, 6);
+        Assert.Equal(TestRunProfile.FallbackMaxLoadKN, profile.ClampLoadToDeviceRange(null).MaxLoadKN);
+
+        // 现场把系数调小 → 闸门跟着降
+        var tighter = new TestRunProfile { LoadRangeSafetyFactor = 0.5 };
+        Assert.Equal(50.0, tighter.ClampLoadToDeviceRange(100.0).MaxLoadKN, 6);
+
+        // 系数越界同样夹在 0.1~1.0
+        var loosened = new TestRunProfile { LoadRangeSafetyFactor = 3.0 };
+        Assert.Equal(100.0, loosened.ClampLoadToDeviceRange(100.0).MaxLoadKN, 6);
+    }
+
     [Fact]
     public void 电机停转要跨过起转宽限期才判()
     {

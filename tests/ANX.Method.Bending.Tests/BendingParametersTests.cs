@@ -33,7 +33,7 @@ public sealed class BendingParametersTests : IDisposable
         var parameters = CreateParameters();
 
         Assert.Equal(3, parameters.Definitions.Count(d => d.Group == ParameterGroup.Sample));
-        Assert.Equal(5, parameters.Definitions.Count(d => d.Group == ParameterGroup.Machine));
+        Assert.Equal(6, parameters.Definitions.Count(d => d.Group == ParameterGroup.Machine));
 
         var values = await parameters.LoadAsync();
         Assert.Equal("200", values[BendingParameters.SpanLengthKey]);
@@ -139,6 +139,14 @@ public sealed class BendingParametersTests : IDisposable
         var adjusted = await execution.LoadProfileAsync();
         Assert.Equal(0.8, adjusted.DisplacementRangeSafetyFactor, 6);
         Assert.Equal(20.0, adjusted.ClampDisplacementToDeviceRange(25.0).MaxDisplacementMM, 6);
+
+        // 荷载闸门同样从参数表装配：默认 0.95（100kN → 95kN）
+        Assert.Equal("0.95", parameters.Definitions.First(d =>
+            string.Equals(d.Key, BendingParameters.LoadSafetyFactorKey, StringComparison.Ordinal)
+        ).DefaultValue);
+        Assert.Contains(BendingParameters.LoadSafetyFactorKey, BendingParameters.MachineKeys);
+        Assert.Equal(0.95, adjusted.LoadRangeSafetyFactor, 6);
+        Assert.Equal(95.0, adjusted.ClampLoadToDeviceRange(100.0).MaxLoadKN, 6);
     }
 
     private BendingParameters CreateParameters()

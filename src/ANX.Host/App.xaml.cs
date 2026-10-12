@@ -134,7 +134,9 @@ public partial class App
 #endif
                     return new Gr3DeviceController(
                         new UdpChannel(new UdpChannelOptions(DeviceHost, DevicePort, DevicePort)),
-                        pressChannelIndex: 1,
+                        // 轴向压力 = 压力通道 1（索引 0，100.000kN 主传感器）—— 依据现役生产库
+                        // TestParameterConfig：弯曲等所有配置行 AxialPressureChannel = 0
+                        pressChannelIndex: 0,
                         displaceChannelIndex: 1
                     );
                 });

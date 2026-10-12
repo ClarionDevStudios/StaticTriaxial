@@ -15,8 +15,20 @@ public sealed record TestRunProfile
     /// <summary>破坏确认所需连续采样帧数（抗单帧毛刺）。</summary>
     public int BreakConfirmSamples { get; init; } = 3;
 
-    /// <summary>荷载量程上限（kN）。</summary>
+    /// <summary>
+    /// 荷载闸门（kN）。运行前由"**设备压力量程 × 安全系数**"算出（用户 2026-10-12 定的口径，
+    /// 见 <see cref="ClampLoadToDeviceRange"/>）；设备不上报量程时用 <see cref="FallbackMaxLoadKN"/>。
+    /// </summary>
     public double MaxLoadKN { get; init; } = 50.0;
+
+    /// <summary>取不到设备压力量程时的回落值（kN）—— 沿用现役 `MAX_LOAD_LIMIT_KN = 50.0`。</summary>
+    public const double FallbackMaxLoadKN = 50.0;
+
+    /// <summary>
+    /// 荷载闸门的安全系数（× 设备压力量程），默认 0.95 —— 真机 100.000kN 量程 → 95kN。
+    /// 由方法从**参数表**给出（用户 2026-10-12 要求可调），取值被夹在 0.1~1.0。
+    /// </summary>
+    public double LoadRangeSafetyFactor { get; init; } = 0.95;
 
     /// <summary>位移正向行程上限（mm）。</summary>
     public double MaxDisplacementMM { get; init; } = 50.0;
@@ -41,6 +53,20 @@ public sealed record TestRunProfile
                 : double.PositiveInfinity;
 
         return MaxDisplacementMM <= limit ? this : this with { MaxDisplacementMM = limit };
+    }
+
+    /// <summary>
+    /// 按设备压力量程算荷载闸门：闸门 = **量程 × 安全系数**（默认 100kN × 0.95 = 95kN）；
+    /// 设备不上报量程（null 或 ≤0）时回落到 <see cref="FallbackMaxLoadKN"/> = 50kN（现役常量）。
+    /// </summary>
+    public TestRunProfile ClampLoadToDeviceRange(double? deviceRangeKN)
+    {
+        var gate =
+            deviceRangeKN is { } range && range > 0
+                ? range * Math.Clamp(LoadRangeSafetyFactor, 0.1, 1.0)
+                : FallbackMaxLoadKN;
+
+        return this with { MaxLoadKN = gate };
     }
 
     /// <summary>接触阶段超时（s）。</summary>

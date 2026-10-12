@@ -38,6 +38,7 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
         LoadRateMillimetersPerMinute = 50.0,
         ApproachSpeedMillimetersPerMinute = 10.0,
         DisplacementRangeSafetyFactor = 0.95,
+        LoadRangeSafetyFactor = 0.95,
     };
 
     /// <summary>
@@ -66,6 +67,10 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
             DisplacementRangeSafetyFactor = parameters.GetDouble(
                 values,
                 BendingParameters.DisplacementSafetyFactorKey
+            ),
+            LoadRangeSafetyFactor = parameters.GetDouble(
+                values,
+                BendingParameters.LoadSafetyFactorKey
             ),
         };
     }

@@ -297,7 +297,7 @@ internal static class Program
         await using var channel = new UdpChannel(new UdpChannelOptions(host, port, localPort));
         await using var controller = new Gr3DeviceController(
             channel,
-            pressChannelIndex: 1,
+            pressChannelIndex: 0,
             displaceChannelIndex: 1
         );
 
@@ -391,7 +391,7 @@ internal static class Program
         await using var channel = new UdpChannel(new UdpChannelOptions(host, port, localPort));
         await using var controller = new Gr3DeviceController(
             channel,
-            pressChannelIndex: 1,
+            pressChannelIndex: 0,
             displaceChannelIndex: 1
         );
 
@@ -410,6 +410,12 @@ internal static class Program
 
         await controller.ConnectAsync();
         Console.WriteLine("联机成功（A0 已收到）");
+        Console.WriteLine(
+            $"  设备上报量程：压力 {(controller.LoadRangeKN?.ToString("0.###") ?? "无")} kN"
+                + $"（通道 {controller.PressChannelDisplayNumber}）"
+                + $"   位移 {(controller.DisplacementRangeMillimeters?.ToString("0.###") ?? "无")} mm"
+                + $"（通道 {controller.DisplaceChannelDisplayNumber}）"
+        );
 
         var clock = Stopwatch.StartNew();
         var nextBeat = heartbeatSeconds;
@@ -425,6 +431,7 @@ internal static class Program
             Console.WriteLine(
                 $"{clock.Elapsed.TotalSeconds,5:0}s  本秒 {rate,4} 帧  累计 {total,7} 帧"
                     + $"  机器 0x{(byte)controller.LastMachineStatus:X2}"
+                    + $"  荷载 {lastSample.Load,8:F3} kN"
                     + $"  位移 {lastSample.Displacement,8:F3} mm"
                     + (rate == 0 ? "   ← 本秒没有数据" : string.Empty)
             );
@@ -477,7 +484,7 @@ internal static class Program
         await using var channel = new UdpChannel(new UdpChannelOptions(host, port, localPort));
         await using var controller = new Gr3DeviceController(
             channel,
-            pressChannelIndex: 1,
+            pressChannelIndex: 0,
             displaceChannelIndex: 1
         );
 

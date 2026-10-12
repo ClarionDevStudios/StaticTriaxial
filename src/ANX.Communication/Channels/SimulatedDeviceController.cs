@@ -39,6 +39,9 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
     /// <summary>与现场真机同值（25.000mm）：模拟器也要逼出"闸门不能超传感器量程"的行为。</summary>
     public double? DisplacementRangeMillimeters => 25.0;
 
+    /// <summary>与现场真机同值（100.000kN）：荷载闸门按"量程 × 系数"算。</summary>
+    public double? LoadRangeKN => 100.0;
+
     /// <summary>模拟器里只要采样循环在跑就算电机在转。</summary>
     public bool? IsMotorRunning => IsConnected && _loop is { IsCompleted: false };
 

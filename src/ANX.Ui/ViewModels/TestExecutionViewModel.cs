@@ -404,12 +404,20 @@ public partial class TestExecutionViewModel : ViewModelBase
         // 运行参数从**参数表**来（接触阈值 / 破坏判据 / 确认帧数 / 加载速率），不再用写死的默认值
         var requested = await _execution.LoadProfileAsync();
 
-        // 位移闸门必须落在**设备量程**之内：顶过位移传感器量程会压坏传感器
-        //（现场量程 25.000mm，而闸门曾写死 50mm —— 空载时一直往上顶，靠操作员手动停机才没顶坏）
-        var profile = requested.ClampDisplacementToDeviceRange(_device?.DisplacementRangeMillimeters);
+        // 闸门都按**设备量程**算：位移闸门落在量程内（顶过会压坏传感器），荷载闸门 = 量程 × 系数
+        //（现场位移量程 25.000mm、压力量程 100.000kN；两者此前都是写死的错值）
+        var profile = requested
+            .ClampDisplacementToDeviceRange(_device?.DisplacementRangeMillimeters)
+            .ClampLoadToDeviceRange(_device?.LoadRangeKN);
+
         if (profile.MaxDisplacementMM < requested.MaxDisplacementMM)
         {
             Append(string.Format(CultureInfo.CurrentCulture, L("Exec.DisplacementClamped"), profile.MaxDisplacementMM));
+        }
+
+        if (Math.Abs(profile.MaxLoadKN - requested.MaxLoadKN) > 0.0001)
+        {
+            Append(string.Format(CultureInfo.CurrentCulture, L("Exec.LoadClamped"), profile.MaxLoadKN));
         }
 
         var sequencer = new TestSequencer(profile);

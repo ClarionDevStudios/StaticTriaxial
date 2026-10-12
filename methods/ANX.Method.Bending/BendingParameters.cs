@@ -37,6 +37,12 @@ public sealed class BendingParameters(ParameterStore store) : ITestParameters
     /// </summary>
     public const string DisplacementSafetyFactorKey = "DisplacementSafetyFactor";
 
+    /// <summary>
+    /// 荷载闸门安全系数（× 设备压力量程）。默认 0.95 —— 真机 100.000kN 量程 → 95kN 停机；
+    /// 设备不上报量程时回落现役常量 50kN（用户 2026-10-12 定的口径）。
+    /// </summary>
+    public const string LoadSafetyFactorKey = "LoadSafetyFactor";
+
     /// <summary>试件尺寸类参数（试样编辑页只显示这些）。</summary>
     public static readonly string[] SampleKeys = [SpanLengthKey, SampleWidthKey, SampleHeightKey];
 
@@ -48,6 +54,7 @@ public sealed class BendingParameters(ParameterStore store) : ITestParameters
         BreakDropKey,
         BreakConfirmKey,
         DisplacementSafetyFactorKey,
+        LoadSafetyFactorKey,
     ];
 
     public string MethodCode => "T0715";
@@ -62,6 +69,7 @@ public sealed class BendingParameters(ParameterStore store) : ITestParameters
         new(BreakDropKey, "破坏判据（荷载下降量）", "kN", "0.3"),
         new(BreakConfirmKey, "破坏确认帧数", "帧", "3"),
         new(DisplacementSafetyFactorKey, "位移闸门安全系数（×设备量程）", "×", "0.95"),
+        new(LoadSafetyFactorKey, "荷载闸门安全系数（×设备量程）", "×", "0.95"),
     ];
 
     public Task<IReadOnlyDictionary<string, string>> LoadAsync(

@@ -33,7 +33,7 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
 
     public Gr3DeviceController(
         ICommChannel channel,
-        int pressChannelIndex = 1,
+        int pressChannelIndex = 0,
         int displaceChannelIndex = 1,
         TimeSpan? timeout = null
     )
@@ -58,6 +58,21 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
         && _displaceChannelIndex < info.DisplaceChannels.Count
             ? info.DisplaceChannels[_displaceChannelIndex].ToEngineeringValue(
                 info.DisplaceChannels[_displaceChannelIndex].Scale
+            )
+            : null;
+
+    /// <summary>
+    /// 压力通道量程（kN，轴向压力用）= A0H 里该通道的"量程 / 10^小数位"。
+    /// **轴向压力通道 = 索引 0（压力通道 1）** —— 依据现役生产库 `TestParameterConfig`：
+    /// 弯曲（AsphaltTestTypeID=5）等所有配置行都是 `AxialPressureChannel = 0`，即 100.000kN 主传感器；
+    /// 索引 1 是 5.000kN 的小量程通道（ANX 2026-10-12 之前误用了它）。
+    /// </summary>
+    public double? LoadRangeKN =>
+        SystemInfo is { } info
+        && _pressChannelIndex >= 0
+        && _pressChannelIndex < info.PressChannels.Count
+            ? info.PressChannels[_pressChannelIndex].ToEngineeringValue(
+                info.PressChannels[_pressChannelIndex].Scale
             )
             : null;
 
@@ -282,6 +297,12 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
 
     /// <summary>保活帧读哪个通道的配置（协议规定 1-12；用固定 1，避开"通道不存在"被拒）。</summary>
     public byte KeepAliveChannelId { get; set; } = 1;
+
+    /// <summary>轴向压力通道的**协议通道号**（显示用；协议通道 1 基，索引 0 基）。</summary>
+    public int PressChannelDisplayNumber => _pressChannelIndex + 1;
+
+    /// <summary>轴向位移通道的协议通道号（显示用）。</summary>
+    public int DisplaceChannelDisplayNumber => _displaceChannelIndex + 1;
 
     /// <summary>联机成功后启动保活循环（幂等）。</summary>
     private void StartKeepAlive()

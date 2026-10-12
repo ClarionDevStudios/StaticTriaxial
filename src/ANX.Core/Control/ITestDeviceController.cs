@@ -20,6 +20,12 @@ public interface ITestDeviceController
     double? DisplacementRangeMillimeters { get; }
 
     /// <summary>
+    /// 压力通道量程（kN，轴向压力用）。荷载闸门按它 × 安全系数算（用户 2026-10-12 定的口径）；
+    /// 设备不上报时为 null，此时由调用方回落到常量（现役的 50kN）。
+    /// </summary>
+    double? LoadRangeKN { get; }
+
+    /// <summary>
     /// 电机是否在运转（取自机器状态位 Bit3/Bit4）。命令在加载而这里连续为 false，
     /// 说明设备被手动停止 / 撞限位 / 伺服保护 —— 软件必须知道，不能继续空等。
     /// 设备不上报时为 null。

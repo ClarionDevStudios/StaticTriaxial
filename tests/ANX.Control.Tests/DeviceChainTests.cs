@@ -19,7 +19,7 @@ public sealed class DeviceChainTests
         var channel = new FakeChannel();
         await using var controller = new Gr3DeviceController(
             channel,
-            pressChannelIndex: 1,
+            pressChannelIndex: 0,
             displaceChannelIndex: 1
         );
 
@@ -125,6 +125,24 @@ public sealed class DeviceChainTests
         Assert.Equal(0, Gr3Constants.MotorOrderStop);
         Assert.Equal(1, Gr3Constants.MotorOrderForwardUp);
         Assert.Equal(2, Gr3Constants.MotorOrderReverseDown);
+    }
+
+    /// <summary>
+    /// 量程来自 A0H 的通道配置，且**轴向压力用压力通道 1（索引 0）** —— 依据现役生产库
+    /// `TestParameterConfig.AxialPressureChannel = 0`（100.000kN 主传感器）。假 A0 里通道 1 = 1000/100 = 10.00kN。
+    /// </summary>
+    [Fact]
+    public async Task 设备量程应取自A0的对应通道()
+    {
+        var channel = new FakeChannel();
+        await using var controller = new Gr3DeviceController(channel);
+
+        var connect = controller.ConnectAsync();
+        channel.Feed(Gr3FrameCodec.BuildDatagram(Gr3Constants.UplinkSystemInfo, BuildSystemInfoPayload(), 1));
+        await connect;
+
+        Assert.Equal(10.0, controller.LoadRangeKN!.Value, 6); // 压力通道 1：量程 1000 / 10^2
+        Assert.Equal(1000.0, controller.DisplacementRangeMillimeters!.Value, 6); // 位移通道 2：量程 1000 / 10^0
     }
 
     /// <summary>
@@ -254,9 +272,9 @@ public sealed class DeviceChainTests
     {
         var payload = new List<byte>();
 
-        // 压力 4 通道：通道 1 用 loadKN × 100（小数位 2），其余为 0 / 未接
+        // 压力 4 通道：**通道 1（索引 0）**用 loadKN × 100（小数位 2），其余为 0 / 未接
         var rawPress = (int)Math.Round(loadKN * 100);
-        foreach (var value in new[] { 0, rawPress, 0, 0 })
+        foreach (var value in new[] { rawPress, 0, 0, 0 })
         {
             payload.AddRange([(byte)(value >> 24), (byte)(value >> 16), (byte)(value >> 8), (byte)value]);
         }
