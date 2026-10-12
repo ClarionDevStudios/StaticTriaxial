@@ -3,10 +3,10 @@ namespace ANX.Ui.Views.Pages;
 using ANX.Ui.ViewModels;
 using Wpf.Ui.Abstractions.Controls;
 
-/// <summary>试样编辑页：编辑试件尺寸（跨径 / 宽度 / 高度）。</summary>
-public partial class SampleEditorPage : INavigableView<SampleEditorViewModel>
+/// <summary>试样信息填录页：编辑"这一件试样"的信息（跨径 / 宽度 / 高度…）。</summary>
+public partial class SampleEditorPage : INavigableView<SampleInfoViewModel>
 {
-    public SampleEditorPage(SampleEditorViewModel viewModel)
+    public SampleEditorPage(SampleInfoViewModel viewModel)
     {
         ViewModel = viewModel;
         DataContext = this;
@@ -14,5 +14,5 @@ public partial class SampleEditorPage : INavigableView<SampleEditorViewModel>
         InitializeComponent();
     }
 
-    public SampleEditorViewModel ViewModel { get; }
+    public SampleInfoViewModel ViewModel { get; }
 }

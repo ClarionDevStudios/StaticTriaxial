@@ -10,15 +10,6 @@ using ANX.Storage;
 /// </summary>
 public sealed class BendingParameters(ParameterStore store) : ITestParameters
 {
-    /// <summary>跨径 L（mm）。</summary>
-    public const string SpanLengthKey = "SpanLength";
-
-    /// <summary>试件宽度 b（mm）。</summary>
-    public const string SampleWidthKey = "SampleWidth";
-
-    /// <summary>试件高度 h（mm）。</summary>
-    public const string SampleHeightKey = "SampleHeight";
-
     /// <summary>加载速率（mm/min）。</summary>
     public const string LoadRateKey = "LoadRate";
 
@@ -56,9 +47,6 @@ public sealed class BendingParameters(ParameterStore store) : ITestParameters
     /// </summary>
     public const string JogSpeedKey = "JogSpeed";
 
-    /// <summary>试件尺寸类参数（试样编辑页只显示这些）。</summary>
-    public static readonly string[] SampleKeys = [SpanLengthKey, SampleWidthKey, SampleHeightKey];
-
     /// <summary>机器与控制参数（参数配置页只显示这些）。</summary>
     public static readonly string[] MachineKeys =
     [
@@ -76,14 +64,7 @@ public sealed class BendingParameters(ParameterStore store) : ITestParameters
 
     public IReadOnlyList<ParameterDefinition> Definitions { get; } =
     [
-        // 试件尺寸：判定（计算期）用
-        new(SpanLengthKey, "跨径 L", "mm", "200", ParameterGroup.Sample,
-            ParameterKind.Number, 10, 1000, ParameterScope.Computation),
-        new(SampleWidthKey, "试件宽度 b", "mm", "30", ParameterGroup.Sample,
-            ParameterKind.Number, 1, 500, ParameterScope.Computation),
-        new(SampleHeightKey, "试件高度 h", "mm", "35", ParameterGroup.Sample,
-            ParameterKind.Number, 1, 500, ParameterScope.Computation),
-
+        // 注意：**试件尺寸不在参数表里** —— 它是逐件的试样信息（见 BendingSampleFields / 试样信息填录页）
         // 运行期：装配进 TestRunProfile，控制循环实时用
         // 加载速率上限 = 电机硬上限 50mm/min（超了伺服宕机，用户 2026-10-11）
         new(LoadRateKey, "加载速率", "mm/min", "50",

@@ -178,9 +178,11 @@ public partial class App
                 _ = services.AddSingleton<HistoryPage>();
 
                 // 试样编辑页 / 参数配置页（同一套参数编辑逻辑，按分组区分）
-                _ = services.AddSingleton(sp => new SampleEditorViewModel(
+                // 试样信息填录（逐件）：字段来自 ITestExecution.SampleFields，值存明细行
+                _ = services.AddSingleton(sp => new SampleInfoViewModel(
                     sp.GetRequiredService<ILocalizationService>(),
-                    sp.GetRequiredService<ITestParameters>()
+                    sp.GetRequiredService<ITestExecution>(),
+                    sp.GetRequiredService<ICurrentSheetContext>()
                 ));
                 _ = services.AddSingleton(sp => new MachineSettingsViewModel(
                     sp.GetRequiredService<ILocalizationService>(),

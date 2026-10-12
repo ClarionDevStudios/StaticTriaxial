@@ -80,6 +80,56 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
         };
     }
 
+    /// <summary>
+    /// 试样信息字段（逐件填录）：跨径 / 试件宽 / 试件高。**不是方法级参数**（用户 2026-10-12 明确：
+    /// 试件尺寸属于试样信息填录的内容），所以这里跟参数表分开声明。
+    /// </summary>
+    public IReadOnlyList<ParameterDefinition> SampleFields => BendingSampleFields.Definitions;
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, string>> LoadSampleInfoAsync(
+        string sheetId,
+        string sampleId,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var columns = BendingSampleFields.Definitions.Select(d => d.Key).ToArray();
+        var row = sheets.ReadDetailRow(sheetId, sampleId, columns);
+
+        var values = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var definition in BendingSampleFields.Definitions)
+        {
+            // 没有该件记录（还没填过）时回落到字段默认值
+            var stored =
+                row is not null
+                && row.TryGetValue(definition.Key, out var value)
+                && value is not null
+                    ? Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture)
+                    : null;
+
+            values[definition.Key] = string.IsNullOrWhiteSpace(stored) ? definition.DefaultValue : stored;
+        }
+
+        return await Task.FromResult<IReadOnlyDictionary<string, string>>(values).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public Task SaveSampleInfoAsync(
+        string sheetId,
+        string sampleId,
+        IReadOnlyDictionary<string, string> fields,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var values = BendingSampleFields.Definitions.ToDictionary(
+            definition => definition.Key,
+            definition => BendingSampleFields.GetDouble(fields, definition.Key),
+            StringComparer.Ordinal
+        );
+
+        return sheets.UpsertSampleInfoAsync(sheetId, sampleId, values, cancellationToken);
+    }
+
     /// <summary>实时指标卡：与现役执行页的 7 个卡片同构，按本方法取用。</summary>
     public IReadOnlyList<MetricDefinition> Metrics { get; } =
     [
@@ -128,24 +178,28 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
             return null;
         }
 
-        var analysis = await LoadAnalysisParametersAsync(cancellationToken).ConfigureAwait(false);
-        var result = BendingAnalyzer.Analyze(
-            curve,
-            analysis.SpanMM,
-            analysis.WidthMM,
-            analysis.HeightMM,
-            analysis.EnableOriginCorrection
-        );
-
-        await sheets
-            .AppendSampleAsync(
-                sheetId,
-                sampleId,
-                curve,
-                BuildResultColumns(analysis, result),
-                cancellationToken
-            )
+        // 尺寸从**这一件试样自己的信息**取（试样编辑页填录、存在明细行里），不再从方法级参数取
+        var info = await LoadSampleInfoAsync(sheetId, sampleId, cancellationToken).ConfigureAwait(false);
+        var span = BendingSampleFields.GetDouble(info, BendingSampleFields.SpanLengthKey);
+        var width = BendingSampleFields.GetDouble(info, BendingSampleFields.SampleWidthKey);
+        var height = BendingSampleFields.GetDouble(info, BendingSampleFields.SampleHeightKey);
+        var enableOriginCorrection = await LoadOriginCorrectionEnabledAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        var result = BendingAnalyzer.Analyze(curve, span, width, height, enableOriginCorrection);
+        var columns = BuildResultColumns(width, height, result);
+
+        // 试样记录可能已经在"试样编辑页填录"时建好了：有就更新（补曲线与结果），没有才追加
+        if (sheets.ReadDetailRow(sheetId, sampleId, ["SampleKey"]) is null)
+        {
+            await sheets.AppendSampleAsync(sheetId, sampleId, curve, columns, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        else
+        {
+            await sheets.UpdateDetailFieldsAsync(sheetId, sampleId, columns, curve, cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         if (!_resultsBySheet.TryGetValue(sheetId, out var list))
         {
@@ -185,8 +239,19 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
         CancellationToken cancellationToken = default
     )
     {
-        var analysis = await LoadAnalysisParametersAsync(cancellationToken).ConfigureAwait(false);
-        var rows = sheets.ReadDetailRows(sheetId, ["SampleID"]);
+        var enableOriginCorrection = await LoadOriginCorrectionEnabledAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        // 每件按**它自己的试样信息**重算（尺寸是逐件的，不能拿一份全局尺寸套所有件）
+        var rows = sheets.ReadDetailRows(
+            sheetId,
+            [
+                "SampleID",
+                BendingSampleFields.SpanLengthKey,
+                BendingSampleFields.SampleWidthKey,
+                BendingSampleFields.SampleHeightKey,
+            ]
+        );
 
         var recomputed = new List<BendingSampleResult>();
         var skipped = 0;
@@ -209,16 +274,23 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
                 continue;
             }
 
+            var info = BendingSampleFields.Definitions.ToDictionary(
+                definition => definition.Key,
+                definition => Convert.ToString(
+                    row.TryGetValue(definition.Key, out var value) ? value : null,
+                    System.Globalization.CultureInfo.InvariantCulture
+                ) ?? string.Empty,
+                StringComparer.Ordinal
+            );
+
+            var span = BendingSampleFields.GetDouble(info, BendingSampleFields.SpanLengthKey);
+            var width = BendingSampleFields.GetDouble(info, BendingSampleFields.SampleWidthKey);
+            var height = BendingSampleFields.GetDouble(info, BendingSampleFields.SampleHeightKey);
+
             BendingSampleResult result;
             try
             {
-                result = BendingAnalyzer.Analyze(
-                    curve,
-                    analysis.SpanMM,
-                    analysis.WidthMM,
-                    analysis.HeightMM,
-                    analysis.EnableOriginCorrection
-                );
+                result = BendingAnalyzer.Analyze(curve, span, width, height, enableOriginCorrection);
             }
             catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
             {
@@ -230,8 +302,8 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
                 .UpdateDetailFieldsAsync(
                     sheetId,
                     sampleId,
-                    BuildResultColumns(analysis, result),
-                    cancellationToken
+                    BuildResultColumns(width, height, result),
+                    cancellationToken: cancellationToken
                 )
                 .ConfigureAwait(false);
 
@@ -254,40 +326,31 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
         return new RecomputeReport(recomputed.Count, skipped);
     }
 
-    /// <summary>判定用的参数快照（跨径 / 宽 / 高 / 是否原点修正）—— 从参数表读，重算与结算共用。</summary>
-    private sealed record AnalysisParameters(
-        double SpanMM,
-        double WidthMM,
-        double HeightMM,
-        bool EnableOriginCorrection
-    );
-
-    private async Task<AnalysisParameters> LoadAnalysisParametersAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// 判定用的**计算期开关**：是否做曲线原点修正（方法级参数）。
+    /// 尺寸不在这里 —— 它们属于**试样信息**，逐件从明细行取（见 <see cref="LoadSampleInfoAsync"/>）。
+    /// </summary>
+    private async Task<bool> LoadOriginCorrectionEnabledAsync(CancellationToken cancellationToken)
     {
         if (parameters is null)
         {
-            return new AnalysisParameters(200.0, 30.0, 35.0, true);
+            return true;
         }
 
         var values = await parameters.LoadAsync(cancellationToken).ConfigureAwait(false);
-
-        return new AnalysisParameters(
-            parameters.GetDouble(values, BendingParameters.SpanLengthKey),
-            parameters.GetDouble(values, BendingParameters.SampleWidthKey),
-            parameters.GetDouble(values, BendingParameters.SampleHeightKey),
-            parameters.GetDouble(values, BendingParameters.EnableOriginCorrectionKey) != 0
-        );
+        return parameters.GetDouble(values, BendingParameters.EnableOriginCorrectionKey) != 0;
     }
 
     /// <summary>明细行的结果列（结算写入与重算覆盖共用同一份键）。</summary>
     private static Dictionary<string, double> BuildResultColumns(
-        AnalysisParameters analysis,
+        double widthMM,
+        double heightMM,
         BendingSampleResult result
     ) =>
         new(StringComparer.Ordinal)
         {
-            ["SampleWidth"] = analysis.WidthMM,
-            ["SampleHeight"] = analysis.HeightMM,
+            ["SampleWidth"] = widthMM,
+            ["SampleHeight"] = heightMM,
             ["PeakLoadValue"] = result.PeakLoadKN,
             ["PeakDeflection"] = result.PeakDeflectionMM,
             ["OriginCorrection"] = result.OriginCorrectionMM,

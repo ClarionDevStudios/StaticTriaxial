@@ -46,6 +46,28 @@ public interface ITestExecution : ICurveAxisSource
     /// <summary>实时指标卡。</summary>
     IReadOnlyList<MetricDefinition> Metrics { get; }
 
+    /// <summary>
+    /// **试样信息字段**声明（试样编辑页用）。与 <see cref="ITestParameters"/> 的区别：
+    /// 参数是**方法级**（一次配置、每次运行生效），试样信息是**逐件填录**的（随试件存进明细行，
+    /// 判定时按件取用）。试件尺寸 / 跨径属后者（用户 2026-10-12 明确）。
+    /// </summary>
+    IReadOnlyList<ParameterDefinition> SampleFields { get; }
+
+    /// <summary>读一件试样的信息（没有该件记录时回落到字段默认值）。</summary>
+    Task<IReadOnlyDictionary<string, string>> LoadSampleInfoAsync(
+        string sheetId,
+        string sampleId,
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>保存一件试样的信息（明细行即"试样记录"；曲线与判定结果由试验结束时的收尾写入）。</summary>
+    Task SaveSampleInfoAsync(
+        string sheetId,
+        string sampleId,
+        IReadOnlyDictionary<string, string> fields,
+        CancellationToken cancellationToken = default
+    );
+
     /// <summary>建一张新试验单，返回单号。</summary>
     Task<string> CreateSheetAsync(string projectName, string numberPrefix, CancellationToken cancellationToken = default);
 

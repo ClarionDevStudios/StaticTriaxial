@@ -68,12 +68,46 @@
       </StackPanel>
     </StackPanel>
 
-    <ItemsControl
+    <!-- 这一件是谁 + 它的信息字段（与参数页共用行模板） -->
+    <ui:Card
       Grid.Row="2"
+      MaxWidth="980"
       Margin="0,16,0,0"
+      Padding="20"
       HorizontalAlignment="Left"
-      ItemTemplate="{StaticResource ParameterGroupTemplate}"
-      ItemsSource="{Binding ViewModel.Groups}"
-    />
+      VerticalContentAlignment="Top"
+    >
+      <StackPanel>
+        <TextBlock Style="{StaticResource ParamSectionTitleStyle}" Text="{DynamicResource Sample.Fields}" />
+
+        <Grid Margin="0,14,0,10">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="280" />
+            <ColumnDefinition Width="170" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+
+          <TextBlock
+            Grid.Column="0"
+            Margin="0,0,12,0"
+            Style="{StaticResource FieldLabelStyle}"
+            Text="{DynamicResource Sample.SampleId}"
+          />
+          <TextBox Grid.Column="1" Text="{Binding ViewModel.SampleId, UpdateSourceTrigger=LostFocus}" />
+          <TextBlock
+            Grid.Column="2"
+            Margin="10,0,0,0"
+            Style="{StaticResource FieldLabelStyle}"
+            Text="{Binding ViewModel.SheetId}"
+          />
+        </Grid>
+
+        <ItemsControl
+          ItemTemplate="{StaticResource ParameterRowTemplate}"
+          ItemsSource="{Binding ViewModel.Rows}"
+        />
+      </StackPanel>
+    </ui:Card>
   </Grid>
 </Page>

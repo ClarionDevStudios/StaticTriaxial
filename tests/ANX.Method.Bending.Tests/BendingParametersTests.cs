@@ -28,16 +28,30 @@ public sealed class BendingParametersTests : IDisposable
     }
 
     [Fact]
-    public async Task 参数应按分组声明且默认值可载入()
+    public async Task 参数表不含试件尺寸且机器参数默认值可载入()
     {
         var parameters = CreateParameters();
 
-        Assert.Equal(3, parameters.Definitions.Count(d => d.Group == ParameterGroup.Sample));
+        // 试件尺寸属于**试样信息**（用户 2026-10-12 明确），不再出现在方法参数里
+        Assert.Empty(parameters.Definitions.Where(d => d.Group == ParameterGroup.Sample));
         Assert.Equal(8, parameters.Definitions.Count(d => d.Group == ParameterGroup.Machine));
+        Assert.DoesNotContain(
+            parameters.Definitions,
+            d => d.Key is BendingSampleFields.SpanLengthKey
+                or BendingSampleFields.SampleWidthKey
+                or BendingSampleFields.SampleHeightKey
+        );
 
         var values = await parameters.LoadAsync();
-        Assert.Equal("200", values[BendingParameters.SpanLengthKey]);
-        Assert.Equal("35", values[BendingParameters.SampleHeightKey]);
+        Assert.Equal("50", values[BendingParameters.LoadRateKey]);
+        Assert.Equal("0.95", values[BendingParameters.LoadSafetyFactorKey]);
+
+        // 试样信息字段另有声明（跨径 / 宽 / 高）
+        Assert.Equal(3, BendingSampleFields.Definitions.Count);
+        Assert.Equal(
+            "200",
+            BendingSampleFields.Definitions.First(d => d.Key == BendingSampleFields.SpanLengthKey).DefaultValue
+        );
     }
 
     [Fact]
@@ -48,19 +62,19 @@ public sealed class BendingParametersTests : IDisposable
         await parameters.SaveAsync(
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
-                [BendingParameters.SampleHeightKey] = "40",
+                [BendingParameters.BreakConfirmKey] = "5",
                 [BendingParameters.LoadRateKey] = "55",
             }
         );
 
         var values = await parameters.LoadAsync();
-        Assert.Equal("40", values[BendingParameters.SampleHeightKey]);
         Assert.Equal("55", values[BendingParameters.LoadRateKey]);
-        Assert.Equal("30", values[BendingParameters.SampleWidthKey]); // 没存过的回落到默认
+        Assert.Equal("5", values[BendingParameters.BreakConfirmKey]);
+        Assert.Equal("0.3", values[BendingParameters.BreakDropKey]); // 没存过的回落到默认
     }
 
     [Fact]
-    public async Task 改试件高度后判定应按新高度计算并落库()
+    public async Task 试件尺寸属于试样信息逐件生效并落库()
     {
         var module = new BendingPersistenceModule();
         var initializer = new DatabaseInitializer(
@@ -75,16 +89,18 @@ public sealed class BendingParametersTests : IDisposable
         var sheetId = await sheets.CreateAsync("T0715", "参数验证", "WT");
         var curve = Enumerable.Range(0, 40).Select(i => new CurvePoint(i * 0.1, i * 0.2)).ToArray();
 
-        // 曲线峰值 7.8kN；默认 h=35：R_B = 3·200·7800/(2·30·1225) = 63.67
+        // 曲线峰值 7.8kN；没填过试样信息 → 用字段默认 h=35：R_B = 3·200·7800/(2·30·1225) = 63.67
         var before = await execution.CompleteSampleAsync(sheetId, "1", curve);
         Assert.NotNull(before);
         Assert.Equal(63.67, before!["flexuralStrength"], 0.01);
 
-        // 把高度改成 40 后再跑一件：强度应随高度平方下降
-        await parameters.SaveAsync(
+        // 第 2 件按**它自己**的试样信息填 h=40（尺寸逐件，不再动方法参数）
+        await execution.SaveSampleInfoAsync(
+            sheetId,
+            "2",
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
-                [BendingParameters.SampleHeightKey] = "40",
+                [BendingSampleFields.SampleHeightKey] = "40",
             }
         );
 
@@ -118,15 +134,17 @@ public sealed class BendingParametersTests : IDisposable
         var sheetId = await sheets.CreateAsync("T0715", "重算验证", "WT");
         var curve = Enumerable.Range(0, 40).Select(i => new CurvePoint(i * 0.1, i * 0.2)).ToArray();
 
-        // 先按默认参数（h=35）结算一件：R_B = 63.67
+        // 先按默认（h=35）结算一件：R_B = 63.67
         var before = await execution.CompleteSampleAsync(sheetId, "1", curve);
         Assert.Equal(63.67, before!["flexuralStrength"], 0.01);
 
-        // 改试件高度 35 → 40 后重算：同一条曲线应算成 48.75，明细与组统计都更新
-        await parameters.SaveAsync(
+        // 把这一件的试样信息改 h=40 后重算：同一条曲线应算成 48.75，明细与组统计都更新
+        await execution.SaveSampleInfoAsync(
+            sheetId,
+            "1",
             new Dictionary<string, string>(StringComparer.Ordinal)
             {
-                [BendingParameters.SampleHeightKey] = "40",
+                [BendingSampleFields.SampleHeightKey] = "40",
             }
         );
 
@@ -171,7 +189,7 @@ public sealed class BendingParametersTests : IDisposable
         );
         Assert.Equal("0.95", definition.DefaultValue);
         Assert.Contains(BendingParameters.DisplacementSafetyFactorKey, BendingParameters.MachineKeys);
-        Assert.DoesNotContain(BendingParameters.DisplacementSafetyFactorKey, BendingParameters.SampleKeys);
+        Assert.Contains(BendingParameters.DisplacementSafetyFactorKey, BendingParameters.MachineKeys);
 
         var byDefault = await execution.LoadProfileAsync();
         Assert.Equal(0.95, byDefault.DisplacementRangeSafetyFactor, 6);

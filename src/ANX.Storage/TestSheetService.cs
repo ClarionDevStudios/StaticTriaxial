@@ -106,6 +106,7 @@ public sealed class TestSheetService : ITestSheetService
         string sheetId,
         string sampleId,
         IReadOnlyDictionary<string, double> results,
+        IReadOnlyList<CurvePoint>? curve = null,
         CancellationToken cancellationToken = default
     )
     {
@@ -133,6 +134,12 @@ public sealed class TestSheetService : ITestSheetService
             command.Parameters.AddWithValue(parameter, value);
         }
 
+        if (curve is not null)
+        {
+            assignments.Add("ChartData = $curve");
+            command.Parameters.AddWithValue("$curve", CurveJson.Encode(curve));
+        }
+
         if (assignments.Count == 0)
         {
             return Task.CompletedTask;
@@ -143,6 +150,120 @@ public sealed class TestSheetService : ITestSheetService
         command.Parameters.AddWithValue("$key", $"{sheetId}-{sampleId}");
         command.ExecuteNonQuery();
 
+        return Task.CompletedTask;
+    }
+
+    /// <summary>读某件试样的明细行（不存在返回 null）。</summary>
+    public IReadOnlyDictionary<string, object?>? ReadDetailRow(
+        string sheetId,
+        string sampleId,
+        IReadOnlyList<string> columns
+    )
+    {
+        ArgumentNullException.ThrowIfNull(columns);
+
+        var method = ResolveMethodForSheet(sheetId);
+
+        using var connection = _initializer.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            $"SELECT {string.Join(", ", columns)} FROM {method.DetailTable.TableName} WHERE SampleKey = $key;";
+        command.Parameters.AddWithValue("$key", $"{sheetId}-{sampleId}");
+
+        using var reader = command.ExecuteReader();
+        if (!reader.Read())
+        {
+            return null;
+        }
+
+        var row = new Dictionary<string, object?>(StringComparer.Ordinal);
+        for (var i = 0; i < columns.Count; i++)
+        {
+            row[columns[i]] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+        }
+
+        return row;
+    }
+
+    /// <summary>
+    /// 存一件试样的信息（明细行即"试样记录"）：没有该行就插入，有就更新这些列（曲线与判定结果不动）。
+    /// </summary>
+    public Task UpsertSampleInfoAsync(
+        string sheetId,
+        string sampleId,
+        IReadOnlyDictionary<string, double> fields,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentNullException.ThrowIfNull(fields);
+
+        var method = ResolveMethodForSheet(sheetId);
+        foreach (var name in fields.Keys)
+        {
+            if (!IsDeclared(method.DetailTable, name))
+            {
+                throw new ArgumentException(
+                    $"方法 {method.MethodCode} 的明细表没有声明列 '{name}'",
+                    nameof(fields)
+                );
+            }
+        }
+
+        var key = $"{sheetId}-{sampleId}";
+
+        using var connection = _initializer.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+
+        using (var probe = connection.CreateCommand())
+        {
+            probe.Transaction = transaction;
+            probe.CommandText =
+                $"SELECT COUNT(1) FROM {method.DetailTable.TableName} WHERE SampleKey = $key;";
+            probe.Parameters.AddWithValue("$key", key);
+
+            var exists =
+                Convert.ToInt64(probe.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture)
+                > 0;
+
+            if (exists)
+            {
+                using var update = connection.CreateCommand();
+                update.Transaction = transaction;
+                var assignments = fields
+                    .Select((pair, index) => $"{pair.Key} = $p{index}")
+                    .ToArray();
+                update.CommandText =
+                    $"UPDATE {method.DetailTable.TableName} SET {string.Join(", ", assignments)} WHERE SampleKey = $key;";
+
+                var i = 0;
+                foreach (var value in fields.Values)
+                {
+                    update.Parameters.AddWithValue($"$p{i++}", value);
+                }
+
+                update.Parameters.AddWithValue("$key", key);
+                update.ExecuteNonQuery();
+            }
+            else
+            {
+                var values = new Dictionary<string, object?>(StringComparer.Ordinal)
+                {
+                    ["SampleKey"] = key,
+                    ["SheetID"] = sheetId,
+                    ["SampleID"] = sampleId,
+                    ["CreateDate"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+                };
+
+                foreach (var (name, value) in fields)
+                {
+                    values[name] = value;
+                }
+
+                Insert(connection, transaction, method.DetailTable, values);
+            }
+        }
+
+        transaction.Commit();
         return Task.CompletedTask;
     }
 

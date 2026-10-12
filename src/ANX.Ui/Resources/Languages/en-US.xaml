@@ -110,7 +110,12 @@
   <sys:String x:Key="Sheet.SelectFirst">Select a test sheet first</sys:String>
   <sys:String x:Key="Exec.SheetSelected">Using sheet</sys:String>
 
-  <sys:String x:Key="Sample.Title">Specimen dimensions</sys:String>
+  <sys:String x:Key="Sample.Title">Specimen data entry</sys:String>
+  <sys:String x:Key="Sample.Fields">Data for this specimen</sys:String>
+  <sys:String x:Key="Sample.SampleId">Specimen no. (sequence in sheet)</sys:String>
+  <sys:String x:Key="Sample.Loaded">Sheet {0} · specimen {1}</sys:String>
+  <sys:String x:Key="Sample.NoSheet">Select a test sheet first</sys:String>
+  <sys:String x:Key="Sample.NoSampleId">Enter the specimen number first</sys:String>
   <sys:String x:Key="Mach.Title">Machine and control parameters</sys:String>
   <sys:String x:Key="Param.Save">Save</sys:String>
   <sys:String x:Key="Param.Reload">Reload</sys:String>
@@ -138,7 +143,7 @@
   <sys:String x:Key="Param.Scope.Presentation">Recording and display</sys:String>
   <sys:String x:Key="Param.Scope.Presentation.Hint">After saving, affects curve recording and UI refresh.</sys:String>
   <sys:String x:Key="Mach.Description">Machine and control parameters: runtime values are loaded at Start, computation values are read when settling or recomputing. Saving takes effect on the next run or settlement; a running test is not changed mid-flight.</sys:String>
-  <sys:String x:Key="Sample.Description">Specimen dimensions and span are used only when computing results. After saving, use "Recompute with current parameters" on the History page to update stored data.</sys:String>
+  <sys:String x:Key="Sample.Description">Enter the data of THIS specimen (span / dimensions). It is stored with the specimen row and used per specimen when computing results. Opening the same specimen number again loads what you entered.</sys:String>
   <sys:String x:Key="Exec.NoSheet">No test sheet yet (create one or pick an existing sheet)</sys:String>
 
   <!-- Startup notice: the database schema version does not match; show it, then exit normally -->
