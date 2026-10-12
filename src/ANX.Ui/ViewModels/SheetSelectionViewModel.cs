@@ -57,7 +57,28 @@ public partial class SheetSelectionViewModel : ViewModelBase
 
     partial void OnIsNewSheetChanged(bool value) => IsExistingSheet = !value;
 
-    /// <summary>读取已有试验单列表。</summary>
+    /// <summary>
+    /// 切到「选择已有试验单」就**自动加载**列表（用户 2026-10-12 提出；现役
+    /// `TSelectBendingTestMainForm.FormCreate` 同样是打开窗体即 `qryGetSheetInfo.Open`）。
+    /// </summary>
+    partial void OnIsExistingSheetChanged(bool value)
+    {
+        if (value)
+        {
+            _ = LoadExistingAsync();
+        }
+    }
+
+    /// <summary>进页面时若停在「选择已有试验单」模式，重新查一次（列表可能是上次留下的旧数据）。</summary>
+    public override void OnNavigatedTo()
+    {
+        if (IsExistingSheet)
+        {
+            _ = LoadExistingAsync();
+        }
+    }
+
+    /// <summary>读取已有试验单列表（切模式 / 进页面时自动调用，也可点「刷新列表」手动再查）。</summary>
     [RelayCommand]
     private async Task LoadExistingAsync()
     {

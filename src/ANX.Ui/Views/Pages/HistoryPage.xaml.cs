@@ -31,6 +31,9 @@ public partial class HistoryPage : INavigableView<HistoryViewModel>
         // 同上（原因见 TestExecutionPage）：重新显示时重刷一次
         Loaded += (_, _) => ApplyChartStyle(_theme.CurrentTheme);
 
+        // 主从表两个列表同样只让列表自己滚动，不撑高整页（与试验单页同源问题，用户 2026-10-12）
+        PageViewportFitter.Attach(this);
+
         ApplyChartStyle(_theme.CurrentTheme);
     }
 
