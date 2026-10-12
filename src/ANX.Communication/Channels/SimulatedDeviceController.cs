@@ -18,6 +18,8 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
     private Task? _loop;
     private JogDirection? _jogDirection;
     private double _jogDisplacementMM;
+    private double _displacementOffsetMM;
+    private double _lastRawDisplacementMM;
 
     public SimulatedDeviceController(
         double peakLoadKN = 9.0,
@@ -120,6 +122,15 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// 接触调零（上位机软件调零）：把当前位移记为偏移量，之后净值为 0 起算；不动设备零点。
+    /// </summary>
+    public Task ZeroDisplacementAsync(CancellationToken cancellationToken = default)
+    {
+        _displacementOffsetMM = _lastRawDisplacementMM;
+        return Task.CompletedTask;
+    }
+
     public async ValueTask DisposeAsync()
     {
         await StopAsync().ConfigureAwait(false);
@@ -134,11 +145,20 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
         {
             while (!token.IsCancellationRequested)
             {
-                SampleReceived?.Invoke(
-                    this,
+                var sample =
                     _jogDirection is { } direction
                         ? JogSample(direction, seconds)
-                        : SampleCurve.At(seconds, _peakLoadKN, _displacementAtPeakMM)
+                        : SampleCurve.At(seconds, _peakLoadKN, _displacementAtPeakMM);
+
+                _lastRawDisplacementMM = sample.Displacement;
+                SampleReceived?.Invoke(
+                    this,
+                    sample with
+                    {
+                        // 与真机控制器同口径：接触调零是上位机侧偏移（净值 = 原始 − 偏移），不动设备零点
+                        Displacement = sample.Displacement - _displacementOffsetMM,
+                        RawDisplacement = sample.Displacement,
+                    }
                 );
                 // timeScale 让测试可以加速：每等 _sampleIntervalSeconds，仿真时间前进 _sampleIntervalSeconds × timeScale
                 seconds += _sampleIntervalSeconds * _timeScale;

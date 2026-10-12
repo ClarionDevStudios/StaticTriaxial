@@ -18,6 +18,27 @@ public sealed class TestSequencerTests
         ResetSeconds = 1.0,
     };
 
+    /// <summary>
+    /// 位移量程保护判的是**原始位移**（绝对值），不是接触调零后的净值 ——
+    /// 保护对象是位移传感器的绝对位置，用净值判会漏掉"接触点已经靠近量程"的情形（现役同样判原始值）。
+    /// </summary>
+    [Fact]
+    public void 位移量程保护应按原始位移判而非调零后的净值()
+    {
+        // 用真机那套闸门（设备位移量程 25mm × 0.95 = 23.75mm）
+        var sequencer = new TestSequencer(Profile with { MaxDisplacementMM = 23.75 });
+        sequencer.Start();
+        sequencer.OnSample(new TestSample(0.6, 0, 0.1)); // 接触（净值已调零）
+
+        // 净值还很小（0.5mm），但传感器绝对位置已经到 24mm（量程 23.75mm）→ 必须停机
+        var stillRunning = sequencer.OnSample(
+            new TestSample(9.0, 0.5, 0.2) { RawDisplacement = 24.0 }
+        );
+
+        Assert.False(stillRunning);
+        Assert.Equal(TestStopReason.DisplacementRangeExceeded, sequencer.StopReason);
+    }
+
     [Fact]
     public void 收到第一帧即进入接触搜索()
     {

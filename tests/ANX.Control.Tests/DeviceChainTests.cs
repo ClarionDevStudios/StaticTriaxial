@@ -128,6 +128,43 @@ public sealed class DeviceChainTests
     }
 
     /// <summary>
+    /// 接触调零走**上位机软件调零**（存偏移量；用户 2026-10-12 明确按现役做法）：
+    /// 调零后净值从 0 起算，**原始位移不变**（量程保护要用它）；且不动设备零点（C3 是另一条路）。
+    /// </summary>
+    [Fact]
+    public async Task 接触调零应走软件偏移量且保留原始位移()
+    {
+        var channel = new FakeChannel();
+        await using var controller = new Gr3DeviceController(channel);
+
+        var samples = new List<TestSample>();
+        controller.SampleReceived += (_, sample) => samples.Add(sample);
+
+        var connect = controller.ConnectAsync();
+        channel.Feed(Gr3FrameCodec.BuildDatagram(Gr3Constants.UplinkSystemInfo, BuildSystemInfoPayload(), 1));
+        await connect;
+
+        // 假 A0 的位移小数位 = 0 → 原始码值就是 mm
+        channel.Feed(Gr3FrameCodec.BuildDatagram(Gr3Constants.UplinkRealtimeData, BuildRealtimePayload(0.5, 5.0), 2));
+        Assert.Equal(5.0, samples[^1].Displacement, 6);
+        Assert.Equal(5.0, samples[^1].RawDisplacement, 6);
+
+        // 接触成立 → 软件调零；此后净值 = 原始 − 偏移
+        await controller.ZeroDisplacementAsync();
+        Assert.Equal(5.0, controller.DisplacementOffsetMM, 6);
+
+        channel.Feed(Gr3FrameCodec.BuildDatagram(Gr3Constants.UplinkRealtimeData, BuildRealtimePayload(0.5, 7.0), 3));
+        Assert.Equal(2.0, samples[^1].Displacement, 6); // 净值
+        Assert.Equal(7.0, samples[^1].RawDisplacement, 6); // 原始值不变
+
+        // 只调位移：没有对设备发任何"清零"指令（C3 只有显式 ResetAsync 才发）
+        Assert.DoesNotContain(
+            channel.SentFrames,
+            frame => frame[10] == Gr3Constants.DownlinkZero
+        );
+    }
+
+    /// <summary>
     /// **换向时必须先发停止、再发启动**（用户 2026-10-12 明确要求）。封装层单一出口负责，
     /// 调用方（界面按住上升后改按下降、复位后重新启动…）不需要记得发停止。
     /// </summary>

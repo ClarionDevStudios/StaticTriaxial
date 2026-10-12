@@ -97,7 +97,8 @@ public sealed class TestSequencer(TestRunProfile? profile = null)
             return Abort(TestStopReason.LoadRangeExceeded);
         }
 
-        if (sample.Displacement > _profile.MaxDisplacementMM)
+        // 量程保护判**原始位移**（绝对值）：净值是相对接触点的，用它判会放过"接触点已靠近量程"的情况
+        if (sample.RawDisplacement > _profile.MaxDisplacementMM)
         {
             return Abort(TestStopReason.DisplacementRangeExceeded);
         }

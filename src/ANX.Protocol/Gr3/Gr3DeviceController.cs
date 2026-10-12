@@ -31,6 +31,28 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
     private CancellationTokenSource? _heartbeatCts;
     private Task? _heartbeatLoop;
     private byte _lastCommandedMotorOrder;
+    private double _displacementOffsetMM;
+
+    /// <summary>
+    /// 接触调零的偏移量（mm，上位机侧）。**净值 = 原始位移 − 本偏移**；不动设备零点 ——
+    /// 设备侧的硬件清零是 C3（<see cref="ResetAsync"/>），是另一件事。
+    /// 口径依据现役 `AnalyzeDataController.ZeroChannel`（`ZeroPoint := 当前值`，净值 = 当前 − 零点）。
+    /// </summary>
+    public double DisplacementOffsetMM => _displacementOffsetMM;
+
+    /// <summary>
+    /// 接触调零（上位机软件调零，用户 2026-10-12 明确：按现役做法、存偏移量）。
+    /// 把**当前位移读数**记为偏移量，之后的采样净值为 0 起算；每次接触都会重新记一次。
+    /// 只调位移，不调荷载（与现役 `ZeroAxialDisplacement` 一致）。
+    /// </summary>
+    public Task ZeroDisplacementAsync(CancellationToken cancellationToken = default)
+    {
+        _displacementOffsetMM = LastDisplacementMM;
+        return Task.CompletedTask;
+    }
+
+    /// <summary>最近一帧的位移原始读数（mm）；还没收到过 A2 时为 0。</summary>
+    private double LastDisplacementMM { get; set; }
 
     /// <summary>
     /// **换向时**先发停止、再发启动之间要等的时间（默认 500ms，等伺服停稳）。
@@ -156,9 +178,16 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
             case Gr3Constants.UplinkRealtimeData when Gr3UplinkParser.TryParseRealtimeData(frame, out var data):
                 LastMachineStatus = data.MachineStatus;
                 LastTestStatus = data.TestStatus;
+                var raw = ToSample(data, SystemInfo, _pressChannelIndex, _displaceChannelIndex, ElapsedSeconds);
+                LastDisplacementMM = raw.Displacement;
                 SampleReceived?.Invoke(
                     this,
-                    ToSample(data, SystemInfo, _pressChannelIndex, _displaceChannelIndex, ElapsedSeconds)
+                    raw with
+                    {
+                        // 接触调零（上位机软件偏移）：净值 = 原始 − 偏移；原始值一并带出去供量程保护判
+                        Displacement = raw.Displacement - _displacementOffsetMM,
+                        RawDisplacement = raw.Displacement,
+                    }
                 );
                 break;
         }

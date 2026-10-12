@@ -520,8 +520,9 @@ public partial class TestExecutionViewModel : ViewModelBase
                             && sequencer.Phase == TestPhase.Loading
                         )
                         {
-                            // 接触成立：位移清零（C3）并切到试验速率 —— 与现役线程的"4.4 传感器调零 + 提速"一致
-                            await device.ResetAsync(controlToken).ConfigureAwait(false);
+                            // 接触成立：**上位机软件调零**（存偏移量，不动设备零点）并切到试验速率
+                            // —— 与现役线程的"4.4 传感器调零 + 提速"一致（ZeroAxialDisplacement + SetVelocityCmd）
+                            await device.ZeroDisplacementAsync(controlToken).ConfigureAwait(false);
                             await device
                                 .SetSpeedAsync(profile.LoadRateMillimetersPerMinute, controlToken)
                                 .ConfigureAwait(false);

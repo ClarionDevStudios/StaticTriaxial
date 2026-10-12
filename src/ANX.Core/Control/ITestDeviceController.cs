@@ -65,6 +65,16 @@ public interface ITestDeviceController
     /// <summary>停止电机。</summary>
     Task StopAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>回零 / 复位。</summary>
+    /// <summary>
+    /// 回零 / 复位（GR-3 走 C3H 硬件清零）。**注意与 <see cref="ZeroDisplacementAsync"/> 的区别**：
+    /// 复位是"设备侧清零"，接触调零是"上位机侧存偏移量"（用户 2026-10-12 明确接触清零按现役做法）。
+    /// </summary>
     Task ResetAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 接触调零（**上位机软件调零**，存偏移量）：把**当前位移读数**记为偏移量，
+    /// 之后采样净值为 0 起算（净值 = 原始 − 偏移），**不动设备零点**。
+    /// 口径依据现役 `AnalyzeDataController.ZeroAxialDisplacement`（接触成立时调位移，不调荷载）。
+    /// </summary>
+    Task ZeroDisplacementAsync(CancellationToken cancellationToken = default);
 }
