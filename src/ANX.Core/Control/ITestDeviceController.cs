@@ -62,6 +62,12 @@ public interface ITestDeviceController
     /// </summary>
     Task JogAsync(JogDirection direction, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// **平台升降速率**（mm/min）—— 点动用。与试验加载速率分开（用户 2026-10-12 要求两个速率），
+    /// 由调用方从参数表取好再赋值；受电机上限约束（换算入口会截断）。
+    /// </summary>
+    double JogSpeedMillimetersPerMinute { get; set; }
+
     /// <summary>停止电机。</summary>
     Task StopAsync(CancellationToken cancellationToken = default);
 

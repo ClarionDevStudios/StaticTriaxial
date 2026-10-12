@@ -98,6 +98,54 @@ public sealed class TestSheetService : ITestSheetService
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// 覆盖某个试件明细行上的**结果列**（按 SampleKey 定位；曲线与创建时间不动）。
+    /// 供"按当前参数重算历史曲线"用。
+    /// </summary>
+    public Task UpdateDetailFieldsAsync(
+        string sheetId,
+        string sampleId,
+        IReadOnlyDictionary<string, double> results,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentNullException.ThrowIfNull(results);
+
+        var method = ResolveMethodForSheet(sheetId);
+        var assignments = new List<string>();
+
+        using var connection = _initializer.OpenConnection();
+        using var command = connection.CreateCommand();
+
+        var index = 0;
+        foreach (var (name, value) in results)
+        {
+            if (!IsDeclared(method.DetailTable, name))
+            {
+                throw new ArgumentException(
+                    $"方法 {method.MethodCode} 的明细表没有声明列 '{name}'",
+                    nameof(results)
+                );
+            }
+
+            var parameter = $"$v{index++}";
+            assignments.Add($"{name} = {parameter}");
+            command.Parameters.AddWithValue(parameter, value);
+        }
+
+        if (assignments.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        command.CommandText =
+            $"UPDATE {method.DetailTable.TableName} SET {string.Join(", ", assignments)} WHERE SampleKey = $key;";
+        command.Parameters.AddWithValue("$key", $"{sheetId}-{sampleId}");
+        command.ExecuteNonQuery();
+
+        return Task.CompletedTask;
+    }
+
     /// <inheritdoc />
     public Task CompleteAsync(string sheetId, CancellationToken cancellationToken = default)
     {

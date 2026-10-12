@@ -83,6 +83,10 @@
   <sys:String x:Key="History.Found">找到</sys:String>
   <sys:String x:Key="History.SheetsUnit">张试验单</sys:String>
   <sys:String x:Key="History.SelectSheetFirst">请先选中一张试验单</sys:String>
+  <sys:String x:Key="History.Recompute">按当前参数重算</sys:String>
+  <sys:String x:Key="History.RecomputeConfirm">按当前参数重算试验单 {0} 的全部已存曲线？已存结果列与组统计会被覆盖（曲线本身不动）。</sys:String>
+  <sys:String x:Key="History.RecomputeDone">已重算 {0} 件，跳过 {1} 件（曲线不足或判定不了）</sys:String>
+  <sys:String x:Key="History.RecomputeFailed">重算失败</sys:String>
   <sys:String x:Key="History.Exported">已导出</sys:String>
   <sys:String x:Key="History.ExportFailed">导出失败</sys:String>
   <sys:String x:Key="History.ColSheetId">试验单号</sys:String>

@@ -65,4 +65,20 @@ public interface ITestExecution : ICurveAxisSource
 
     /// <summary>一组跑完：算组统计并标记试验单完成。</summary>
     Task CompleteSheetAsync(string sheetId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// **按当前参数重算**某张试验单里所有已存曲线：逐件重新判定、覆盖已存结果列，并重算组统计。
+    /// 用途（用户 2026-10-12 要求）：改了"计算期参数"（跨径 / 试件尺寸 / 是否原点修正…）之后，
+    /// 让历史数据按新参数重算，不必重做试验。
+    /// </summary>
+    Task<RecomputeReport> RecomputeSheetAsync(
+        string sheetId,
+        CancellationToken cancellationToken = default
+    );
 }
+
+/// <summary>
+/// 重算结果摘要：<paramref name="Recomputed"/> 件已重算、<paramref name="Skipped"/> 件跳过
+/// （曲线点不足或单件判定不了）。
+/// </summary>
+public sealed record RecomputeReport(int Recomputed, int Skipped);

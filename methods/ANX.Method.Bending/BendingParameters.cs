@@ -43,6 +43,19 @@ public sealed class BendingParameters(ParameterStore store) : ITestParameters
     /// </summary>
     public const string LoadSafetyFactorKey = "LoadSafetyFactor";
 
+    /// <summary>
+    /// 是否启用**曲线原点修正**（用户 2026-10-12：有的试验需要、有的不需要）。
+    /// `1` 启用（T0715 默认）、`0` 关闭 —— 关闭时修正原点记 0、校正挠度 = 峰值挠度、应变按未修正挠度算。
+    /// </summary>
+    public const string EnableOriginCorrectionKey = "EnableOriginCorrection";
+
+    /// <summary>
+    /// **平台升降速率**（mm/min）—— 执行页"工作台上升 / 下降"按钮用（用户 2026-10-12：
+    /// 加载速率要两个，一个控制平台升降、一个用于试验过程）。与 <see cref="LoadRateKey"/> 各自独立；
+    /// 受电机上限 50mm/min 约束（换算入口会截断）。
+    /// </summary>
+    public const string JogSpeedKey = "JogSpeed";
+
     /// <summary>试件尺寸类参数（试样编辑页只显示这些）。</summary>
     public static readonly string[] SampleKeys = [SpanLengthKey, SampleWidthKey, SampleHeightKey];
 
@@ -55,6 +68,8 @@ public sealed class BendingParameters(ParameterStore store) : ITestParameters
         BreakConfirmKey,
         DisplacementSafetyFactorKey,
         LoadSafetyFactorKey,
+        EnableOriginCorrectionKey,
+        JogSpeedKey,
     ];
 
     public string MethodCode => "T0715";
@@ -70,6 +85,8 @@ public sealed class BendingParameters(ParameterStore store) : ITestParameters
         new(BreakConfirmKey, "破坏确认帧数", "帧", "3"),
         new(DisplacementSafetyFactorKey, "位移闸门安全系数（×设备量程）", "×", "0.95"),
         new(LoadSafetyFactorKey, "荷载闸门安全系数（×设备量程）", "×", "0.95"),
+        new(EnableOriginCorrectionKey, "启用曲线原点修正（1 启用 / 0 关闭）", "", "1"),
+        new(JogSpeedKey, "平台升降速率（工作台按钮）", "mm/min", "50"),
     ];
 
     public Task<IReadOnlyDictionary<string, string>> LoadAsync(

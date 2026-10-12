@@ -45,6 +45,13 @@
         Command="{Binding ViewModel.ExportEnglishCommand}"
         Content="{DynamicResource History.ExportEn}"
       />
+      <!-- 按当前参数重算历史曲线（改了计算期参数后用；覆盖已存结果，点击时二次确认） -->
+      <ui:Button
+        Margin="8,0,0,0"
+        Appearance="Secondary"
+        Command="{Binding ViewModel.RecomputeCommand}"
+        Content="{DynamicResource History.Recompute}"
+      />
     </StackPanel>
 
     <!-- 三栏：试验单（主）/ 曲线 / 试件（从）+ 字段表 -->

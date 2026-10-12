@@ -52,6 +52,9 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
 
     public double SpeedMillimetersPerMinute { get; private set; } = 50.0;
 
+    /// <summary>平台升降速率（点动用）—— 与试验速率分开，界面按住上下按钮时用这个。</summary>
+    public double JogSpeedMillimetersPerMinute { get; set; } = 50.0;
+
     public event EventHandler<TestSample>? SampleReceived;
 
     public Task ConnectAsync(CancellationToken cancellationToken = default)
@@ -175,7 +178,7 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
     private TestSample JogSample(JogDirection direction, double seconds)
     {
         var travelMM =
-            SpeedMillimetersPerMinute / 60.0 * _sampleIntervalSeconds * _timeScale;
+            JogSpeedMillimetersPerMinute / 60.0 * _sampleIntervalSeconds * _timeScale;
 
         _jogDisplacementMM += direction == JogDirection.Up ? travelMM : -travelMM;
         _jogDisplacementMM = Math.Max(0, _jogDisplacementMM);

@@ -33,7 +33,7 @@ public sealed class BendingParametersTests : IDisposable
         var parameters = CreateParameters();
 
         Assert.Equal(3, parameters.Definitions.Count(d => d.Group == ParameterGroup.Sample));
-        Assert.Equal(6, parameters.Definitions.Count(d => d.Group == ParameterGroup.Machine));
+        Assert.Equal(8, parameters.Definitions.Count(d => d.Group == ParameterGroup.Machine));
 
         var values = await parameters.LoadAsync();
         Assert.Equal("200", values[BendingParameters.SpanLengthKey]);
@@ -99,6 +99,54 @@ public sealed class BendingParametersTests : IDisposable
     }
 
     /// <summary>
+    /// **按当前参数重算历史曲线**（用户 2026-10-12 要求）：改了计算期参数（试件高度）后，
+    /// 对已存曲线重算 → 明细结果与组统计按新参数更新；曲线本身不动。
+    /// </summary>
+    [Fact]
+    public async Task 按当前参数重算应更新已存结果与组统计()
+    {
+        var module = new BendingPersistenceModule();
+        var initializer = new DatabaseInitializer(
+            new StorageOptions(Path.Combine(_directory, "anx.db")),
+            [module]
+        );
+        initializer.Initialize();
+        var sheets = new TestSheetService(initializer, new SheetNumberGenerator(initializer), [module]);
+        var parameters = new BendingParameters(new ParameterStore(initializer));
+        var execution = new BendingExecution(sheets, parameters);
+
+        var sheetId = await sheets.CreateAsync("T0715", "重算验证", "WT");
+        var curve = Enumerable.Range(0, 40).Select(i => new CurvePoint(i * 0.1, i * 0.2)).ToArray();
+
+        // 先按默认参数（h=35）结算一件：R_B = 63.67
+        var before = await execution.CompleteSampleAsync(sheetId, "1", curve);
+        Assert.Equal(63.67, before!["flexuralStrength"], 0.01);
+
+        // 改试件高度 35 → 40 后重算：同一条曲线应算成 48.75，明细与组统计都更新
+        await parameters.SaveAsync(
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [BendingParameters.SampleHeightKey] = "40",
+            }
+        );
+
+        var report = await execution.RecomputeSheetAsync(sheetId);
+        Assert.Equal(1, report.Recomputed);
+        Assert.Equal(0, report.Skipped);
+
+        var rows = sheets.ReadDetailRows(sheetId, ["FlexuralStrength", "SampleHeight"]);
+        Assert.Equal(48.75, Convert.ToDouble(rows[0]["FlexuralStrength"]), 0.01);
+        Assert.Equal(40, Convert.ToDouble(rows[0]["SampleHeight"]));
+
+        var main = sheets.ReadMainRow(sheetId, ["FlexuralStrengthAvg", "EffectiveCount"]);
+        Assert.Equal(48.75, Convert.ToDouble(main["FlexuralStrengthAvg"]), 0.01);
+        Assert.Equal(1, Convert.ToDouble(main["EffectiveCount"]));
+
+        // 曲线本身没被动过
+        Assert.Equal(curve.Length, sheets.ReadCurve($"{sheetId}-1").Count);
+    }
+
+    /// <summary>
     /// 位移闸门安全系数进了参数表（用户 2026-10-12 要求现场可调）：默认 0.95、
     /// 归在机器参数组（参数配置页可见）、能装配进运行参数并驱动位移闸门。
     /// </summary>
@@ -147,6 +195,36 @@ public sealed class BendingParametersTests : IDisposable
         Assert.Contains(BendingParameters.LoadSafetyFactorKey, BendingParameters.MachineKeys);
         Assert.Equal(0.95, adjusted.LoadRangeSafetyFactor, 6);
         Assert.Equal(95.0, adjusted.ClampLoadToDeviceRange(100.0).MaxLoadKN, 6);
+
+        // 平台升降速率与试验速率是两个独立参数（用户 2026-10-12）：
+        // 加载速率默认 50（试验用），平台升降默认 50（工作台按钮用），可分别改
+        Assert.Equal("50", parameters.Definitions.First(d =>
+            string.Equals(d.Key, BendingParameters.JogSpeedKey, StringComparison.Ordinal)
+        ).DefaultValue);
+        Assert.Equal(50.0, adjusted.JogSpeedMillimetersPerMinute, 6);
+
+        await parameters.SaveAsync(
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [BendingParameters.LoadRateKey] = "50",
+                [BendingParameters.JogSpeedKey] = "20",
+            }
+        );
+
+        var split = await execution.LoadProfileAsync();
+        Assert.Equal(50.0, split.LoadRateMillimetersPerMinute, 6); // 试验过程速率
+        Assert.Equal(20.0, split.JogSpeedMillimetersPerMinute, 6); // 平台升降速率
+
+        // 原点修正开关：默认启用；改成 0 后判定不修正
+        Assert.Equal("1", parameters.Definitions.First(d =>
+            string.Equals(d.Key, BendingParameters.EnableOriginCorrectionKey, StringComparison.Ordinal)
+        ).DefaultValue);
+        await parameters.SaveAsync(
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [BendingParameters.EnableOriginCorrectionKey] = "0",
+            }
+        );
     }
 
     private BendingParameters CreateParameters()

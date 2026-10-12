@@ -172,7 +172,8 @@ public partial class App
                 _ = services.AddSingleton(sp => new HistoryViewModel(
                     sp.GetRequiredService<ILocalizationService>(),
                     sp.GetRequiredService<ITestSheetBrowser>(),
-                    sp.GetRequiredService<IReportExportService>()
+                    sp.GetRequiredService<IReportExportService>(),
+                    sp.GetRequiredService<ITestExecution>()
                 ));
                 _ = services.AddSingleton<HistoryPage>();
 

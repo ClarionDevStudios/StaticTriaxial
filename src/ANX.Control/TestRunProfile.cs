@@ -86,4 +86,10 @@ public sealed record TestRunProfile
     /// （与现役线程的 `CONTACT_SPEED_MM_MIN` 同义）。
     /// </summary>
     public double ApproachSpeedMillimetersPerMinute { get; init; } = 10.0;
+
+    /// <summary>
+    /// **平台升降速率**（mm/min）：执行页"工作台上升 / 下降"按钮用（用户 2026-10-12 要求把
+    /// 平台升降与试验过程分成两个速率）。由方法从参数表装配，受电机上限 50mm/min 约束。
+    /// </summary>
+    public double JogSpeedMillimetersPerMinute { get; init; } = 50.0;
 }

@@ -83,6 +83,10 @@
   <sys:String x:Key="History.Found">Found</sys:String>
   <sys:String x:Key="History.SheetsUnit">sheets</sys:String>
   <sys:String x:Key="History.SelectSheetFirst">Select a test sheet first</sys:String>
+  <sys:String x:Key="History.Recompute">Recompute with current parameters</sys:String>
+  <sys:String x:Key="History.RecomputeConfirm">Recompute all stored curves of sheet {0} with the current parameters? Stored result columns and group statistics will be overwritten (the curves themselves are untouched).</sys:String>
+  <sys:String x:Key="History.RecomputeDone">Recomputed {0} sample(s), skipped {1}</sys:String>
+  <sys:String x:Key="History.RecomputeFailed">Recompute failed</sys:String>
   <sys:String x:Key="History.Exported">Exported</sys:String>
   <sys:String x:Key="History.ExportFailed">Export failed</sys:String>
   <sys:String x:Key="History.ColSheetId">Sheet ID</sys:String>

@@ -106,11 +106,16 @@ public static class BendingAnalyzer
     /// <param name="spanMM">跨径 L。</param>
     /// <param name="widthMM">试件宽度 b。</param>
     /// <param name="heightMM">试件高度 h。</param>
+    /// <param name="enableOriginCorrection">
+    /// 是否做曲线原点修正（参数表 `EnableOriginCorrection`）。**有的试验需要、有的不需要**（用户 2026-10-12）：
+    /// 关闭时不拟合修正直线，修正原点记 0，校正挠度 = 峰值挠度（应变随之按未修正挠度算）。
+    /// </param>
     public static BendingSampleResult Analyze(
         IReadOnlyList<CurvePoint> curve,
         double spanMM,
         double widthMM,
-        double heightMM
+        double heightMM,
+        bool enableOriginCorrection = true
     )
     {
         ArgumentNullException.ThrowIfNull(curve);
@@ -119,18 +124,24 @@ public static class BendingAnalyzer
             throw new ArgumentException("曲线点数不足以做原点修正（至少 3 点）", nameof(curve));
         }
 
-        var tangent = FitTangentLine(curve);
-        if (tangent is null)
-        {
-            throw new InvalidOperationException("无法拟合修正直线（峰值非正或上升段不足）");
-        }
-
-        var (k, b) = tangent.Value;
-
-        // 5.1 修正原点 O′ = −b / k；为负时钳到 0（现役口径）
-        var originCorrection = Math.Max(0.0, -b / k);
-
         var (peakLoad, peakDeflection) = FindMaxLoadPoint(curve);
+
+        // 5.1 修正原点 O′ = −b / k（修正直线与横轴交点）；为负时钳到 0（现役口径）
+        var k = 0.0;
+        var b = 0.0;
+        var originCorrection = 0.0;
+
+        if (enableOriginCorrection)
+        {
+            var tangent = FitTangentLine(curve);
+            if (tangent is null)
+            {
+                throw new InvalidOperationException("无法拟合修正直线（峰值非正或上升段不足）");
+            }
+
+            (k, b) = tangent.Value;
+            originCorrection = Math.Max(0.0, -b / k);
+        }
 
         var correctedDeflection = Math.Max(0.0, peakDeflection - originCorrection);
 

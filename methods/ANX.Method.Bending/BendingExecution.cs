@@ -39,6 +39,7 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
         ApproachSpeedMillimetersPerMinute = 10.0,
         DisplacementRangeSafetyFactor = 0.95,
         LoadRangeSafetyFactor = 0.95,
+        JogSpeedMillimetersPerMinute = 50.0,
     };
 
     /// <summary>
@@ -71,6 +72,10 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
             LoadRangeSafetyFactor = parameters.GetDouble(
                 values,
                 BendingParameters.LoadSafetyFactorKey
+            ),
+            JogSpeedMillimetersPerMinute = parameters.GetDouble(
+                values,
+                BendingParameters.JogSpeedKey
             ),
         };
     }
@@ -123,35 +128,21 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
             return null;
         }
 
-        // 试件尺寸与跨径从参数配置里读（试样编辑页可改），不再硬编码
-        var values = parameters is null
-            ? null
-            : await parameters.LoadAsync(cancellationToken).ConfigureAwait(false);
-        var span = values is null ? 200.0 : parameters!.GetDouble(values, BendingParameters.SpanLengthKey);
-        var width = values is null ? 30.0 : parameters!.GetDouble(values, BendingParameters.SampleWidthKey);
-        var height = values is null ? 35.0 : parameters!.GetDouble(values, BendingParameters.SampleHeightKey);
-
-        var result = BendingAnalyzer.Analyze(curve, span, width, height);
+        var analysis = await LoadAnalysisParametersAsync(cancellationToken).ConfigureAwait(false);
+        var result = BendingAnalyzer.Analyze(
+            curve,
+            analysis.SpanMM,
+            analysis.WidthMM,
+            analysis.HeightMM,
+            analysis.EnableOriginCorrection
+        );
 
         await sheets
             .AppendSampleAsync(
                 sheetId,
                 sampleId,
                 curve,
-                new Dictionary<string, double>(StringComparer.Ordinal)
-                {
-                    ["SampleWidth"] = width,
-                    ["SampleHeight"] = height,
-                    ["PeakLoadValue"] = result.PeakLoadKN,
-                    ["PeakDeflection"] = result.PeakDeflectionMM,
-                    ["OriginCorrection"] = result.OriginCorrectionMM,
-                    ["CorrectedDeflection"] = result.CorrectedDeflectionMM,
-                    ["TangentK"] = result.TangentK,
-                    ["TangentB"] = result.TangentB,
-                    ["FlexuralStrength"] = result.FlexuralStrengthMPa,
-                    ["MaxBendingTensileStrain"] = result.MaxBendingTensileStrainMicro,
-                    ["IsEffective"] = 1,
-                },
+                BuildResultColumns(analysis, result),
                 cancellationToken
             )
             .ConfigureAwait(false);
@@ -181,22 +172,141 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
         {
             var group = BendingAnalyzer.AnalyzeGroup(results);
 
-            await sheets
-                .UpdateMainFieldsAsync(
-                    sheetId,
-                    new Dictionary<string, double>(StringComparer.Ordinal)
-                    {
-                        ["FlexuralStrengthAvg"] = group.MeanFlexuralStrengthMPa,
-                        ["MaxBendingStrainAvg"] = group.MeanMaxBendingTensileStrainMicro,
-                        ["EffectiveCount"] = group.EffectiveCount,
-                        ["ExcludedCount"] = group.ExcludedIndexes.Count,
-                        ["NeedsSupplement"] = group.NeedsSupplement ? 1 : 0,
-                    },
-                    cancellationToken
-                )
+            await sheets.UpdateMainFieldsAsync(sheetId, BuildGroupColumns(group), cancellationToken)
                 .ConfigureAwait(false);
         }
 
         await sheets.CompleteAsync(sheetId, cancellationToken).ConfigureAwait(false);
     }
+
+    /// <inheritdoc />
+    public async Task<RecomputeReport> RecomputeSheetAsync(
+        string sheetId,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var analysis = await LoadAnalysisParametersAsync(cancellationToken).ConfigureAwait(false);
+        var rows = sheets.ReadDetailRows(sheetId, ["SampleID"]);
+
+        var recomputed = new List<BendingSampleResult>();
+        var skipped = 0;
+
+        foreach (var row in rows)
+        {
+            var sampleId = Convert.ToString(
+                row["SampleID"],
+                System.Globalization.CultureInfo.InvariantCulture
+            );
+            if (string.IsNullOrWhiteSpace(sampleId))
+            {
+                continue;
+            }
+
+            var curve = sheets.ReadCurve($"{sheetId}-{sampleId}");
+            if (curve.Count < 3)
+            {
+                skipped++; // 曲线不足以判定（点太少）
+                continue;
+            }
+
+            BendingSampleResult result;
+            try
+            {
+                result = BendingAnalyzer.Analyze(
+                    curve,
+                    analysis.SpanMM,
+                    analysis.WidthMM,
+                    analysis.HeightMM,
+                    analysis.EnableOriginCorrection
+                );
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+            {
+                skipped++; // 单件判定不了（例如峰值非正、上升段不足）不该连累整单
+                continue;
+            }
+
+            await sheets
+                .UpdateDetailFieldsAsync(
+                    sheetId,
+                    sampleId,
+                    BuildResultColumns(analysis, result),
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+
+            recomputed.Add(result);
+        }
+
+        if (recomputed.Count > 0)
+        {
+            // 组统计同样按新结果重算（与"完成一组"同口径）
+            _resultsBySheet[sheetId] = recomputed;
+            await sheets
+                .UpdateMainFieldsAsync(
+                    sheetId,
+                    BuildGroupColumns(BendingAnalyzer.AnalyzeGroup(recomputed)),
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        return new RecomputeReport(recomputed.Count, skipped);
+    }
+
+    /// <summary>判定用的参数快照（跨径 / 宽 / 高 / 是否原点修正）—— 从参数表读，重算与结算共用。</summary>
+    private sealed record AnalysisParameters(
+        double SpanMM,
+        double WidthMM,
+        double HeightMM,
+        bool EnableOriginCorrection
+    );
+
+    private async Task<AnalysisParameters> LoadAnalysisParametersAsync(CancellationToken cancellationToken)
+    {
+        if (parameters is null)
+        {
+            return new AnalysisParameters(200.0, 30.0, 35.0, true);
+        }
+
+        var values = await parameters.LoadAsync(cancellationToken).ConfigureAwait(false);
+
+        return new AnalysisParameters(
+            parameters.GetDouble(values, BendingParameters.SpanLengthKey),
+            parameters.GetDouble(values, BendingParameters.SampleWidthKey),
+            parameters.GetDouble(values, BendingParameters.SampleHeightKey),
+            parameters.GetDouble(values, BendingParameters.EnableOriginCorrectionKey) != 0
+        );
+    }
+
+    /// <summary>明细行的结果列（结算写入与重算覆盖共用同一份键）。</summary>
+    private static Dictionary<string, double> BuildResultColumns(
+        AnalysisParameters analysis,
+        BendingSampleResult result
+    ) =>
+        new(StringComparer.Ordinal)
+        {
+            ["SampleWidth"] = analysis.WidthMM,
+            ["SampleHeight"] = analysis.HeightMM,
+            ["PeakLoadValue"] = result.PeakLoadKN,
+            ["PeakDeflection"] = result.PeakDeflectionMM,
+            ["OriginCorrection"] = result.OriginCorrectionMM,
+            ["CorrectedDeflection"] = result.CorrectedDeflectionMM,
+            ["TangentK"] = result.TangentK,
+            ["TangentB"] = result.TangentB,
+            ["FlexuralStrength"] = result.FlexuralStrengthMPa,
+            ["MaxBendingTensileStrain"] = result.MaxBendingTensileStrainMicro,
+            ["IsEffective"] = 1,
+        };
+
+    /// <summary>主表上的组统计列。</summary>
+    private static Dictionary<string, double> BuildGroupColumns(BendingGroupResult group) =>
+        new(StringComparer.Ordinal)
+        {
+            ["FlexuralStrengthAvg"] = group.MeanFlexuralStrengthMPa,
+            ["MaxBendingStrainAvg"] = group.MeanMaxBendingTensileStrainMicro,
+            ["EffectiveCount"] = group.EffectiveCount,
+            ["ExcludedCount"] = group.ExcludedIndexes.Count,
+            ["NeedsSupplement"] = group.NeedsSupplement ? 1 : 0,
+        };
 }

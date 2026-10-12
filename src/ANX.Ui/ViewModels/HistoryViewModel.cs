@@ -16,16 +16,19 @@ public partial class HistoryViewModel : ViewModelBase
 {
     private readonly ITestSheetBrowser _browser;
     private readonly IReportExportService _exporter;
+    private readonly ITestExecution _execution;
 
     public HistoryViewModel(
         ILocalizationService localization,
         ITestSheetBrowser browser,
-        IReportExportService exporter
+        IReportExportService exporter,
+        ITestExecution execution
     )
         : base(localization)
     {
         _browser = browser;
         _exporter = exporter;
+        _execution = execution;
         Status = L("History.Ready");
     }
 
@@ -82,6 +85,57 @@ public partial class HistoryViewModel : ViewModelBase
     /// <summary>导出选中试验单的英文报表。</summary>
     [RelayCommand]
     private Task ExportEnglishAsync() => ExportCoreAsync("en-US");
+
+    /// <summary>
+    /// **按当前参数重算**选中试验单的历史曲线（覆盖已存结果列与组统计）。
+    /// 用户 2026-10-12 要求：改了计算期参数（跨径 / 试件尺寸 / 是否原点修正…）后，
+    /// 让已存的试验数据按新参数重算，不必重做试验。
+    /// </summary>
+    [RelayCommand]
+    private async Task RecomputeAsync()
+    {
+        if (SelectedSheet is not { } sheet)
+        {
+            Status = L("History.SelectSheetFirst");
+            return;
+        }
+
+        var confirm = new Wpf.Ui.Controls.MessageBox
+        {
+            Title = L("History.Recompute"),
+            Content = string.Format(
+                System.Globalization.CultureInfo.CurrentCulture,
+                L("History.RecomputeConfirm"),
+                sheet.SheetId
+            ),
+            PrimaryButtonText = L("Common.Yes"),
+            SecondaryButtonText = L("Common.No"),
+            IsCloseButtonEnabled = false,
+            Owner = System.Windows.Application.Current?.MainWindow,
+        };
+
+        if (await confirm.ShowDialogAsync() != Wpf.Ui.Controls.MessageBoxResult.Primary)
+        {
+            return;
+        }
+
+        try
+        {
+            var report = await _execution.RecomputeSheetAsync(sheet.SheetId);
+            Status = string.Format(
+                System.Globalization.CultureInfo.CurrentCulture,
+                L("History.RecomputeDone"),
+                report.Recomputed,
+                report.Skipped
+            );
+
+            await LoadSamplesAsync(sheet); // 刷新明细，马上能看到新结果
+        }
+        catch (Exception ex)
+        {
+            Status = $"{L("History.RecomputeFailed")}: {ex.Message}";
+        }
+    }
 
     partial void OnSelectedSheetChanged(TestSheetSummary? value)
     {

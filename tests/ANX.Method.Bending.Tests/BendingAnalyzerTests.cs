@@ -64,8 +64,32 @@ public sealed class BendingAnalyzerTests
         Assert.Equal(-1.0, tangent.Value.B, 1e-6);
     }
 
-    // ── 5.2 破坏荷载与跨中挠度 ──────────────────────────────────────
+    /// <summary>
+    /// 是否做原点修正可由参数控制（用户 2026-10-12：有的试验需要、有的不需要）。
+    /// 关闭时：修正原点记 0、校正挠度 = 峰值挠度、修正直线系数不参与结果。
+    /// </summary>
+    [Fact]
+    public void 关闭原点修正时修正原点应记零且挠度用峰值挠度()
+    {
+        var curve = BuildCurve(); // 上升段落在 y = 2x − 1 上 → 修正原点 0.5
 
+        var corrected = BendingAnalyzer.Analyze(curve, 200, 30, 35, enableOriginCorrection: true);
+        var uncorrected = BendingAnalyzer.Analyze(curve, 200, 30, 35, enableOriginCorrection: false);
+
+        Assert.Equal(0.5, corrected.OriginCorrectionMM, 1e-6);
+        Assert.Equal(corrected.PeakDeflectionMM - 0.5, corrected.CorrectedDeflectionMM, 1e-6);
+
+        Assert.Equal(0.0, uncorrected.OriginCorrectionMM, 1e-6);
+        Assert.Equal(0.0, uncorrected.TangentK, 1e-6);
+        Assert.Equal(0.0, uncorrected.TangentB, 1e-6);
+        Assert.Equal(uncorrected.PeakDeflectionMM, uncorrected.CorrectedDeflectionMM, 1e-6);
+
+        // 强度只看峰值荷载，所以两者相同；应变按各自挠度算，未修正的更大
+        Assert.Equal(corrected.FlexuralStrengthMPa, uncorrected.FlexuralStrengthMPa, 1e-6);
+        Assert.True(uncorrected.MaxBendingTensileStrainMicro > corrected.MaxBendingTensileStrainMicro);
+    }
+
+    // ── 5.2 破坏荷载与跨中挠度 ──────────────────────────────────────
     [Fact]
     public void 破坏荷载应取曲线最大荷载且挠度从修正原点量起()
     {

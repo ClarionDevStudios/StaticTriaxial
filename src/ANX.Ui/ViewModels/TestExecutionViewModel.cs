@@ -219,6 +219,10 @@ public partial class TestExecutionViewModel : ViewModelBase
 
         try
         {
+            // 平台升降速率与试验速率分开（用户 2026-10-12）：按下按钮时按参数表的当前值走
+            var profile = await _execution.LoadProfileAsync();
+            _device.JogSpeedMillimetersPerMinute = profile.JogSpeedMillimetersPerMinute;
+
             await _device.JogAsync(direction);
             Append(L(direction == JogDirection.Up ? "Exec.JogUp" : "Exec.JogDown"));
         }
