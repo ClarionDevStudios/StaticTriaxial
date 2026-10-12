@@ -128,6 +128,57 @@ public sealed class DeviceChainTests
     }
 
     /// <summary>
+    /// **换向时必须先发停止、再发启动**（用户 2026-10-12 明确要求）。封装层单一出口负责，
+    /// 调用方（界面按住上升后改按下降、复位后重新启动…）不需要记得发停止。
+    /// </summary>
+    [Fact]
+    public async Task 换向时应先发停止再发启动()
+    {
+        var channel = new FakeChannel { AutoAck = true };
+        await using var controller = new Gr3DeviceController(channel)
+        {
+            DirectionChangeSettleDelay = TimeSpan.FromMilliseconds(10),
+        };
+
+        var connect = controller.ConnectAsync();
+        channel.Feed(Gr3FrameCodec.BuildDatagram(Gr3Constants.UplinkSystemInfo, BuildSystemInfoPayload(), 1));
+        await connect;
+
+        var c4Orders = () =>
+            channel
+                .SentFrames.Where(frame => frame[10] == Gr3Constants.DownlinkMotorLoad)
+                .Select(frame => frame[11])
+                .ToArray();
+
+        // 上升 → 同向再按上升：不该插停止
+        await controller.JogAsync(JogDirection.Up);
+        await controller.JogAsync(JogDirection.Up);
+        Assert.Equal([Gr3Constants.MotorOrderForwardUp, Gr3Constants.MotorOrderForwardUp], c4Orders());
+
+        // 上升中直接按下降：必须先发停止（0）再发反转（2）
+        await controller.JogAsync(JogDirection.Down);
+        Assert.Equal(
+            [
+                Gr3Constants.MotorOrderForwardUp,
+                Gr3Constants.MotorOrderForwardUp,
+                Gr3Constants.MotorOrderStop,
+                Gr3Constants.MotorOrderReverseDown,
+            ],
+            c4Orders()
+        );
+
+        // 反转中启动试验（C4 正转）：同样先停后转
+        await controller.StartAsync();
+        var afterStart = c4Orders();
+        Assert.Equal(Gr3Constants.MotorOrderStop, afterStart[^2]);
+        Assert.Equal(Gr3Constants.MotorOrderForwardUp, afterStart[^1]);
+
+        // 停止指令本身不会再插一条停止
+        await controller.StopAsync();
+        Assert.Equal(Gr3Constants.MotorOrderStop, c4Orders()[^1]);
+    }
+
+    /// <summary>
     /// 电机运转中改速率**必须重发 C4**（协议：同向运转时只有重发才改速度；现役 `SetVelocityCmd`
     /// 每次调用都重发）。ANX 之前只改本地字段 → "接触后切到试验速率"实际不生效，整轮按接近速率跑。
     /// </summary>

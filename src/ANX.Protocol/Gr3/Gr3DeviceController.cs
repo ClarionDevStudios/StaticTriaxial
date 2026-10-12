@@ -30,6 +30,13 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
     private bool _subscribed;
     private CancellationTokenSource? _heartbeatCts;
     private Task? _heartbeatLoop;
+    private byte _lastCommandedMotorOrder;
+
+    /// <summary>
+    /// **换向时**先发停止、再发启动之间要等的时间（默认 500ms，等伺服停稳）。
+    /// 用户 2026-10-12 明确要求："电机运动换向时，先发电机停止命令，再发送电机启动命令"。
+    /// </summary>
+    public TimeSpan DirectionChangeSettleDelay { get; set; } = TimeSpan.FromMilliseconds(500);
 
     public Gr3DeviceController(
         ICommChannel channel,
@@ -227,10 +234,7 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
             return; // 值没变、或电机没在转：速率留在字段里，下次 Start / Jog 时带上
         }
 
-        await SendAndWaitAckAsync(
-                Gr3DownlinkCommands.MotorLoad(direction, Gr3MotorSpeed.ToWire(millimetersPerMinute)),
-                cancellationToken
-            )
+        await SendMotorAsync(direction, Gr3MotorSpeed.ToWire(millimetersPerMinute), cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -249,13 +253,11 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
         double millimetersPerMinute,
         CancellationToken cancellationToken = default
     ) =>
-        SendAndWaitAckAsync(
-            Gr3DownlinkCommands.MotorLoad(
-                direction == JogDirection.Up
-                    ? Gr3Constants.MotorOrderForwardUp
-                    : Gr3Constants.MotorOrderReverseDown,
-                Gr3MotorSpeed.ToWire(millimetersPerMinute)
-            ),
+        SendMotorAsync(
+            direction == JogDirection.Up
+                ? Gr3Constants.MotorOrderForwardUp
+                : Gr3Constants.MotorOrderReverseDown,
+            Gr3MotorSpeed.ToWire(millimetersPerMinute),
             cancellationToken
         );
 
@@ -277,11 +279,9 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
             )
             .ConfigureAwait(false);
 
-        await SendAndWaitAckAsync(
-                Gr3DownlinkCommands.MotorLoad(
-                    Gr3Constants.MotorOrderForwardUp,
-                    Gr3MotorSpeed.ToWire(SpeedMillimetersPerMinute)
-                ),
+        await SendMotorAsync(
+                Gr3Constants.MotorOrderForwardUp,
+                Gr3MotorSpeed.ToWire(SpeedMillimetersPerMinute),
                 cancellationToken
             )
             .ConfigureAwait(false);
@@ -289,10 +289,45 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
 
     /// <summary>停止电机（C4 方向字 0）。</summary>
     public Task StopAsync(CancellationToken cancellationToken = default) =>
-        SendAndWaitAckAsync(
-            Gr3DownlinkCommands.MotorLoad(Gr3Constants.MotorOrderStop, 0),
-            cancellationToken
-        );
+        SendMotorAsync(Gr3Constants.MotorOrderStop, 0, cancellationToken);
+
+    /// <summary>
+    /// 电机指令的**唯一出口**。换向（新方向 ≠ 当前运转方向）时按用户 2026-10-12 的要求
+    /// **先发停止、等 <see cref="DirectionChangeSettleDelay"/>、再发新方向** —— 不靠调用方记得。
+    /// </summary>
+    private async Task SendMotorAsync(byte order, ushort speed, CancellationToken cancellationToken)
+    {
+        var current = CurrentMotorOrder;
+
+        if (
+            order != Gr3Constants.MotorOrderStop
+            && current != Gr3Constants.MotorOrderStop
+            && current != order
+        )
+        {
+            await SendAndWaitAckAsync(
+                    Gr3DownlinkCommands.MotorLoad(Gr3Constants.MotorOrderStop, 0),
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+            _lastCommandedMotorOrder = Gr3Constants.MotorOrderStop;
+
+            await Task.Delay(DirectionChangeSettleDelay, cancellationToken).ConfigureAwait(false);
+        }
+
+        await SendAndWaitAckAsync(Gr3DownlinkCommands.MotorLoad(order, speed), cancellationToken)
+            .ConfigureAwait(false);
+        _lastCommandedMotorOrder = order;
+    }
+
+    /// <summary>
+    /// 当前电机运转方向（0 停 / 1 正转上升 / 2 反转下降）：优先看机器状态位（设备是权威），
+    /// 没有状态位时回落到"最近一条命令"。
+    /// </summary>
+    private byte CurrentMotorOrder =>
+        LastMachineStatus.HasFlag(Gr3MachineStatus.MotorForward) ? Gr3Constants.MotorOrderForwardUp
+        : LastMachineStatus.HasFlag(Gr3MachineStatus.MotorReverse) ? Gr3Constants.MotorOrderReverseDown
+        : _lastCommandedMotorOrder;
 
     /// <summary>复位 / 清零（C3H，用户 2026-10-10 澄清：复位发 C3，不是 C5）。</summary>
     public Task ResetAsync(CancellationToken cancellationToken = default) =>

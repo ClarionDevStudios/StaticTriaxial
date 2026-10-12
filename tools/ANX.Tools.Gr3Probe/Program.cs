@@ -77,6 +77,12 @@ internal static class Program
             return await RunSpeedChangeAsync(host, port, localPort, waitMs);
         }
 
+        // 换向（会真的动工作台）：验证"先发停止、再发启动"（用户 2026-10-12 明确要求）
+        if (Array.IndexOf(args, "--reverse-test") >= 0)
+        {
+            return await RunReverseTestAsync(host, port, localPort, waitMs);
+        }
+
         var codec = new Gr3FrameCodec();
 
         await using var channel = new UdpChannel(new UdpChannelOptions(host, port, localPort));
@@ -368,6 +374,81 @@ internal static class Program
         Console.WriteLine("判读要点：");
         Console.WriteLine("  · ② 正转=True、反转=False；⑤ 反转=True、正转=False；③⑥ 两位都 False。");
         Console.WriteLine("  · ④ 清零前位移应偏离 0（正转已让工作台离开起点），清零后回到 ~0。");
+        return 0;
+    }
+
+    /// <summary>
+    /// 换向实验（会真的动工作台）：正转上升 2 秒，**不停机**直接发反转下降 —— 控制器应当自己
+    /// 先发停止、等一会儿、再发反转。每 100ms 采样机器状态位，打印"状态变化序列"，
+    /// 从 0x08（正转）到 0x10（反转）之间应当看得到一段 0x00（停）。
+    /// </summary>
+    private static async Task<int> RunReverseTestAsync(string host, int port, int localPort, int waitMs)
+    {
+        const double SegmentSeconds = 2.0;
+
+        Console.WriteLine("=== 换向实验（会真的动工作台：请空载、上下留行程余量）===");
+        Console.WriteLine(
+            $"流程：正转上升 {SegmentSeconds:0.#}s → **不停机**直接发反转下降 {SegmentSeconds:0.#}s → 停止"
+        );
+        Console.WriteLine("判读：状态序列里 0x08 与 0x10 之间应出现一段 0x00（先停后转）。");
+        Console.WriteLine();
+
+        await using var channel = new UdpChannel(new UdpChannelOptions(host, port, localPort));
+        await using var controller = new Gr3DeviceController(
+            channel,
+            pressChannelIndex: 0,
+            displaceChannelIndex: 1
+        );
+
+        var lastSample = default(TestSample);
+        controller.SampleReceived += (_, sample) => lastSample = sample;
+
+        await controller.ConnectAsync();
+        Console.WriteLine("联机成功（A0 已收到）");
+        await Task.Delay(Math.Max(800, waitMs));
+
+        var clock = Stopwatch.StartNew();
+        var lastStatus = (byte)0xFF;
+
+        void Trace()
+        {
+            var status = (byte)controller.LastMachineStatus;
+            if (status != lastStatus)
+            {
+                lastStatus = status;
+                Console.WriteLine(
+                    $"  {clock.Elapsed.TotalSeconds,5:0.0}s  机器 0x{status:X2}"
+                        + $"（正转={(status & 0x08) != 0} 反转={(status & 0x10) != 0}）"
+                        + $"  位移 {lastSample.Displacement,8:F3} mm"
+                );
+            }
+        }
+
+        var start = lastSample.Displacement;
+
+        await controller.JogAsync(JogDirection.Up);
+        for (var i = 0; i < (int)(SegmentSeconds * 10); i++)
+        {
+            await Task.Delay(100);
+            Trace();
+        }
+
+        // 关键动作：**不停机**，直接换向 —— 控制器应当先发停止、等 500ms、再发反转。
+        // 注意：换向那几百毫秒里必须**并发采样**，否则采样循环正好被 await 挡住、看不到 0x00 段。
+        var reverseTask = controller.JogAsync(JogDirection.Down);
+        for (var i = 0; i < (int)(SegmentSeconds * 10); i++)
+        {
+            await Task.Delay(100);
+            Trace();
+        }
+
+        await reverseTask;
+
+        await controller.StopAsync();
+        await Task.Delay(400);
+        Trace();
+
+        Console.WriteLine($"  上行前位移 {start:F3} → 结束后 {lastSample.Displacement:F3} mm");
         return 0;
     }
 
