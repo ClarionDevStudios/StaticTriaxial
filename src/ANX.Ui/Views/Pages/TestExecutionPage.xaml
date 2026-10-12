@@ -79,7 +79,7 @@
       >
         <ui:Button
           MinWidth="96"
-          Appearance="Secondary"
+          Appearance="Primary"
           Content="{DynamicResource Exec.WorktableUp}"
           Icon="{ui:SymbolIcon ArrowUp24}"
           IsEnabled="{Binding ViewModel.CanJog}"
@@ -91,7 +91,7 @@
         <ui:Button
           MinWidth="96"
           Margin="8,0,0,0"
-          Appearance="Secondary"
+          Appearance="Primary"
           Content="{DynamicResource Exec.WorktableDown}"
           Icon="{ui:SymbolIcon ArrowDown24}"
           IsEnabled="{Binding ViewModel.CanJog}"
@@ -115,16 +115,18 @@
         <StackPanel Grid.Column="0">
           <ui:Button
             MinWidth="96"
-            Appearance="Secondary"
+            Appearance="Primary"
             Command="{Binding ViewModel.OpenSheetSelectionCommand}"
             Content="{DynamicResource Exec.NewSheet}"
+            Icon="{ui:SymbolIcon Add24}"
           />
           <ui:Button
             MinWidth="96"
             Margin="0,6,0,0"
-            Appearance="Secondary"
+            Appearance="Primary"
             Command="{Binding ViewModel.OpenMachineSettingsCommand}"
             Content="{DynamicResource Exec.TestParams}"
+            Icon="{ui:SymbolIcon Settings24}"
           />
         </StackPanel>
 
@@ -132,16 +134,18 @@
         <StackPanel Grid.Column="1" Margin="8,0,0,0">
           <ui:Button
             MinWidth="96"
-            Appearance="Secondary"
+            Appearance="Primary"
             Command="{Binding ViewModel.PrintReportCommand}"
             Content="{DynamicResource Exec.Print}"
+            Icon="{ui:SymbolIcon Print24}"
           />
           <ui:Button
             MinWidth="96"
             Margin="0,6,0,0"
-            Appearance="Secondary"
+            Appearance="Primary"
             Command="{Binding ViewModel.OpenHistoryCommand}"
             Content="{DynamicResource Exec.History}"
+            Icon="{ui:SymbolIcon History24}"
           />
         </StackPanel>
       </Grid>
@@ -150,7 +154,8 @@
     <!-- ③ 三栏：左（试样与操作）/ 中（曲线）/ 右（状态与日志） -->
     <Grid Grid.Row="1" Margin="0,12,0,0">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="300" />
+        <!-- 左栏留够宽度：三个试样按钮加图标后要放得下「新建试样」四个字（用户 2026-10-12） -->
+        <ColumnDefinition Width="360" />
         <ColumnDefinition Width="*" />
         <ColumnDefinition Width="280" />
       </Grid.ColumnDefinitions>
@@ -161,19 +166,22 @@
             <UniformGrid Columns="3">
               <ui:Button
                 Margin="0,0,4,0"
-                Appearance="Secondary"
+                Appearance="Primary"
                 Command="{Binding ViewModel.OpenSampleEditorCommand}"
                 Content="{DynamicResource Exec.NewSample}"
+                Icon="{ui:SymbolIcon Add24}"
               />
               <ui:Button
                 Margin="0,0,4,0"
-                Appearance="Secondary"
+                Appearance="Primary"
                 Command="{Binding ViewModel.OpenSampleEditorCommand}"
                 Content="{DynamicResource Exec.EditSample}"
+                Icon="{ui:SymbolIcon Edit24}"
               />
               <ui:Button
-                Appearance="Secondary"
+                Appearance="Primary"
                 Content="{DynamicResource Exec.DeleteSample}"
+                Icon="{ui:SymbolIcon Delete24}"
                 IsEnabled="False"
                 ToolTip="{DynamicResource Exec.ToDo}"
               />
@@ -187,21 +195,45 @@
             <TextBlock Style="{StaticResource MonoTextStyle}" Text="{Binding ViewModel.SheetText, Mode=OneWay}" />
           </StackPanel>
 
-          <StackPanel DockPanel.Dock="Bottom">
+          <!-- 启动/停止 与 有效性计算 并排一行；启动按钮的文字与图标随运行状态切换（用户 2026-10-12） -->
+          <Grid DockPanel.Dock="Bottom">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
             <ui:Button
+              Grid.Column="0"
               Height="64"
               Appearance="Primary"
+              AutomationProperties.Name="{Binding ViewModel.StartStopText, Mode=OneWay}"
               Command="{Binding ViewModel.StartOrStopCommand}"
-              Content="{DynamicResource Exec.StartOrStop}"
-            />
+            >
+              <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                <ui:SymbolIcon
+                  VerticalAlignment="Center"
+                  FontSize="20"
+                  Symbol="{Binding ViewModel.StartStopSymbol, Mode=OneWay}"
+                />
+                <TextBlock
+                  Margin="8,0,0,0"
+                  VerticalAlignment="Center"
+                  Text="{Binding ViewModel.StartStopText, Mode=OneWay}"
+                />
+              </StackPanel>
+            </ui:Button>
+
             <ui:Button
-              Height="36"
-              Margin="0,8,0,0"
-              Appearance="Secondary"
-              Command="{Binding ViewModel.CompleteSheetCommand}"
-              Content="{DynamicResource Exec.CompleteSheet}"
+              Grid.Column="1"
+              MinWidth="120"
+              Height="64"
+              Margin="8,0,0,0"
+              Appearance="Primary"
+              Command="{Binding ViewModel.EvaluateValidityCommand}"
+              Content="{DynamicResource Exec.Validity}"
+              Icon="{ui:SymbolIcon CheckmarkCircle24}"
             />
-          </StackPanel>
+          </Grid>
 
           <TextBlock
             Margin="0,12,0,0"
@@ -226,9 +258,10 @@
           <ui:Button
             DockPanel.Dock="Bottom"
             Margin="0,8,0,0"
-            Appearance="Secondary"
+            Appearance="Primary"
             Command="{Binding ViewModel.ClearLogCommand}"
             Content="{DynamicResource Exec.ClearInfo}"
+            Icon="{ui:SymbolIcon Broom24}"
           />
           <!--
             DockPanel 的填充项：它会自动占满"就绪"那行下面到"清空信息"按钮上面那块。
@@ -255,21 +288,18 @@
         <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource Exec.Connection}" />
         <TextBlock
           Margin="8,0,0,0"
+          VerticalAlignment="Center"
+          Foreground="{Binding ViewModel.ConnectionBrush, Mode=OneWay}"
           Style="{StaticResource MonoTextStyle}"
           Text="{Binding ViewModel.ConnectionText, Mode=OneWay}"
-        />
-        <ui:Button
-          Margin="16,0,0,0"
-          Appearance="Secondary"
-          Command="{Binding ViewModel.ConnectCommand}"
-          Content="{DynamicResource Exec.Connect}"
         />
       </StackPanel>
 
       <ui:Button
         HorizontalAlignment="Right"
-        Appearance="Secondary"
+        Appearance="Primary"
         Content="{DynamicResource Exec.DataFlow}"
+        Icon="{ui:SymbolIcon DataTrending24}"
         IsEnabled="False"
         ToolTip="{DynamicResource Exec.ToDo}"
       />

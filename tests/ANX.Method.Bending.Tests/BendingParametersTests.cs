@@ -34,7 +34,90 @@ public sealed class BendingParametersTests : IDisposable
 
         // 试件尺寸属于**试样信息**（用户 2026-10-12 明确），不再出现在方法参数里
         Assert.Empty(parameters.Definitions.Where(d => d.Group == ParameterGroup.Sample));
-        Assert.Equal(8, parameters.Definitions.Count(d => d.Group == ParameterGroup.Machine));
+        // 方法只声明**自己**的参数（T0715 四项）；通用参数在通用目录里（比照现役"超集窗体"）
+        var method = parameters.Definitions.ToArray();
+        Assert.Equal(4, method.Length);
+        Assert.All(method, d => Assert.False(string.IsNullOrWhiteSpace(d.Description)));
+
+        var catalog = MachineParameterCatalog.Definitions;
+
+        // 通道设置页：轴向压力 / 轴向位移 / 水平压力 / 水平位移（用户 2026-10-12：加水平压力、去掉双传感器）
+        var channels = catalog.Where(d => d.Scope == ParameterScope.Acquisition).ToArray();
+        Assert.Equal(4, channels.Length);
+        Assert.Contains(channels, d => d.Key == MachineParameterCatalog.HorizontalPressChannelKey);
+        Assert.DoesNotContain(
+            channels,
+            d => d.Key.Contains("DualSensor", StringComparison.Ordinal)
+        );
+
+        // 通道选择用下拉列表（现役 RadioGroup → 我们 ComboBox）
+        Assert.All(channels, d => Assert.Equal(ParameterKind.Choice, d.Kind));
+        Assert.All(channels, d => Assert.NotEmpty(d.Options!));
+
+        // 2026-10-12：参数表里的项**全部接线完毕**（最后一项「不判破坏荷载下限」也接上了）。
+        // PendingIntegration 这个闸门保留给以后新出现的"现役有、本软件还没功能"的项。
+        Assert.DoesNotContain(catalog, d => d.PendingIntegration);
+        Assert.Contains(
+            catalog,
+            d => d.Key == MachineParameterCatalog.PressChannelKey && !d.PendingIntegration
+        );
+        // 破坏后继续加载已接线（用户 2026-10-12 要求完成这一阶段），单位是**秒**
+        var continueLoading = catalog.First(d =>
+            d.Key == MachineParameterCatalog.ContinueLoadingTimeKey
+        );
+        Assert.False(continueLoading.PendingIntegration);
+        Assert.Equal("s", continueLoading.Unit);
+        Assert.All(catalog, d => Assert.False(string.IsNullOrWhiteSpace(d.Description)));
+
+        // 用户 2026-10-12 指定的运行期显示顺序 + 已删除的三类项
+        Assert.Equal(
+            [
+                MachineParameterCatalog.JogSpeedKey,
+                "LoadRate",
+                MachineParameterCatalog.DisplacementSafetyFactorKey,
+                MachineParameterCatalog.LoadSafetyFactorKey,
+                "ContactLoad",
+                MachineParameterCatalog.MinBreakLoadKey,
+                "BreakDrop",
+                "BreakConfirmSamples",
+                MachineParameterCatalog.ContinueLoadingTimeKey,
+                MachineParameterCatalog.AutoFallTimeKey,
+            ],
+            MachineParameterCatalog.RuntimeOrderKeys
+        );
+
+        // 用户 2026-10-12 更名 + 移到运行期最后一行：原「破坏后回缩时间」→「试验完成后归位时间」，
+        // 生效时点在「破坏后继续加载时间」之后，所以它必须是运行期最后一项。
+        Assert.Equal(
+            "试验完成后归位时间",
+            catalog.First(d => d.Key == MachineParameterCatalog.AutoFallTimeKey).DisplayName
+        );
+        Assert.Equal(
+            MachineParameterCatalog.AutoFallTimeKey,
+            MachineParameterCatalog.RuntimeOrderKeys[^1]
+        );
+        Assert.Equal(
+            MachineParameterCatalog.ContinueLoadingTimeKey,
+            MachineParameterCatalog.RuntimeOrderKeys[^2]
+        );
+        Assert.DoesNotContain(
+            catalog,
+            d => d.Key.Contains("ReverseForce", StringComparison.Ordinal)
+                || d.Key.Contains("HostJudges", StringComparison.Ordinal)
+                || d.Key.Contains("DataRecording", StringComparison.Ordinal)
+        );
+        Assert.Empty(catalog.Where(d => d.Scope == ParameterScope.Presentation));
+
+        // 位移通道下拉要含"位移通道1~4 / 千分表1~4 / 两组平均值"（值 = 现役的 0 基编号）
+        var displace = catalog.First(d => d.Key == MachineParameterCatalog.DisplaceChannelKey);
+        Assert.Equal(12, displace.Options!.Count);
+        Assert.Equal("位移通道1", displace.Options![0].Label);
+        Assert.Equal("千分表1", displace.Options![4].Label);
+        Assert.Equal("位移1+2通道平均值", displace.Options![8].Label);
+        Assert.Equal("千分表3+4通道平均值", displace.Options![11].Label);
+
+        var press = catalog.First(d => d.Key == MachineParameterCatalog.PressChannelKey);
+        Assert.Equal(["压力通道1", "压力通道2", "压力通道3", "压力通道4"], press.Options!.Select(o => o.Label));
         Assert.DoesNotContain(
             parameters.Definitions,
             d => d.Key is BendingSampleFields.SpanLengthKey
@@ -44,7 +127,13 @@ public sealed class BendingParametersTests : IDisposable
 
         var values = await parameters.LoadAsync();
         Assert.Equal("50", values[BendingParameters.LoadRateKey]);
-        Assert.Equal("0.95", values[BendingParameters.LoadSafetyFactorKey]);
+        // 通用参数（闸门系数等）不在方法声明里，但取值同样走 store（没存过就回落到目录默认值）
+        Assert.Equal(
+            "0.95",
+            MachineParameterCatalog
+                .Definitions.First(d => d.Key == MachineParameterCatalog.LoadSafetyFactorKey)
+                .DefaultValue
+        );
 
         // 试样信息字段另有声明（跨径 / 宽 / 高）
         Assert.Equal(3, BendingSampleFields.Definitions.Count);
@@ -184,11 +273,14 @@ public sealed class BendingParametersTests : IDisposable
         );
 
         // 默认 0.95，且归入机器参数（参数配置页）
-        var definition = parameters.Definitions.First(d =>
-            string.Equals(d.Key, BendingParameters.DisplacementSafetyFactorKey, StringComparison.Ordinal)
+        var definition = MachineParameterCatalog.Definitions.First(d =>
+            string.Equals(
+                d.Key,
+                MachineParameterCatalog.DisplacementSafetyFactorKey,
+                StringComparison.Ordinal
+            )
         );
         Assert.Equal("0.95", definition.DefaultValue);
-        Assert.Contains(BendingParameters.DisplacementSafetyFactorKey, BendingParameters.MachineKeys);
         Assert.Contains(BendingParameters.DisplacementSafetyFactorKey, BendingParameters.MachineKeys);
 
         var byDefault = await execution.LoadProfileAsync();
@@ -207,8 +299,12 @@ public sealed class BendingParametersTests : IDisposable
         Assert.Equal(20.0, adjusted.ClampDisplacementToDeviceRange(25.0).MaxDisplacementMM, 6);
 
         // 荷载闸门同样从参数表装配：默认 0.95（100kN → 95kN）
-        Assert.Equal("0.95", parameters.Definitions.First(d =>
-            string.Equals(d.Key, BendingParameters.LoadSafetyFactorKey, StringComparison.Ordinal)
+        Assert.Equal("0.95", MachineParameterCatalog.Definitions.First(d =>
+            string.Equals(
+                d.Key,
+                MachineParameterCatalog.LoadSafetyFactorKey,
+                StringComparison.Ordinal
+            )
         ).DefaultValue);
         Assert.Contains(BendingParameters.LoadSafetyFactorKey, BendingParameters.MachineKeys);
         Assert.Equal(0.95, adjusted.LoadRangeSafetyFactor, 6);
@@ -216,8 +312,12 @@ public sealed class BendingParametersTests : IDisposable
 
         // 平台升降速率与试验速率是两个独立参数（用户 2026-10-12）：
         // 加载速率默认 50（试验用），平台升降默认 50（工作台按钮用），可分别改
-        Assert.Equal("50", parameters.Definitions.First(d =>
-            string.Equals(d.Key, BendingParameters.JogSpeedKey, StringComparison.Ordinal)
+        Assert.Equal("50", MachineParameterCatalog.Definitions.First(d =>
+            string.Equals(
+                d.Key,
+                MachineParameterCatalog.JogSpeedKey,
+                StringComparison.Ordinal
+            )
         ).DefaultValue);
         Assert.Equal(50.0, adjusted.JogSpeedMillimetersPerMinute, 6);
 
@@ -233,9 +333,42 @@ public sealed class BendingParametersTests : IDisposable
         Assert.Equal(50.0, split.LoadRateMillimetersPerMinute, 6); // 试验过程速率
         Assert.Equal(20.0, split.JogSpeedMillimetersPerMinute, 6); // 平台升降速率
 
+        // 破坏后继续加载时间：参数表单位是**秒**（用户 2026-10-12 明确；现役线程也按秒比），
+        // 值直接进 profile，不做 ms→s 换算
+        Assert.Equal("5", MachineParameterCatalog.Definitions.First(d =>
+            string.Equals(
+                d.Key,
+                MachineParameterCatalog.ContinueLoadingTimeKey,
+                StringComparison.Ordinal
+            )
+        ).DefaultValue);
+        Assert.Equal(5.0, split.ContinueLoadingSeconds, 6);
+
+        // 不判破坏荷载下限：默认 0.2kN（现役弯曲线程常量 BREAK_MIN_LOAD_KN），直接进 profile
+        Assert.Equal("0.2", MachineParameterCatalog.Definitions.First(d =>
+            string.Equals(
+                d.Key,
+                MachineParameterCatalog.MinBreakLoadKey,
+                StringComparison.Ordinal
+            )
+        ).DefaultValue);
+        Assert.Equal(0.2, split.MinBreakLoadKN, 6);
+
+        await parameters.SaveAsync(
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [BendingParameters.ContinueLoadingTimeKey] = "10",
+            }
+        );
+        Assert.Equal(10.0, (await execution.LoadProfileAsync()).ContinueLoadingSeconds, 6);
+
         // 原点修正开关：默认启用；改成 0 后判定不修正
-        Assert.Equal("1", parameters.Definitions.First(d =>
-            string.Equals(d.Key, BendingParameters.EnableOriginCorrectionKey, StringComparison.Ordinal)
+        Assert.Equal("1", MachineParameterCatalog.Definitions.First(d =>
+            string.Equals(
+                d.Key,
+                MachineParameterCatalog.EnableOriginCorrectionKey,
+                StringComparison.Ordinal
+            )
         ).DefaultValue);
         await parameters.SaveAsync(
             new Dictionary<string, string>(StringComparer.Ordinal)

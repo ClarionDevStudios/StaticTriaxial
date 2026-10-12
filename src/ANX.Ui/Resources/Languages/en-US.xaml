@@ -49,11 +49,11 @@
   <sys:String x:Key="Exec.NewSample">New sample</sys:String>
   <sys:String x:Key="Exec.EditSample">Edit sample</sys:String>
   <sys:String x:Key="Exec.DeleteSample">Delete sample</sys:String>
-  <sys:String x:Key="Exec.StartOrStop">Start / Stop</sys:String>
-  <sys:String x:Key="Exec.CompleteSheet">Complete group</sys:String>
+  <sys:String x:Key="Exec.StartTest">Start test</sys:String>
+  <sys:String x:Key="Exec.StopTest">Stop test</sys:String>
   <sys:String x:Key="Exec.ClearInfo">Clear</sys:String>
   <sys:String x:Key="Exec.SheetId">Sheet ID</sys:String>
-  <sys:String x:Key="Exec.SampleHint">Each start runs one specimen: when the sequencer finishes the result is computed and stored. Click Complete group when the group is done.</sys:String>
+  <sys:String x:Key="Exec.SampleHint">Each start runs one specimen: when the sequencer finishes the result is computed and stored. Click Validity check when the group is done — it drops out-of-tolerance specimens and computes the group statistics.</sys:String>
   <sys:String x:Key="Exec.Connection">Connection</sys:String>
   <sys:String x:Key="Exec.Connect">Connect</sys:String>
   <sys:String x:Key="Exec.NoDevice">No device configured (Debug builds use the simulator)</sys:String>
@@ -68,7 +68,14 @@
   <sys:String x:Key="Exec.NotSettleable">Not settleable — nothing stored</sys:String>
   <sys:String x:Key="Exec.SampleDone">Specimen done</sys:String>
   <sys:String x:Key="Exec.Points">points</sys:String>
-  <sys:String x:Key="Exec.SheetCompleted">Sheet completed</sys:String>
+  <sys:String x:Key="Exec.Validity">Validity check</sys:String>
+  <sys:String x:Key="Exec.ValidityBusy">A run is in progress; cannot compute results</sys:String>
+  <sys:String x:Key="Exec.ValidityNoSheet">No open sheet — create or select one first</sys:String>
+  <sys:String x:Key="Exec.ValidityNoSamples">No settled specimens on this sheet yet</sys:String>
+  <sys:String x:Key="Exec.ValidityNoExclusion">none</sys:String>
+  <sys:String x:Key="Exec.ValidityDone">Validity computed: {0} specimen(s) evaluated, {1} effective, excluded: {2}</sys:String>
+  <sys:String x:Key="Exec.SampleLabel">Specimen </sys:String>
+  <sys:String x:Key="Exec.NeedsSupplement">Fewer than 3 effective specimens — supplement the test</sys:String>
   <sys:String x:Key="Exec.DefaultProject">Default project</sys:String>
   <sys:String x:Key="Exec.WorktableUp">Worktable up</sys:String>
   <sys:String x:Key="Exec.WorktableDown">Worktable down</sys:String>
@@ -117,6 +124,10 @@
   <sys:String x:Key="Sample.NoSheet">Select a test sheet first</sys:String>
   <sys:String x:Key="Sample.NoSampleId">Enter the specimen number first</sys:String>
   <sys:String x:Key="Mach.Title">Machine and control parameters</sys:String>
+  <sys:String x:Key="Mach.Tab.Channels">Channels</sys:String>
+  <sys:String x:Key="Mach.Tab.Parameters">Test parameters</sys:String>
+  <sys:String x:Key="Param.PendingIntegration">Not wired</sys:String>
+  <sys:String x:Key="Param.ChannelNotWired">That displacement source (micrometer / averaged pair) is not wired yet; readings stay on the previous channel</sys:String>
   <sys:String x:Key="Param.Save">Save</sys:String>
   <sys:String x:Key="Param.Reload">Reload</sys:String>
   <sys:String x:Key="Param.Loaded">Current values loaded</sys:String>
@@ -139,10 +150,11 @@
   <sys:String x:Key="Param.Scope.Computation">Computation (settlement / recompute)</sys:String>
   <sys:String x:Key="Param.Scope.Computation.Hint">After saving, effective on the next settlement or "recompute with current parameters" (History page can recompute stored curves).</sys:String>
   <sys:String x:Key="Param.Scope.Acquisition">Acquisition (where data comes from)</sys:String>
-  <sys:String x:Key="Param.Scope.Acquisition.Hint">After saving, effective on the next connect.</sys:String>
+  <sys:String x:Key="Param.Scope.Acquisition.Hint">Takes effect immediately after saving.</sys:String>
   <sys:String x:Key="Param.Scope.Presentation">Recording and display</sys:String>
   <sys:String x:Key="Param.Scope.Presentation.Hint">After saving, affects curve recording and UI refresh.</sys:String>
   <sys:String x:Key="Mach.Description">Machine and control parameters: runtime values are loaded at Start, computation values are read when settling or recomputing. Saving takes effect on the next run or settlement; a running test is not changed mid-flight.</sys:String>
+  <sys:String x:Key="Mach.CurrentMethod">Current method: {0} ({1}) — this page is generic; values are stored per method and switching methods loads that method's own values.</sys:String>
   <sys:String x:Key="Sample.Description">Enter the data of THIS specimen (span / dimensions). It is stored with the specimen row and used per specimen when computing results. Opening the same specimen number again loads what you entered.</sys:String>
   <sys:String x:Key="Exec.NoSheet">No test sheet yet (create one or pick an existing sheet)</sys:String>
 
@@ -185,6 +197,7 @@
   <sys:String x:Key="Exec.JogFailed">Jog failed</sys:String>
   <sys:String x:Key="Exec.JogNeedConnect">Not connected - click Connect first, then use the worktable buttons</sys:String>
   <sys:String x:Key="Exec.ContactDetected">Contact detected: displacement zeroed (software offset), switching to test speed</sys:String>
+  <sys:String x:Key="Exec.Returning">Break confirmed: continue-loading finished, motor reversing to return the platform (reset travel is not recorded)</sys:String>
   <sys:String x:Key="Exec.PhaseRangeStopped">Range stop; settled by curve peak</sys:String>
   <sys:String x:Key="Exec.DisplacementClamped">Displacement limit clamped to {0:0.###} mm of the device range — exceeding the sensor range damages it</sys:String>
   <sys:String x:Key="Exec.LoadClamped">Load limit set to {0:0.###} kN from the device pressure range</sys:String>

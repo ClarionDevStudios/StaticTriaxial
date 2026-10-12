@@ -62,6 +62,28 @@ public sealed class TestSequencerTests
         Assert.Equal(new CurvePoint(0.5, 0.6), sequencer.Curve[0]);
     }
 
+    /// <summary>
+    /// 接触判据用**正向**比较（现役 `ActualLoad * 1000 >= FContactLoadKN * 1000`）：
+    /// 传感器负向零漂（真机约 −0.19kN）不能算接触，否则一上电就"接触成立"、位移被提前清零、
+    /// 挠度起算点错（用户 2026-10-12 真机发现）。
+    /// </summary>
+    [Fact]
+    public void 负向零漂不应判为接触()
+    {
+        var sequencer = Start();
+        sequencer.OnSample(new TestSample(0, 0, 0)); // 收到第一帧 → 进入接触搜索
+
+        // 阈值 0.5kN：−0.6kN 绝对值够大，但符号为负 → 必须仍是"未接触"
+        sequencer.OnSample(new TestSample(-0.6, 0.2, 0.1));
+        Assert.Equal(TestPhase.ContactSearch, sequencer.Phase);
+        Assert.Empty(sequencer.Curve);
+
+        // 正向 0.6kN 才成立
+        sequencer.OnSample(new TestSample(0.6, 0.3, 0.2));
+        Assert.Equal(TestPhase.Loading, sequencer.Phase);
+        Assert.Single(sequencer.Curve);
+    }
+
     [Fact]
     public void 荷载下降达阈值并连续确认后应进入复位并完成()
     {
@@ -85,8 +107,56 @@ public sealed class TestSequencerTests
         Assert.Equal(9.0, sequencer.Peak.Load, 1e-9);
     }
 
+    /// <summary>
+    /// 用户 2026-10-12：破坏确认后先「继续加载」一段，把破坏后的荷载下降趋势画进曲线，走完才归位；
+    /// 归位段（电机反转送工作台回起始位）**不记曲线**。
+    /// </summary>
+    [Fact]
+    public void 破坏后继续加载段记曲线而归位段不记曲线()
+    {
+        // 继续加载 0.25s：采样 0.1s 一拍，正好能看清"段内还在记点、走完才切归位"
+        var sequencer = new TestSequencer(Profile with { ContinueLoadingSeconds = 0.25 });
+        sequencer.Start();
+        sequencer.OnSample(new TestSample(0, 0, 0));
+        sequencer.OnSample(new TestSample(0.6, 0.5, 0.1)); // 接触
+        sequencer.OnSample(new TestSample(9.0, 5.0, 0.2)); // 峰值 9kN
+        sequencer.OnSample(new TestSample(8.65, 5.1, 0.3)); // 进入破坏确认
+        sequencer.OnSample(new TestSample(8.60, 5.2, 0.4));
+        sequencer.OnSample(new TestSample(8.55, 5.3, 0.5)); // 连续 3 帧 → 破坏确认
+
+        Assert.Equal(TestPhase.ContinueLoading, sequencer.Phase);
+        var pointsAtBreak = sequencer.Curve.Count;
+
+        // 继续加载段：电机照旧前进，曲线继续长（图上"破坏后下降"的那一段就是它）
+        sequencer.OnSample(new TestSample(8.50, 5.4, 0.6));
+        Assert.Equal(TestPhase.ContinueLoading, sequencer.Phase);
+        Assert.Equal(pointsAtBreak + 1, sequencer.Curve.Count);
+        Assert.Equal(new CurvePoint(5.4, 8.50), sequencer.Curve[^1]);
+
+        // 再走 0.2s（累计 0.3 ≥ 0.25）→ 进归位
+        sequencer.OnSample(new TestSample(8.40, 5.5, 0.7));
+        sequencer.OnSample(new TestSample(8.30, 5.6, 0.8));
+        Assert.Equal(TestPhase.Resetting, sequencer.Phase);
+
+        // 归位段：曲线不再增长
+        var pointsAtReset = sequencer.Curve.Count;
+        sequencer.OnSample(new TestSample(8.20, 5.7, 0.9));
+        Assert.Equal(TestPhase.Resetting, sequencer.Phase);
+        Assert.Equal(pointsAtReset, sequencer.Curve.Count);
+
+        // 归位倒计时从进归位那一刻起算（0.8 → 2.0 = 1.2s ≥ 1.0s）→ 完成
+        Assert.False(sequencer.OnSample(new TestSample(8.10, 5.8, 2.0)));
+        Assert.Equal(TestPhase.Completed, sequencer.Phase);
+        Assert.Equal(TestStopReason.Completed, sequencer.StopReason);
+        Assert.True(sequencer.CanSettle);
+        Assert.Equal(9.0, sequencer.Peak.Load, 1e-9);
+        Assert.Equal(pointsAtReset, sequencer.Curve.Count);
+    }
+
+    /// <summary>继续加载时间为 0（没配）时走旧行为：破坏确认后直接归位。上面那条用例覆盖此路径。</summary>
     [Fact]
     public void 破坏确认期间又创新高应回到加载阶段()
+
     {
         var sequencer = Start();
         sequencer.OnSample(new TestSample(0, 0, 0));
@@ -97,6 +167,47 @@ public sealed class TestSequencerTests
         sequencer.OnSample(new TestSample(9.5, 5.2, 0.4)); // 创新高
         Assert.Equal(TestPhase.Loading, sequencer.Phase);
         Assert.Equal(9.5, sequencer.Peak.Load, 1e-9);
+    }
+
+    /// <summary>
+    /// 「不判破坏荷载下限」（现役弯曲线程常量 BREAK_MIN_LOAD_KN = 0.2，判据 MaxLoad &gt;= 该值）：
+    /// **峰值荷载**不到下限时，即使回落超过破坏判据也不判破坏。
+    /// </summary>
+    [Fact]
+    public void 峰值低于不判破坏荷载下限时不判破坏()
+    {
+        // 下限 0.5kN，峰值只到 0.45kN：回落 0.35 ≥ 判据 0.3，但仍不该判破坏
+        var belowFloor = new TestSequencer(
+            Profile with
+            {
+                ContactLoadKN = 0.05,
+                MinBreakLoadKN = 0.5,
+            }
+        );
+        belowFloor.Start();
+        belowFloor.OnSample(new TestSample(0, 0, 0));
+        belowFloor.OnSample(new TestSample(0.06, 0.05, 0.1)); // 接触
+        belowFloor.OnSample(new TestSample(0.45, 0.10, 0.2)); // 峰值 0.45kN
+        belowFloor.OnSample(new TestSample(0.10, 0.15, 0.3)); // 回落 0.35kN
+        Assert.Equal(TestPhase.Loading, belowFloor.Phase);
+
+        // 同一段曲线，把下限降到 0.4kN 就该判破坏 —— 说明是"下限"在起作用，不是判据
+        var aboveFloor = new TestSequencer(
+            Profile with
+            {
+                ContactLoadKN = 0.05,
+                MinBreakLoadKN = 0.4,
+            }
+        );
+        aboveFloor.Start();
+        aboveFloor.OnSample(new TestSample(0, 0, 0));
+        aboveFloor.OnSample(new TestSample(0.06, 0.05, 0.1));
+        aboveFloor.OnSample(new TestSample(0.45, 0.10, 0.2));
+        aboveFloor.OnSample(new TestSample(0.10, 0.15, 0.3));
+        Assert.Equal(TestPhase.Breaking, aboveFloor.Phase);
+
+        // 下限 0（默认没配）＝ 不启用下限，旧行为不变
+        Assert.Equal(0.0, new TestRunProfile().MinBreakLoadKN, 9);
     }
 
     [Theory]

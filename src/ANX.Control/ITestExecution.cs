@@ -89,6 +89,16 @@ public interface ITestExecution : ICurveAxisSource
     Task CompleteSheetAsync(string sheetId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// **有效性计算**（现役弯曲窗体「有效性计算」按钮 → <c>CalcAndSaveBendingStats</c>）：
+    /// 按 T 0715-2025 5.6 对本单**已完成**的试件做有效性判定（与平均值偏差超过允许误差者剔除），
+    /// 写回明细行的 <c>IsEffective</c> 与主表的组统计列。**不改变试验单的完成状态**。
+    /// </summary>
+    Task<ValidityReport> EvaluateValidityAsync(
+        string sheetId,
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>
     /// **按当前参数重算**某张试验单里所有已存曲线：逐件重新判定、覆盖已存结果列，并重算组统计。
     /// 用途（用户 2026-10-12 要求）：改了"计算期参数"（跨径 / 试件尺寸 / 是否原点修正…）之后，
     /// 让历史数据按新参数重算，不必重做试验。
@@ -104,3 +114,15 @@ public interface ITestExecution : ICurveAxisSource
 /// （曲线点不足或单件判定不了）。
 /// </summary>
 public sealed record RecomputeReport(int Recomputed, int Skipped);
+
+/// <summary>有效性计算结果摘要。</summary>
+/// <param name="Evaluated">参与判定的试件数。</param>
+/// <param name="EffectiveCount">有效（计入统计）件数。</param>
+/// <param name="ExcludedSampleIds">被剔除的试件号（超出允许误差）。</param>
+/// <param name="NeedsSupplement">有效件不足 3 个，应补充试验。</param>
+public sealed record ValidityReport(
+    int Evaluated,
+    int EffectiveCount,
+    IReadOnlyList<string> ExcludedSampleIds,
+    bool NeedsSupplement
+);

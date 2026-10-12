@@ -91,7 +91,8 @@ public enum Gr3MachineStatus : byte
 
 /// <summary>
 /// A2H 的试验状态寄存器（1 字节）。位定义来自协议文档 2.3 节：
-/// Bit0 试验运行中 / Bit1 试验暂停中 / Bit2 破碎点已找到 / Bit3 稳压（保持）中。
+/// Bit0 试验运行中 / Bit1 试验暂停中 / Bit2 破坏点已找到 / Bit3 稳压（保持）中
+/// （协议文档原文把这一位写作「破碎点」，本工程统一用「破坏」）。
 /// </summary>
 [Flags]
 public enum Gr3TestStatus : byte
@@ -104,7 +105,7 @@ public enum Gr3TestStatus : byte
     /// <summary>Bit1 试验暂停中。</summary>
     Paused = 1 << 1,
 
-    /// <summary>Bit2 破碎点已找到。</summary>
+    /// <summary>Bit2 破坏点已找到（协议原文：破碎点找到标志）。</summary>
     BreakPointFound = 1 << 2,
 
     /// <summary>Bit3 稳压 / 保持中。</summary>

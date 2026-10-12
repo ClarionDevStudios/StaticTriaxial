@@ -154,7 +154,7 @@ public sealed class Gr3LiveFrameTests
         );
         Assert.Equal(0x12, (byte)data.MachineStatus);
 
-        // 0x00 = 停止 / 未暂停 / 未找到破碎点 / 非保持
+        // 0x00 = 停止 / 未暂停 / 未找到破坏点 / 非保持
         Assert.Equal(Gr3TestStatus.None, data.TestStatus);
         Assert.Equal(0x00, (byte)data.TestStatus);
         Assert.Equal(0x0000, data.PortOutputBStatus);

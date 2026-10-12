@@ -140,7 +140,15 @@ public partial class TestExecutionViewModel : ViewModelBase
             Cards.Add(new MetricCard(definition, localization));
         }
 
-        ConnectionText = device is null ? L("Exec.NoDevice") : L("Exec.NotConnected");
+        if (device is null)
+        {
+            ConnectionText = L("Exec.NoDevice");
+        }
+        else
+        {
+            SetConnectionState(null); // 还没联机：中性色
+        }
+
         PhaseText = L("Exec.PhaseIdle");
     }
 
@@ -156,6 +164,10 @@ public partial class TestExecutionViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _connectionText = string.Empty;
+
+    /// <summary>连接状态文字的颜色：成功绿、失败红、未连接中性（用户 2026-10-12）。</summary>
+    [ObservableProperty]
+    private Brush? _connectionBrush;
 
     [ObservableProperty]
     private string _phaseText = string.Empty;
@@ -176,6 +188,15 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// <summary>曲线被清空（新一轮试验）。</summary>
     public event EventHandler? CurveCleared;
 
+    /// <summary>
+    /// **是否已接触试样**。点"启动试验"时置 false —— **接触成立**才置 true（用户 2026-10-12）：
+    /// 它同时管三件事：① 峰值只在接触后累计；② 「试验持续时间」只在接触后显示；
+    /// ③ 点启动时峰值/计时清零。一轮结束（finally）置回 false：显示值保留，但不再被空闲实时读数改写。
+    ///
+    /// 注意：设备侧的内部计时（<c>device.ElapsedSeconds</c>）**一直在走**，接触搜索超时靠它。
+    /// </summary>
+    private bool _contactEstablished;
+
     /// <summary>曲线横轴标题（按当前语言；语言切换后由页面重新取一次）。</summary>
     public string CurveXAxisTitle => L(_execution.CurveXAxisKey);
 
@@ -194,15 +215,70 @@ public partial class TestExecutionViewModel : ViewModelBase
         try
         {
             await _device.ConnectAsync();
-            ConnectionText = L("Exec.Connected");
+            SetConnectionState(true);
             Append($"{L("Exec.Connected")} · {_device.DeviceName}");
             UpdateCanJog();
+
+            // 联机成功后立刻按参数表把采集口径推给设备：否则实时读数用的是适配器写死的默认通道，
+            // 与参数表里选的"位移1+2通道平均值"不一致（用户 2026-10-12 真机发现）。
+            await ApplyAcquisitionSettingsFromStoreAsync();
         }
         catch (Exception ex)
         {
-            ConnectionText = L("Exec.ConnectFailed");
+            SetConnectionState(false);
             Append($"{L("Exec.ConnectFailed")}: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// 连接状态文字与颜色一起更新：<c>true</c> 已连接（绿）、<c>false</c> 联机失败（红）、
+    /// <c>null</c> 未连接（中性）。颜色取工程主题里的语义色（WPF-UI 的 Success / Critical）。
+    /// </summary>
+    private void SetConnectionState(bool? connected)
+    {
+        ConnectionText = connected switch
+        {
+            true => L("Exec.Connected"),
+            false => L("Exec.ConnectFailed"),
+            _ => L("Exec.NotConnected"),
+        };
+
+        ConnectionBrush =
+            System.Windows.Application.Current?.TryFindResource(
+                connected switch
+                {
+                    true => "SystemFillColorSuccessBrush",
+                    false => "SystemFillColorCriticalBrush",
+                    _ => "TextFillColorSecondaryBrush",
+                }
+            ) as Brush;
+    }
+
+    /// <summary>
+    /// 把参数表里的**采集口径**推给设备适配器：压力通道 / 位移通道（含双传感器两路平均）/ 平台升降速率。
+    /// 调用点两处：**联机成功后**、**每次开始试验时**（另有参数配置页保存时的即时生效）。
+    /// </summary>
+    private void ApplyAcquisitionSettings(TestRunProfile profile)
+    {
+        if (_device is null)
+        {
+            return;
+        }
+
+        _device.PressChannelNumber = profile.PressChannelNumber;
+        _device.DisplacementSource = profile.DisplacementSource;
+        _device.JogSpeedMillimetersPerMinute = profile.JogSpeedMillimetersPerMinute;
+    }
+
+    /// <summary>从参数表取一次当前口径再推给设备（联机成功时用）。</summary>
+    private async Task ApplyAcquisitionSettingsFromStoreAsync()
+    {
+        if (_device is null)
+        {
+            return;
+        }
+
+        ApplyAcquisitionSettings(await _execution.LoadProfileAsync());
     }
 
     /// <summary>
@@ -252,7 +328,19 @@ public partial class TestExecutionViewModel : ViewModelBase
     }
 
     /// <summary>点动按钮的可用性：联机中、且没在跑试验。</summary>
-    partial void OnIsRunningChanged(bool value) => UpdateCanJog();
+    partial void OnIsRunningChanged(bool value)
+    {
+        UpdateCanJog();
+        OnPropertyChanged(nameof(StartStopText));
+        OnPropertyChanged(nameof(StartStopSymbol));
+    }
+
+    /// <summary>启动/停止按钮的文字：待机"启动试验"，试验中"停止试验"（用户 2026-10-12）。</summary>
+    public string StartStopText => L(IsRunning ? "Exec.StopTest" : "Exec.StartTest");
+
+    /// <summary>启动/停止按钮的图标：待机播放、试验中停止。</summary>
+    public Wpf.Ui.Controls.SymbolRegular StartStopSymbol =>
+        IsRunning ? Wpf.Ui.Controls.SymbolRegular.Stop24 : Wpf.Ui.Controls.SymbolRegular.Play24;
 
     private void UpdateCanJog() => CanJog = !IsRunning && _device?.IsConnected == true;
 
@@ -270,6 +358,19 @@ public partial class TestExecutionViewModel : ViewModelBase
         // 先减后加：重复进入页面不会把同一处理器挂两遍
         _device.SampleReceived -= OnLiveSample;
         _device.SampleReceived += OnLiveSample;
+
+        // 峰值只在试验过程中/结束后显示：刚进页面先置空（用户 2026-10-12）
+        ClearPeaks();
+    }
+
+    /// <summary>把各卡片的峰值清成"—"（不动当前值）。</summary>
+    private void ClearPeaks()
+    {
+        _peaks.Clear();
+        foreach (var card in Cards.Where(card => card.ShowPeak))
+        {
+            card.Peak = "—";
+        }
     }
 
     /// <summary>离开执行页：停止实时刷新。</summary>
@@ -299,7 +400,7 @@ public partial class TestExecutionViewModel : ViewModelBase
 
     /// <summary>开始 / 停止一个试件。</summary>
     [RelayCommand]
-    private async Task StartOrStopAsync()
+    private void StartOrStop()
     {
         if (IsRunning)
         {
@@ -314,6 +415,21 @@ public partial class TestExecutionViewModel : ViewModelBase
             return;
         }
 
+        // 点"启动试验"**立刻**把峰值清零、清空上一轮曲线：峰值只反映本轮（用户 2026-10-12）。
+        ResetLiveValues();
+        _contactEstablished = false; // 接触成立后才开始累计峰值、才显示试验计时
+        _curve.Clear();
+        CurveCleared?.Invoke(this, EventArgs.Empty);
+
+        // **不能 await 整轮**：命令若等到整轮结束才完成，执行期间按钮会被置灰，
+        // 结果是"试验一开始就再也点不到停止"（用户 2026-10-12 真机踩到）。
+        // 立刻返回 → 按钮保持可用 → 下一次点击才走到上面的"停止"分支。
+        _ = RunOneSampleSafeAsync();
+    }
+
+    /// <summary>跑一轮并把异常报给界面（fire-and-forget：命令必须立刻返回，否则停止按钮被置灰）。</summary>
+    private async Task RunOneSampleSafeAsync()
+    {
         try
         {
             await RunOneSampleAsync();
@@ -324,17 +440,62 @@ public partial class TestExecutionViewModel : ViewModelBase
         }
     }
 
-    /// <summary>完成一组：算组统计并标记试验单完成。</summary>
+    /// <summary>
+    /// 有效性计算（现役 bending 窗体的「有效性计算」按钮）：按 T 0715-2025 5.6 做有效性判定
+    /// （与平均值偏差超过允许误差者剔除）并写回主表/明细；**不**标记试验单完成。
+    /// 与现役一致：试验进行中不允许计算。
+    /// </summary>
     [RelayCommand]
-    private async Task CompleteSheetAsync()
+    private async Task EvaluateValidityAsync()
     {
-        if (_sheetId is null)
+        if (IsRunning)
         {
+            Append(L("Exec.ValidityBusy"));
             return;
         }
 
-        await _execution.CompleteSheetAsync(_sheetId);
-        Append($"{L("Exec.SheetCompleted")} {_sheetId}");
+        if (_sheetId is null)
+        {
+            Append(L("Exec.ValidityNoSheet"));
+            return;
+        }
+
+        try
+        {
+            var report = await _execution.EvaluateValidityAsync(_sheetId);
+
+            if (report.Evaluated == 0)
+            {
+                Append(L("Exec.ValidityNoSamples"));
+                return;
+            }
+
+            var excluded = report.ExcludedSampleIds.Count == 0
+                ? L("Exec.ValidityNoExclusion")
+                : string.Join(
+                    "、",
+                    report.ExcludedSampleIds.Select(id => $"{L("Exec.SampleLabel")}{id}")
+                );
+
+            Append(
+                string.Format(
+                    CultureInfo.CurrentCulture,
+                    L("Exec.ValidityDone"),
+                    report.Evaluated,
+                    report.EffectiveCount,
+                    excluded
+                )
+            );
+
+            if (report.NeedsSupplement)
+            {
+                Append(L("Exec.NeedsSupplement"));
+            }
+        }
+        catch (Exception ex)
+        {
+            Append($"{L("Exec.Failed")}: {ex.Message}");
+        }
     }
 
     /// <summary>清空信息。</summary>
@@ -401,10 +562,6 @@ public partial class TestExecutionViewModel : ViewModelBase
         var sampleId = await _execution.NextSampleIdAsync(_sheetId);
         _sampleCounter++;
 
-        ResetLiveValues();
-        _curve.Clear();
-        CurveCleared?.Invoke(this, EventArgs.Empty);
-
         // 运行参数从**参数表**来（接触阈值 / 破坏判据 / 确认帧数 / 加载速率），不再用写死的默认值
         var requested = await _execution.LoadProfileAsync();
 
@@ -452,12 +609,15 @@ public partial class TestExecutionViewModel : ViewModelBase
             if (!device.IsConnected)
             {
                 await device.ConnectAsync(_cts.Token);
-                ConnectionText = L("Exec.Connected");
+                SetConnectionState(true);
             }
 
             device.ElapsedSeconds = 0;
             controlLoop.Start();
             var controlToken = _cts.Token;
+
+            // 通道设置（参数表）：运行前推给设备适配器 —— 轴向压力/位移取自哪个通道
+            ApplyAcquisitionSettings(profile);
 
             /**
              * 控制循环：与现役线程同构 —— 固定 20ms 节拍，每拍拿最新一帧、
@@ -512,6 +672,7 @@ public partial class TestExecutionViewModel : ViewModelBase
                         var sample = latest with { ElapsedSeconds = device.ElapsedSeconds };
 
                         var phaseBefore = sequencer.Phase;
+                        var recordedBefore = sequencer.Curve.Count;
 
                         if (!sequencer.OnSample(sample))
                         {
@@ -531,13 +692,44 @@ public partial class TestExecutionViewModel : ViewModelBase
                                 .SetSpeedAsync(profile.LoadRateMillimetersPerMinute, controlToken)
                                 .ConfigureAwait(false);
 
+                            // 试验计时**从接触成立起算**（现役线程也是在接触这一点 `StartTime := CurrentTime`）：
+                            // 接触前的空走时间不计入"试验持续时间"（用户 2026-10-12）。
+                            device.ElapsedSeconds = 0;
+
+                            // 峰值与「试验持续时间」都从接触起算：接触前的空走读数不算峰值、也不计时
+                            //（用户 2026-10-12）
+                            _contactEstablished = true;
+
                             _ = System.Windows.Application.Current?.Dispatcher.InvokeAsync(
                                 () => Append(L("Exec.ContactDetected"))
                             );
                         }
 
+                        if (
+                            phaseBefore != TestPhase.Resetting
+                            && sequencer.Phase == TestPhase.Resetting
+                        )
+                        {
+                            // 归位（现役 tpAutoReset）：破坏确认、继续加载走完之后，**先停再反转**把工作台送回起始位。
+                            // 速率用试验速率（现役同）；走够「试验完成后归位时间」由阶段机收尾，finally 里 StopAsync 停机。
+                            // 归位段的数据不记曲线（阶段机的 Resetting 分支不写曲线）。
+                            await device
+                                .ReturnToStartAsync(profile.LoadRateMillimetersPerMinute, controlToken)
+                                .ConfigureAwait(false);
+
+                            _ = System.Windows.Application.Current?.Dispatcher.InvokeAsync(
+                                () => Append(L("Exec.Returning"))
+                            );
+                        }
+
+                        // 界面曲线只画**阶段机真正记录的点**：接触成立才开始记、归位段不记 ——
+                        // 与落库、判定用的是同一条曲线（用户 2026-10-12：接触试样前不要画曲线）。
+                        CurvePoint[] newPoints = sequencer.Curve.Count > recordedBefore
+                            ? [.. sequencer.Curve.Skip(recordedBefore)]
+                            : [];
+
                         _ = System.Windows.Application.Current?.Dispatcher.InvokeAsync(
-                            () => UpdateLiveValues(sample)
+                            () => UpdateLiveValues(sample, newPoints)
                         );
                     }
                 }
@@ -558,7 +750,13 @@ public partial class TestExecutionViewModel : ViewModelBase
 
             if (completed != finished.Task)
             {
-                sequencer.Stop(TestStopReason.LoadingTimeout);
+                // 走到这里说明不是阶段机自己结束的：**用户点了"停止"**（令牌已取消 → 人工停止）
+                // 或 10 分钟兜底超时（令牌没动过）。用户 2026-10-12 反馈：手动停止曾被记成 LoadingTimeout。
+                sequencer.Stop(
+                    _cts.IsCancellationRequested
+                        ? TestStopReason.ManualStop
+                        : TestStopReason.LoadingTimeout
+                );
             }
 
             await _cts.CancelAsync();
@@ -569,6 +767,7 @@ public partial class TestExecutionViewModel : ViewModelBase
             device.SampleReceived -= OnSample;
             await device.StopAsync(CancellationToken.None);
             IsRunning = false;
+            _contactEstablished = false;
             _cts?.Dispose();
             _cts = null;
         }
@@ -604,12 +803,15 @@ public partial class TestExecutionViewModel : ViewModelBase
         Append($"{L("Exec.SampleDone")} #{sampleId} · {sequencer.Curve.Count} {L("Exec.Points")}");
     }
 
-    private void UpdateLiveValues(TestSample sample)
+    private void UpdateLiveValues(TestSample sample, IReadOnlyList<CurvePoint> newCurvePoints)
     {
         UpdateCards(sample);
 
-        _curve.Add(new CurvePoint(sample.Displacement, sample.Load));
-        CurvePointAdded?.Invoke(this, new CurvePoint(sample.Displacement, sample.Load));
+        foreach (var point in newCurvePoints)
+        {
+            _curve.Add(point);
+            CurvePointAdded?.Invoke(this, point);
+        }
     }
 
     /// <summary>刷新数值卡（荷载 / 位移 / 时间）；点动与跑试验共用。</summary>
@@ -617,7 +819,13 @@ public partial class TestExecutionViewModel : ViewModelBase
     {
         SetCard("load", sample.Load, sample.Load);
         SetCard("displacement", sample.Displacement, sample.Displacement);
-        SetCard("elapsed", sample.ElapsedSeconds, sample.ElapsedSeconds);
+
+        // 「试验持续时间」**接触成立后**才开始显示并计时：点启动后接触前保持 "—"（用户 2026-10-12）。
+        // 设备侧的内部计时一直在走（接触搜索 300s 超时靠它），只是不往这张卡上写。
+        if (_contactEstablished)
+        {
+            SetCard("elapsed", sample.ElapsedSeconds, sample.ElapsedSeconds);
+        }
     }
 
     private void SetCard(string key, double value, double peakCandidate)
@@ -630,7 +838,9 @@ public partial class TestExecutionViewModel : ViewModelBase
 
         card.Value = Format(value);
 
-        if (!card.ShowPeak)
+        // 峰值只在**试验过程中**（且已接触试样）有意义：进页面、手动升降、接触前的空走都不该动它。
+        // 试验结束后 _contactEstablished 转 false，峰值数值保留（继续显示最后一轮的值）但不再被改写。
+        if (!card.ShowPeak || !_contactEstablished)
         {
             return;
         }

@@ -2,6 +2,7 @@ namespace ANX.Method.Bending;
 
 using ANX.Control;
 using ANX.Core;
+using ANX.Core.Control;
 using ANX.Storage;
 
 /// <summary>
@@ -34,6 +35,8 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
         MaxDisplacementMM = 50.0,
         ContactTimeoutSeconds = 300.0,
         LoadingTimeoutSeconds = 600.0,
+        MinBreakLoadKN = 0.2,
+        ContinueLoadingSeconds = 5.0,
         ResetSeconds = 5.0,
         LoadRateMillimetersPerMinute = 50.0,
         ApproachSpeedMillimetersPerMinute = 10.0,
@@ -76,6 +79,18 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
             JogSpeedMillimetersPerMinute = parameters.GetDouble(
                 values,
                 BendingParameters.JogSpeedKey
+            ),
+            // 参数表与 profile 都用秒（用户 2026-10-12 明确单位是秒），不做换算
+            ContinueLoadingSeconds = parameters.GetDouble(
+                values,
+                BendingParameters.ContinueLoadingTimeKey
+            ),
+            MinBreakLoadKN = parameters.GetDouble(values, BendingParameters.MinBreakLoadKey),
+            ResetSeconds = parameters.GetDouble(values, BendingParameters.AutoFallTimeKey),
+            PressChannelNumber = (int)
+                parameters.GetDouble(values, BendingParameters.PressChannelKey),
+            DisplacementSource = DisplacementSources.Parse(
+                (int)parameters.GetDouble(values, BendingParameters.DisplaceChannelKey)
             ),
         };
     }
@@ -183,10 +198,18 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
         var span = BendingSampleFields.GetDouble(info, BendingSampleFields.SpanLengthKey);
         var width = BendingSampleFields.GetDouble(info, BendingSampleFields.SampleWidthKey);
         var height = BendingSampleFields.GetDouble(info, BendingSampleFields.SampleHeightKey);
-        var enableOriginCorrection = await LoadOriginCorrectionEnabledAsync(cancellationToken)
-            .ConfigureAwait(false);
+        var analysis = await LoadAnalysisSettingsAsync(cancellationToken).ConfigureAwait(false);
 
-        var result = BendingAnalyzer.Analyze(curve, span, width, height, enableOriginCorrection);
+        var result = BendingAnalyzer.Analyze(
+            curve,
+            span,
+            width,
+            height,
+            analysis.EnableOriginCorrection,
+            analysis.StartPercent,
+            analysis.EndPercent,
+            analysis.LockPeakDisplacement
+        );
         var columns = BuildResultColumns(width, height, result);
 
         // 试样记录可能已经在"试样编辑页填录"时建好了：有就更新（补曲线与结果），没有才追加
@@ -239,8 +262,7 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
         CancellationToken cancellationToken = default
     )
     {
-        var enableOriginCorrection = await LoadOriginCorrectionEnabledAsync(cancellationToken)
-            .ConfigureAwait(false);
+        var analysis = await LoadAnalysisSettingsAsync(cancellationToken).ConfigureAwait(false);
 
         // 每件按**它自己的试样信息**重算（尺寸是逐件的，不能拿一份全局尺寸套所有件）
         var rows = sheets.ReadDetailRows(
@@ -290,7 +312,16 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
             BendingSampleResult result;
             try
             {
-                result = BendingAnalyzer.Analyze(curve, span, width, height, enableOriginCorrection);
+                result = BendingAnalyzer.Analyze(
+                    curve,
+                    span,
+                    width,
+                    height,
+                    analysis.EnableOriginCorrection,
+                    analysis.StartPercent,
+                    analysis.EndPercent,
+                    analysis.LockPeakDisplacement
+                );
             }
             catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
             {
@@ -326,19 +357,29 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
         return new RecomputeReport(recomputed.Count, skipped);
     }
 
-    /// <summary>
-    /// 判定用的**计算期开关**：是否做曲线原点修正（方法级参数）。
-    /// 尺寸不在这里 —— 它们属于**试样信息**，逐件从明细行取（见 <see cref="LoadSampleInfoAsync"/>）。
-    /// </summary>
-    private async Task<bool> LoadOriginCorrectionEnabledAsync(CancellationToken cancellationToken)
+    /// <summary>判定用的**计算期设置**（方法级参数）；尺寸不在这里（属试样信息，逐件取）。</summary>
+    private sealed record AnalysisSettings(
+        bool EnableOriginCorrection,
+        double StartPercent,
+        double EndPercent,
+        bool LockPeakDisplacement
+    );
+
+    private async Task<AnalysisSettings> LoadAnalysisSettingsAsync(CancellationToken cancellationToken)
     {
         if (parameters is null)
         {
-            return true;
+            return new AnalysisSettings(true, 10.0, 80.0, true);
         }
 
         var values = await parameters.LoadAsync(cancellationToken).ConfigureAwait(false);
-        return parameters.GetDouble(values, BendingParameters.EnableOriginCorrectionKey) != 0;
+
+        return new AnalysisSettings(
+            parameters.GetDouble(values, BendingParameters.EnableOriginCorrectionKey) != 0,
+            parameters.GetDouble(values, BendingParameters.OriginCorrectionStartKey),
+            parameters.GetDouble(values, BendingParameters.OriginCorrectionEndKey),
+            parameters.GetDouble(values, MachineParameterCatalog.LockDisplacementKey) != 0
+        );
     }
 
     /// <summary>明细行的结果列（结算写入与重算覆盖共用同一份键）。</summary>
@@ -372,4 +413,129 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
             ["ExcludedCount"] = group.ExcludedIndexes.Count,
             ["NeedsSupplement"] = group.NeedsSupplement ? 1 : 0,
         };
+
+    /// <inheritdoc />
+    public async Task<ValidityReport> EvaluateValidityAsync(
+        string sheetId,
+        CancellationToken cancellationToken = default
+    )
+    {
+        // 从**库里读**已存的判定结果（不只认本会话的内存结果），这样昨天那单也能算。
+        var rows = sheets.ReadDetailRows(
+            sheetId,
+            [
+                "SampleID",
+                "FlexuralStrength",
+                "MaxBendingTensileStrain",
+                "PeakLoadValue",
+                "PeakDeflection",
+                "CorrectedDeflection",
+                "TangentK",
+                "TangentB",
+                "OriginCorrection",
+            ]
+        );
+
+        var samples = new List<BendingSampleResult>();
+        var sampleIds = new List<string>();
+
+        foreach (var row in rows)
+        {
+            var sampleId = Convert.ToString(
+                row["SampleID"],
+                System.Globalization.CultureInfo.InvariantCulture
+            );
+            if (string.IsNullOrWhiteSpace(sampleId))
+            {
+                continue;
+            }
+
+            // 还没判定出结果的试件（没跑完 / 判定失败）不参与有效性判定
+            if (!TryReadDouble(row, "FlexuralStrength", out var strength)
+                || !TryReadDouble(row, "MaxBendingTensileStrain", out var strain))
+            {
+                continue;
+            }
+
+            TryReadDouble(row, "PeakLoadValue", out var peakLoad);
+            TryReadDouble(row, "PeakDeflection", out var peakDeflection);
+            TryReadDouble(row, "CorrectedDeflection", out var correctedDeflection);
+            TryReadDouble(row, "TangentK", out var tangentK);
+            TryReadDouble(row, "TangentB", out var tangentB);
+            TryReadDouble(row, "OriginCorrection", out var originCorrection);
+
+            samples.Add(
+                new BendingSampleResult(
+                    peakLoad,
+                    peakDeflection,
+                    correctedDeflection,
+                    strength,
+                    strain,
+                    tangentK,
+                    tangentB,
+                    originCorrection
+                )
+            );
+            sampleIds.Add(sampleId);
+        }
+
+        if (samples.Count == 0)
+        {
+            return new ValidityReport(0, 0, [], NeedsSupplement: true);
+        }
+
+        var group = BendingAnalyzer.AnalyzeGroup(samples);
+        var excludedIds = group
+            .ExcludedIndexes.Select(index => sampleIds[index])
+            .ToArray();
+        var excludedSet = new HashSet<string>(excludedIds, StringComparer.Ordinal);
+
+        // 逐件写回有效性（现役 Effective：True=保留 / False=舍弃）
+        foreach (var sampleId in sampleIds)
+        {
+            await sheets
+                .UpdateDetailFieldsAsync(
+                    sheetId,
+                    sampleId,
+                    new Dictionary<string, double>(StringComparer.Ordinal)
+                    {
+                        ["IsEffective"] = excludedSet.Contains(sampleId) ? 0 : 1,
+                    },
+                    cancellationToken: cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+
+        await sheets
+            .UpdateMainFieldsAsync(sheetId, BuildGroupColumns(group), cancellationToken)
+            .ConfigureAwait(false);
+
+        return new ValidityReport(
+            samples.Count,
+            group.EffectiveCount,
+            excludedIds,
+            group.NeedsSupplement
+        );
+    }
+
+    /// <summary>把明细行里的数值读成 double（NULL / 空值返回 false）。</summary>
+    private static bool TryReadDouble(
+        IReadOnlyDictionary<string, object?> row,
+        string column,
+        out double value
+    )
+    {
+        value = 0;
+        if (!row.TryGetValue(column, out var raw) || raw is null || raw is DBNull)
+        {
+            return false;
+        }
+
+        return double.TryParse(
+            Convert.ToString(raw, System.Globalization.CultureInfo.InvariantCulture),
+            System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out value
+        );
+    }
 }

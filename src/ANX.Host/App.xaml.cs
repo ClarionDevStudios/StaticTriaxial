@@ -137,7 +137,9 @@ public partial class App
                         // 轴向压力 = 压力通道 1（索引 0，100.000kN 主传感器）—— 依据现役生产库
                         // TestParameterConfig：弯曲等所有配置行 AxialPressureChannel = 0
                         pressChannelIndex: 0,
-                        displaceChannelIndex: 1
+                        // 位移来源默认"位移通道2"（真机验证时读的那一路）；
+                        // 通道设置页保存后会按参数表的取值即时覆盖（含双传感器两路平均）
+                        displacementSource: DisplacementSource.Displace2
                     );
                 });
 
@@ -186,7 +188,9 @@ public partial class App
                 ));
                 _ = services.AddSingleton(sp => new MachineSettingsViewModel(
                     sp.GetRequiredService<ILocalizationService>(),
-                    sp.GetRequiredService<ITestParameters>()
+                    sp.GetRequiredService<ITestParameters>(),
+                    sp.GetRequiredService<ITestExecution>(),
+                    sp.GetService<ITestDeviceController>()
                 ));
                 _ = services.AddSingleton<SampleEditorPage>();
                 _ = services.AddSingleton<MachineSettingsPage>();

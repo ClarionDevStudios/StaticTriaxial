@@ -83,6 +83,17 @@ internal static class Program
             return await RunReverseTestAsync(host, port, localPort, waitMs);
         }
 
+        // 逐通道原始值诊断（只读、不动电机）：核对"位移1+2平均值"这类通道口径
+        if (GetArg(args, "--dump-channels") is { } dumpSeconds)
+        {
+            return await RunChannelDumpAsync(
+                host,
+                port,
+                localPort,
+                int.Parse(dumpSeconds, CultureInfo.InvariantCulture)
+            );
+        }
+
         var codec = new Gr3FrameCodec();
 
         await using var channel = new UdpChannel(new UdpChannelOptions(host, port, localPort));
@@ -310,7 +321,7 @@ internal static class Program
         await using var controller = new Gr3DeviceController(
             channel,
             pressChannelIndex: 0,
-            displaceChannelIndex: 1
+            displacementSource: DisplacementSource.Displace2
         );
 
         var lastSample = default(TestSample);
@@ -397,7 +408,7 @@ internal static class Program
         await using var controller = new Gr3DeviceController(
             channel,
             pressChannelIndex: 0,
-            displaceChannelIndex: 1
+            displacementSource: DisplacementSource.Displace2
         );
 
         var lastSample = default(TestSample);
@@ -474,7 +485,7 @@ internal static class Program
         await using var controller = new Gr3DeviceController(
             channel,
             pressChannelIndex: 0,
-            displaceChannelIndex: 1
+            displacementSource: DisplacementSource.Displace2
         );
 
         var lastSample = default(TestSample);
@@ -558,7 +569,7 @@ internal static class Program
         await using var controller = new Gr3DeviceController(
             channel,
             pressChannelIndex: 0,
-            displaceChannelIndex: 1
+            displacementSource: DisplacementSource.Displace2
         );
 
         var frames = 0;
@@ -622,6 +633,133 @@ internal static class Program
     }
 
     /// <summary>
+    /// 逐通道原始值诊断（**只读、不动电机**）：打印 A0 的通道配置，以及 A2 每帧的压力 1~4 /
+    /// 位移 1~4 / 千分表 1~4 的原始值与工程量，并按适配器口径把四组"双路平均"算出来对照。
+    ///
+    /// 用途：核对"通道设置里选了位移1+2平均值，界面显示的到底是不是这两路平均"
+    /// （用户 2026-10-12 提出；两路若小数位/量纲不同，直接平均就会错）。
+    /// </summary>
+    private static async Task<int> RunChannelDumpAsync(
+        string host,
+        int port,
+        int localPort,
+        int seconds
+    )
+    {
+        Console.WriteLine("=== 逐通道原始值诊断（只读，不动电机）===");
+
+        await using var channel = new UdpChannel(new UdpChannelOptions(host, port, localPort));
+        Gr3A2RealtimeData? last = null;
+        channel.DataReceived += (_, e) =>
+        {
+            var span = e.Data.Span;
+            while (Gr3FrameCodec.TryDecodeFrame(span, out var frame, out var consumed))
+            {
+                if (Gr3UplinkParser.TryParseRealtimeData(frame, out var data))
+                {
+                    last = data;
+                }
+
+                span = span[consumed..];
+            }
+        };
+
+        await using var controller = new Gr3DeviceController(
+            channel,
+            pressChannelIndex: 0,
+            displacementSource: DisplacementSource.DisplaceAverage12
+        );
+        var resolvedDisplacement = double.NaN;
+        controller.SampleReceived += (_, sample) => resolvedDisplacement = sample.Displacement;
+        await controller.ConnectAsync();
+
+        if (controller.SystemInfo is not { } info)
+        {
+            Console.WriteLine("未收到 A0 系统配置，无法换算工程量。");
+            return 1;
+        }
+
+        Console.WriteLine("A0 通道配置（工程量 = 原始值 / 10^Digital）：");
+        for (var i = 0; i < info.PressChannels.Count; i++)
+        {
+            var c = info.PressChannels[i];
+            Console.WriteLine(
+                $"  压力通道{i + 1}：Scale={c.Scale,6} Digital={c.Digital} Unit={c.UnitCode}"
+            );
+        }
+
+        for (var i = 0; i < info.DisplaceChannels.Count; i++)
+        {
+            var c = info.DisplaceChannels[i];
+            Console.WriteLine(
+                $"  位移通道{i + 1}：Scale={c.Scale,6} Digital={c.Digital} Unit={c.UnitCode}"
+                    + $" → 换算量程 {c.ToEngineeringValue(c.Scale):0.###}"
+            );
+        }
+
+        Console.WriteLine($"千分表有效位：{string.Join(",", info.MicrometerValid)}（原始值 /1000 = mm）");
+        Console.WriteLine();
+
+        for (var s = 1; s <= seconds; s++)
+        {
+            await Task.Delay(1000);
+
+            if (last is not { } d)
+            {
+                Console.WriteLine($"{s,3}s  还没收到 A2 实时帧");
+                continue;
+            }
+
+            Console.WriteLine($"{s,3}s  机器 0x{(byte)d.MachineStatus:X2}  试验状态 0x{(byte)d.TestStatus:X2}");
+            Console.WriteLine(
+                "     压力 1~4 原始："
+                    + string.Join(" ", d.PressData.Select((raw, i) => $"{i + 1}={raw}"))
+            );
+            Console.WriteLine(
+                "     位移 1~4 原始："
+                    + string.Join(" ", d.DisplaceData.Select((raw, i) => $"{i + 1}={raw}"))
+            );
+            Console.WriteLine(
+                "     位移 1~4 工程量："
+                    + string.Join(
+                        " ",
+                        d.DisplaceData.Select(
+                            (raw, i) =>
+                                $"{i + 1}={Disp(info, i, raw):0.####}"
+                        )
+                    )
+            );
+            Console.WriteLine(
+                "     千分表 1~4 原始："
+                    + string.Join(" ", d.MicrometerData.Select((raw, i) => $"{i + 1}={raw}"))
+            );
+            Console.WriteLine(
+                "     适配器口径：位移1+2平均="
+                    + $"{Average(info, d.DisplaceData, 0, 1):0.####}"
+                    + $"  位移3+4平均={Average(info, d.DisplaceData, 2, 3):0.####}"
+                    + $"  千分表1+2平均={(d.MicrometerData[0] + d.MicrometerData[1]) / 2000.0:0.####}"
+                    + $"  千分表3+4平均={(d.MicrometerData[2] + d.MicrometerData[3]) / 2000.0:0.####}"
+            );
+            Console.WriteLine(
+                "     单路对照：位移1="
+                    + $"{Disp(info, 0, d.DisplaceData[0]):0.####}"
+                    + $"  位移2={Disp(info, 1, d.DisplaceData[1]):0.####}"
+                    + $"  控制器算出(位移1+2平均)={resolvedDisplacement:0.####}"
+            );
+        }
+
+        return 0;
+
+        static double Disp(Gr3A0SystemInfo info, int index, int raw) =>
+            index < info.DisplaceChannels.Count
+                ? info.DisplaceChannels[index].ToEngineeringValue(raw)
+                : raw;
+
+        static double Average(Gr3A0SystemInfo info, IReadOnlyList<int> data, int a, int b) =>
+            (Disp(info, a, data[a]) + Disp(info, b, data[b])) / 2.0;
+    }
+
+    /// <summary>
     /// 速率标定（会真的动工作台）：按现役的换算请求若干速率，实测位移速率，反推
     /// 「速度字段 1 个单位 = 多少 mm/min」。每档正转之后反转向下同样时长，行程不累积。
     /// </summary>
@@ -651,7 +789,7 @@ internal static class Program
         await using var controller = new Gr3DeviceController(
             channel,
             pressChannelIndex: 0,
-            displaceChannelIndex: 1
+            displacementSource: DisplacementSource.Displace2
         );
 
         var lastSample = default(TestSample);

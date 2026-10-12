@@ -20,7 +20,13 @@ public enum TestPhase
     /// <summary>破坏确认中（荷载下降超过阈值后连续 N 帧确认）。</summary>
     Breaking,
 
-    /// <summary>自动复位中。</summary>
+    /// <summary>
+    /// 破坏后继续加载中。目的是**让曲线走出一段破坏后荷载下降的趋势**（用户 2026-10-12 说明）。
+    /// 电机仍按试验速率前进，上位机不发新指令；这段时间**记曲线**。
+    /// </summary>
+    ContinueLoading,
+
+    /// <summary>归位中（电机反转把工作台送回起始位）。这段**不记曲线**。</summary>
     Resetting,
 
     /// <summary>正常完成，可结算。</summary>

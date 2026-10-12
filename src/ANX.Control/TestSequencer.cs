@@ -6,7 +6,9 @@ using ANX.Core;
 /// 试验阶段机。**由采样驱动**、不持有定时器与线程：喂它 TestSample，它推进阶段。
 /// 这样阶段流转、保护与曲线抽点都能用单元测试与回放验证，不必依赖真机或真实时间。
 ///
-/// 阶段：Idle → Connecting → ContactSearch →（接触）Loading →（荷载下降）Breaking →（连续确认）Resetting →（到时）Completed。
+/// 阶段：Idle → Connecting → ContactSearch →（接触）Loading →（荷载下降）Breaking →（连续确认）
+/// ContinueLoading →（走够继续加载时间）Resetting →（走够归位时间）Completed。
+/// 记曲线：ContactSearch 那一帧起，到 ContinueLoading 为止；**归位段不记曲线**。
 /// 保护：荷载超量程 / 位移超正行程 / 接触超时 / 加载超时 → Aborted。
 /// </summary>
 public sealed class TestSequencer(TestRunProfile? profile = null)
@@ -14,6 +16,7 @@ public sealed class TestSequencer(TestRunProfile? profile = null)
     private readonly TestRunProfile _profile = profile ?? new TestRunProfile();
     private readonly List<CurvePoint> _curve = [];
     private int _breakConfirmCount;
+    private double _continueElapsedSeconds;
     private double _resetElapsedSeconds;
     private double? _lastSampleSeconds;
     private TestSample _peak;
@@ -61,6 +64,7 @@ public sealed class TestSequencer(TestRunProfile? profile = null)
         StopReason = TestStopReason.None;
         _curve.Clear();
         _breakConfirmCount = 0;
+        _continueElapsedSeconds = 0;
         _resetElapsedSeconds = 0;
         _lastSampleSeconds = null;
         _peak = default;
@@ -115,8 +119,11 @@ public sealed class TestSequencer(TestRunProfile? profile = null)
                     return Abort(TestStopReason.ContactTimeout);
                 }
 
-                if (Math.Abs(sample.Load) >= _profile.ContactLoadKN)
+                if (sample.Load >= _profile.ContactLoadKN)
                 {
+                    // 接触判据用**正向**比较（现役弯曲线程：`ActualLoad * 1000 >= FContactLoadKN * 1000`）。
+                    // 用绝对值会把传感器负向零漂（真机约 −0.19kN）算成接触 —— 一上电就"接触成立"，
+                    // 位移被提前清零、挠度起算点错（用户 2026-10-12 真机发现）。
                     Phase = TestPhase.Loading;
                     _peak = sample;
                     _curve.Add(new CurvePoint(sample.Displacement, sample.Load));
@@ -137,8 +144,12 @@ public sealed class TestSequencer(TestRunProfile? profile = null)
                     _peak = sample;
                     _breakConfirmCount = 0;
                 }
-                else if (_peak.Load - sample.Load >= _profile.BreakDropKN)
+                else if (
+                    _peak.Load >= _profile.MinBreakLoadKN
+                    && _peak.Load - sample.Load >= _profile.BreakDropKN
+                )
                 {
+                    // 峰值荷载不到「不判破坏荷载下限」就不判破坏（现役弯曲线程：MaxLoad >= BREAK_MIN_LOAD_KN）
                     Phase = TestPhase.Breaking;
                     _breakConfirmCount = 1;
                 }
@@ -160,8 +171,39 @@ public sealed class TestSequencer(TestRunProfile? profile = null)
                 _breakConfirmCount++;
                 if (_breakConfirmCount >= _profile.BreakConfirmSamples)
                 {
-                    Phase = TestPhase.Resetting;
-                    _resetElapsedSeconds = 0;
+                    if (_profile.ContinueLoadingSeconds > 0)
+                    {
+                        // 破坏确认 → 继续加载一段（把破坏后的荷载下降趋势画进曲线，这段**记曲线**）
+                        // → 归位倒计时（归位段电机反转，不记曲线）
+                        Phase = TestPhase.ContinueLoading;
+                        _continueElapsedSeconds = 0;
+                    }
+                    else
+                    {
+                        // 没配继续加载时间（0）＝ 走旧行为：确认后直接归位
+                        BeginReset();
+                    }
+                }
+
+                break;
+
+            case TestPhase.ContinueLoading:
+                // 电机仍按试验速率前进，上位机不发新指令；这一段**记曲线**，让图上有破坏后的下降趋势
+                _curve.Add(new CurvePoint(sample.Displacement, sample.Load));
+
+                if (sample.Load > _peak.Load)
+                {
+                    _peak = sample;
+                }
+
+                if (_lastSampleSeconds is { } continuing)
+                {
+                    _continueElapsedSeconds += Math.Max(0, sample.ElapsedSeconds - continuing);
+                }
+
+                if (_continueElapsedSeconds >= _profile.ContinueLoadingSeconds)
+                {
+                    BeginReset();
                 }
 
                 break;
@@ -194,5 +236,12 @@ public sealed class TestSequencer(TestRunProfile? profile = null)
         StopReason = reason;
         Phase = TestPhase.Aborted;
         return false;
+    }
+
+    /// <summary>进入归位阶段。归位倒计时从这一刻起算（继续加载若已走完，也已算完）。</summary>
+    private void BeginReset()
+    {
+        Phase = TestPhase.Resetting;
+        _resetElapsedSeconds = 0;
     }
 }

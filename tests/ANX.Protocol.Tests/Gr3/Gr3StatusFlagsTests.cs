@@ -42,7 +42,7 @@ public sealed class Gr3StatusFlagsTests
     }
 
     [Fact]
-    public void 试验状态运行中与破碎点应能同时成立()
+    public void 试验状态运行中与破坏点应能同时成立()
     {
         var status = Gr3TestStatus.Running | Gr3TestStatus.BreakPointFound;
 

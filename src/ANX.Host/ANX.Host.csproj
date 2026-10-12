@@ -5,6 +5,8 @@
     <UseWPF>true</UseWPF>
     <RootNamespace>ANX.Host</RootNamespace>
     <AssemblyName>ANX.Host</AssemblyName>
+    <!-- exe（资源管理器 / 任务栏）图标：与窗口图标共用 ANX.Ui 里那一份 .ico -->
+    <ApplicationIcon>..\ANX.Ui\Assets\anx.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

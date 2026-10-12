@@ -90,6 +90,24 @@ public sealed class BendingAnalyzerTests
     }
 
     // ── 5.2 破坏荷载与跨中挠度 ──────────────────────────────────────
+    /// <summary>
+    /// 锁定峰值位移（现役 LockDisplacement，默认选中）：开 → 挠度取峰值荷载点；
+    /// 关 → 取曲线最大位移（破坏荷载仍取峰值荷载点）。
+    /// </summary>
+    [Fact]
+    public void 锁定峰值位移开关应决定挠度取峰值点还是曲线最大位移()
+    {
+        var curve = BuildCurve(); // 尾段继续下行 → 峰值点与最大位移点不同
+
+        var locked = BendingAnalyzer.Analyze(curve, 200, 30, 35);
+        var unlocked = BendingAnalyzer.Analyze(curve, 200, 30, 35, lockPeakDisplacement: false);
+
+        // 默认（锁定）= 现行口径，不改变既有结果
+        Assert.True(locked.PeakDeflectionMM >= 0);
+        Assert.Equal(locked.PeakLoadKN, unlocked.PeakLoadKN, 6); // 破坏荷载都取峰值荷载点
+        Assert.True(unlocked.PeakDeflectionMM >= locked.PeakDeflectionMM);
+    }
+
     [Fact]
     public void 破坏荷载应取曲线最大荷载且挠度从修正原点量起()
     {

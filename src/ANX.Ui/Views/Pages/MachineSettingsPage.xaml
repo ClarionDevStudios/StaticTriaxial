@@ -68,13 +68,56 @@
       </StackPanel>
     </StackPanel>
 
-    <!-- 参数按"作用时点"分区（运行期 / 计算期 / …），每区一张卡 -->
+    <!-- 页签条（比照现役配置窗体的 PageControl）：通道设置 / 试验参数 -->
     <ItemsControl
       Grid.Row="2"
       Margin="0,16,0,0"
       HorizontalAlignment="Left"
+      ItemsSource="{Binding ViewModel.Tabs}"
+    >
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <StackPanel Orientation="Horizontal" />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate>
+          <ui:Button
+            MinWidth="120"
+            Margin="0,0,8,0"
+            Command="{Binding DataContext.ViewModel.SelectTabCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+            CommandParameter="{Binding}"
+            Content="{Binding Title}"
+          >
+            <ui:Button.Style>
+              <Style TargetType="ui:Button">
+                <Setter Property="Appearance" Value="Secondary" />
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                    <Setter Property="Appearance" Value="Primary" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </ui:Button.Style>
+          </ui:Button>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <!-- 当前页签的内容（每区一张卡） -->
+    <ItemsControl
+      Grid.Row="3"
+      Margin="0,14,0,0"
+      HorizontalAlignment="Left"
       ItemTemplate="{StaticResource ParameterGroupTemplate}"
-      ItemsSource="{Binding ViewModel.Groups}"
-    />
+      ItemsSource="{Binding ViewModel.SelectedTab.Groups}"
+    >
+      <!-- 卡片横向排布：运行期在左、计算期在右（窗口窄时自动换行） -->
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <WrapPanel Orientation="Horizontal" />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+    </ItemsControl>
   </Grid>
 </Page>

@@ -20,7 +20,7 @@ public sealed class DeviceChainTests
         await using var controller = new Gr3DeviceController(
             channel,
             pressChannelIndex: 0,
-            displaceChannelIndex: 1
+            displacementSource: DisplacementSource.Displace2
         );
 
         var sequencer = new TestSequencer(
@@ -128,6 +128,73 @@ public sealed class DeviceChainTests
     }
 
     /// <summary>
+    /// 双传感器（两路平均）与保护口径：位移取两路平均值，**量程保护取两路里较大的那一路**
+    /// （用户 2026-10-12 定的口径）。四种平均方式（位移1+2/3+4、千分表1+2/3+4）都由来源枚举决定。
+    /// </summary>
+    [Fact]
+    public async Task 双传感器应取两路平均且保护按较大的那一路()
+    {
+        var channel = new FakeChannel();
+        await using var controller = new Gr3DeviceController(channel)
+        {
+            DisplacementSource = DisplacementSource.DisplaceAverage12,
+        };
+
+        var samples = new List<TestSample>();
+        controller.SampleReceived += (_, sample) => samples.Add(sample);
+
+        var connect = controller.ConnectAsync();
+        channel.Feed(Gr3FrameCodec.BuildDatagram(Gr3Constants.UplinkSystemInfo, BuildSystemInfoPayload(), 1));
+        await connect;
+
+        // 假 A0 的位移小数位 = 0 → 原始码值就是 mm；两路给 4.0 与 6.0
+        channel.Feed(
+            Gr3FrameCodec.BuildDatagram(
+                Gr3Constants.UplinkRealtimeData,
+                BuildDualDisplacePayload(4.0, 6.0),
+                2
+            )
+        );
+
+        Assert.Equal(5.0, samples[^1].Displacement, 6); // 平均值
+        Assert.Equal(6.0, samples[^1].RawDisplacement, 6); // 较大的那一路
+
+        // 单路来源（通道 1）时不平均，保护值就是它自己
+        controller.DisplacementSource = DisplacementSource.Displace1;
+        channel.Feed(
+            Gr3FrameCodec.BuildDatagram(
+                Gr3Constants.UplinkRealtimeData,
+                BuildDualDisplacePayload(4.0, 6.0),
+                3
+            )
+        );
+
+        Assert.Equal(4.0, samples[^1].Displacement, 6);
+        Assert.Equal(4.0, samples[^1].RawDisplacement, 6);
+    }
+
+    /// <summary>
+    /// A2H 数据域（71 B）：位移**通道 1 / 2（索引 0 / 1）**给指定值 —— 1+2 平均（双传感器）用例用。
+    /// 布局：压力 4×Int32（0~15）+ 围压（16~19）+ 位移 4×Int32（20~35）+ …
+    /// </summary>
+    private static byte[] BuildDualDisplacePayload(double channel1MM, double channel2MM)
+    {
+        var payload = BuildRealtimePayload(0, 0);
+        WriteInt32(payload, 20, channel1MM);
+        WriteInt32(payload, 24, channel2MM);
+        return payload;
+    }
+
+    private static void WriteInt32(byte[] payload, int offset, double value)
+    {
+        var raw = (int)Math.Round(value);
+        payload[offset] = (byte)(raw >> 24);
+        payload[offset + 1] = (byte)(raw >> 16);
+        payload[offset + 2] = (byte)(raw >> 8);
+        payload[offset + 3] = (byte)raw;
+    }
+
+    /// <summary>
     /// 接触调零走**上位机软件调零**（存偏移量；用户 2026-10-12 明确按现役做法）：
     /// 调零后净值从 0 起算，**原始位移不变**（量程保护要用它）；且不动设备零点（C3 是另一条路）。
     /// </summary>
@@ -213,6 +280,39 @@ public sealed class DeviceChainTests
         // 停止指令本身不会再插一条停止
         await controller.StopAsync();
         Assert.Equal(Gr3Constants.MotorOrderStop, c4Orders()[^1]);
+    }
+
+    /// <summary>
+    /// 归位（现役 tpAutoReset）：**先停再反转**，且速率用调用方给的**试验速率**，
+    /// 不是手动点动的平台升降速率（现役 SetVelocityCmd(2, LTestSpeed)）。
+    /// </summary>
+    [Fact]
+    public async Task 归位应先停再反转并按给点速率下发()
+    {
+        var channel = new FakeChannel { AutoAck = true };
+        await using var controller = new Gr3DeviceController(channel)
+        {
+            DirectionChangeSettleDelay = TimeSpan.FromMilliseconds(10),
+            JogSpeedMillimetersPerMinute = 5, // 故意与试验速率不同：验证归位没误用点动速率
+        };
+
+        var connect = controller.ConnectAsync();
+        channel.Feed(Gr3FrameCodec.BuildDatagram(Gr3Constants.UplinkSystemInfo, BuildSystemInfoPayload(), 1));
+        await connect;
+
+        await controller.StartAsync(); // 正转加载中
+        await controller.ReturnToStartAsync(50); // 归位：先停，再反转下降
+
+        var c4 = channel
+            .SentFrames.Where(frame => frame[10] == Gr3Constants.DownlinkMotorLoad)
+            .ToArray();
+
+        Assert.Equal(Gr3Constants.MotorOrderStop, c4[^2][11]);
+        Assert.Equal(Gr3Constants.MotorOrderReverseDown, c4[^1][11]);
+
+        // 数据域：方向字(1B) + 速度(2B 大端)。50mm/min × 10 = 500 = 0x01F4
+        Assert.Equal(0x01, c4[^1][12]);
+        Assert.Equal(0xF4, c4[^1][13]);
     }
 
     /// <summary>
@@ -402,7 +502,8 @@ public sealed class DeviceChainTests
     private static byte[] BuildRealtimePayload(
         double loadKN,
         double displacementMM,
-        byte machineStatus = 0
+        byte machineStatus = 0,
+        double secondDisplacement = 0
     )
     {
         var payload = new List<byte>();
@@ -417,7 +518,8 @@ public sealed class DeviceChainTests
         payload.AddRange([0, 0, 0, 0]); // 围压
 
         var rawDisplace = (int)Math.Round(displacementMM);
-        foreach (var value in new[] { 0, rawDisplace, 0, 0 })
+        var rawSecond = (int)Math.Round(secondDisplacement);
+        foreach (var value in new[] { 0, rawDisplace, rawSecond, 0 })
         {
             payload.AddRange([(byte)(value >> 24), (byte)(value >> 16), (byte)(value >> 8), (byte)value]);
         }

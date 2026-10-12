@@ -7,6 +7,7 @@
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
   Title="{Binding ViewModel.ApplicationTitle, Mode=OneWay}"
+  Icon="pack://application:,,,/ANX.Ui;component/Assets/anx-icon.png"
   Width="1440"
   Height="900"
   MinWidth="1152"
@@ -44,6 +45,19 @@
       </ui:NavigationView.Header>
     </ui:NavigationView>
 
-    <ui:TitleBar Grid.Row="0" Title="{Binding ViewModel.ApplicationTitle, Mode=OneWay}" />
+    <ui:TitleBar Grid.Row="0" Title="{Binding ViewModel.ApplicationTitle, Mode=OneWay}">
+      <ui:TitleBar.Icon>
+        <!--
+          标题栏左侧的品牌图标：16×16（DIP），与 exe 图标同一份资源。
+          源图为 64×64，靠 HighQuality 缩放降到 16 DIP，在 100%/125%/150% DPI 下都清晰。
+        -->
+        <ui:ImageIcon
+          Height="16"
+          RenderOptions.BitmapScalingMode="HighQuality"
+          Source="pack://application:,,,/ANX.Ui;component/Assets/anx-icon.png"
+          Width="16"
+        />
+      </ui:TitleBar.Icon>
+    </ui:TitleBar>
   </Grid>
 </ui:FluentWindow>

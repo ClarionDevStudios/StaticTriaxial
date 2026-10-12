@@ -1,5 +1,7 @@
 namespace ANX.Control;
 
+using ANX.Core.Control;
+
 /// <summary>
 /// 一次试验的运行参数与保护阈值。按既定分工：**软件只管正向量程与超时**，
 /// 负方向与硬件限位由下位机负责（下位机限位标识不准，软件不采用）。
@@ -75,8 +77,31 @@ public sealed record TestRunProfile
     /// <summary>加载阶段超时（s）。</summary>
     public double LoadingTimeoutSeconds { get; init; } = 600.0;
 
-    /// <summary>破坏后自动复位时长（s）。</summary>
+    /// <summary>
+    /// 破坏后继续加载时长（s）。取参数表「破坏后继续加载时间」（现役 ContinueLoadingTime；单位秒）。
+    /// 0 = 不做继续加载（破坏确认后直接归位）。这一段的数据**记入曲线**。
+    /// </summary>
+    public double ContinueLoadingSeconds { get; init; }
+
+    /// <summary>
+    /// **不判破坏荷载下限**（kN）：峰值荷载小于该值时不判破坏（现役弯曲线程常量
+    /// <c>BREAK_MIN_LOAD_KN = 0.2</c>，判据写的是 <c>MaxLoad &gt;= BREAK_MIN_LOAD_KN</c>；现场配 200N）。
+    /// 0 = 不启用下限。
+    /// </summary>
+    public double MinBreakLoadKN { get; init; }
+
+    /// <summary>
+    /// 试验完成后工作台归位时长（s）。取参数表「试验完成后归位时间」（现役 AutoFallTime）。
+    /// 生效时点：破坏确认 → 破坏后继续加载 → 归位倒计时（归位倒计时从继续加载走完才开始算）。
+    /// 归位段**不记曲线**（曲线只到破坏后的下降趋势为止）。
+    /// </summary>
     public double ResetSeconds { get; init; } = 5.0;
+
+    /// <summary>轴向压力通道号（1~4；1 = 100kN 主传感器）。运行前推给设备适配器。</summary>
+    public int PressChannelNumber { get; init; } = 1;
+
+    /// <summary>轴向位移来源（单路 / 双路平均 / 千分表）。运行前推给设备适配器。</summary>
+    public DisplacementSource DisplacementSource { get; init; } = DisplacementSource.Displace2;
 
     /// <summary>试验加载速率（mm/min），规范 50；由方法按"加载速率"参数给出。</summary>
     public double LoadRateMillimetersPerMinute { get; init; } = 50.0;

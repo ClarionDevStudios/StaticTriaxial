@@ -49,11 +49,11 @@
   <sys:String x:Key="Exec.NewSample">新建试样</sys:String>
   <sys:String x:Key="Exec.EditSample">编辑试样</sys:String>
   <sys:String x:Key="Exec.DeleteSample">删除试样</sys:String>
-  <sys:String x:Key="Exec.StartOrStop">启动试验 / 停止</sys:String>
-  <sys:String x:Key="Exec.CompleteSheet">完成一组</sys:String>
+  <sys:String x:Key="Exec.StartTest">启动试验</sys:String>
+  <sys:String x:Key="Exec.StopTest">停止试验</sys:String>
   <sys:String x:Key="Exec.ClearInfo">清空信息</sys:String>
   <sys:String x:Key="Exec.SheetId">试验单号</sys:String>
-  <sys:String x:Key="Exec.SampleHint">每次启动试验跑一个试件：阶段机判定结束后自动算结果并落库。一组跑完点完成一组。</sys:String>
+  <sys:String x:Key="Exec.SampleHint">每次启动试验跑一个试件：阶段机判定结束后自动算结果并落库。一组跑完点有效性计算，剔除超差件并算出组统计。</sys:String>
   <sys:String x:Key="Exec.Connection">连接状态</sys:String>
   <sys:String x:Key="Exec.Connect">联机</sys:String>
   <sys:String x:Key="Exec.NoDevice">未配置设备（Debug 构建使用模拟器）</sys:String>
@@ -68,7 +68,14 @@
   <sys:String x:Key="Exec.NotSettleable">未能结算，本次不落库</sys:String>
   <sys:String x:Key="Exec.SampleDone">试件完成</sys:String>
   <sys:String x:Key="Exec.Points">点</sys:String>
-  <sys:String x:Key="Exec.SheetCompleted">试验单已完成</sys:String>
+  <sys:String x:Key="Exec.Validity">有效性计算</sys:String>
+  <sys:String x:Key="Exec.ValidityBusy">试验进行中，不能计算结果</sys:String>
+  <sys:String x:Key="Exec.ValidityNoSheet">没有打开的试验单，先新建或选择试验单</sys:String>
+  <sys:String x:Key="Exec.ValidityNoSamples">本单还没有判定完成的试件，无法做有效性计算</sys:String>
+  <sys:String x:Key="Exec.ValidityNoExclusion">无</sys:String>
+  <sys:String x:Key="Exec.ValidityDone">有效性计算完成：参与 {0} 件，有效 {1} 件，剔除 {2}</sys:String>
+  <sys:String x:Key="Exec.SampleLabel">试件 </sys:String>
+  <sys:String x:Key="Exec.NeedsSupplement">有效试件不足 3 件，请补充试验</sys:String>
   <sys:String x:Key="Exec.DefaultProject">默认项目</sys:String>
   <sys:String x:Key="Exec.WorktableUp">工作台上升</sys:String>
   <sys:String x:Key="Exec.WorktableDown">工作台下降</sys:String>
@@ -117,6 +124,10 @@
   <sys:String x:Key="Sample.NoSheet">请先到试验单页选择一张试验单</sys:String>
   <sys:String x:Key="Sample.NoSampleId">请先填试件号</sys:String>
   <sys:String x:Key="Mach.Title">机器与控制参数</sys:String>
+  <sys:String x:Key="Mach.Tab.Channels">通道设置</sys:String>
+  <sys:String x:Key="Mach.Tab.Parameters">试验参数</sys:String>
+  <sys:String x:Key="Param.PendingIntegration">待接线</sys:String>
+  <sys:String x:Key="Param.ChannelNotWired">该位移通道（千分表 / 平均值）暂未接线，读数仍按原通道取</sys:String>
   <sys:String x:Key="Param.Save">保存</sys:String>
   <sys:String x:Key="Param.Reload">重新载入</sys:String>
   <sys:String x:Key="Param.Loaded">已载入当前参数</sys:String>
@@ -139,10 +150,11 @@
   <sys:String x:Key="Param.Scope.Computation">计算期（判定 / 重算时生效）</sys:String>
   <sys:String x:Key="Param.Scope.Computation.Hint">点保存后，在下一次结算或「按当前参数重算」时生效（历史数据页可重算已存曲线）。</sys:String>
   <sys:String x:Key="Param.Scope.Acquisition">采集口径（数据从哪里来）</sys:String>
-  <sys:String x:Key="Param.Scope.Acquisition.Hint">点保存后，在下一次联机装载时生效。</sys:String>
+  <sys:String x:Key="Param.Scope.Acquisition.Hint">点击保存后，立即生效。</sys:String>
   <sys:String x:Key="Param.Scope.Presentation">记录与显示</sys:String>
   <sys:String x:Key="Param.Scope.Presentation.Hint">点保存后影响曲线记录策略与界面刷新。</sys:String>
   <sys:String x:Key="Mach.Description">机器与控制参数：运行期参数在「开始试验」时装载，计算期参数在判定 / 重算时读取。保存后对下一次试验或下一次结算生效，正在跑的那一轮不中途变参数。</sys:String>
+  <sys:String x:Key="Mach.CurrentMethod">当前方法：{0}（{1}）—— 本页是通用界面，参数值按该方法存取；切换到别的方法会加载它自己的那套值。</sys:String>
   <sys:String x:Key="Sample.Description">这里填的是「这一件」试样的信息（跨径 / 试件尺寸…）：保存后随该试件存进明细，判定时按件取用。用同一个试件号再进来会载回原来填过的值。</sys:String>
   <sys:String x:Key="Exec.NoSheet">还没有试验单（先"新建试验"或去试验单页选一张）</sys:String>
 
@@ -185,6 +197,7 @@
   <sys:String x:Key="Exec.JogFailed">点动失败</sys:String>
   <sys:String x:Key="Exec.JogNeedConnect">还没联机 —— 先点「联机」，再操作工作台</sys:String>
   <sys:String x:Key="Exec.ContactDetected">接触成立：位移调零（软件偏移量），切换到试验速率</sys:String>
+  <sys:String x:Key="Exec.Returning">破坏已确认：继续加载结束，电机反转归位（归位段不记曲线）</sys:String>
   <sys:String x:Key="Exec.PhaseRangeStopped">量程停机，按曲线峰值结算</sys:String>
   <sys:String x:Key="Exec.DisplacementClamped">位移闸门已收敛到设备量程的 {0:0.###} mm —— 不得超过位移传感器量程，超了会压坏传感器</sys:String>
   <sys:String x:Key="Exec.LoadClamped">荷载闸门按设备压力量程算得 {0:0.###} kN</sys:String>

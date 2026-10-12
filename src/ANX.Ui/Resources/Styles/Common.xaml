@@ -54,6 +54,22 @@
     <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
   </Style>
 
+  <!-- 参数说明（名称下方一句话，照现役窗体里每项的注释） -->
+  <Style x:Key="ParamDescriptionStyle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Margin" Value="0,2,0,0" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+  </Style>
+
+  <!-- 待接线标记（现役有、本软件还没功能的项） -->
+  <Style x:Key="ParamPendingBadgeStyle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Margin" Value="10,0,0,0" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+  </Style>
+
   <!--
     参数行：显示名 | 编辑控件 | 单位与范围提示 | 行内校验文案。
     数字/文本用文本框、开关用复选框，两者按 IsSwitch 互斥显示（不用 BasedOn，保住 WPF-UI 的隐式样式）。
@@ -61,12 +77,14 @@
   <DataTemplate x:Key="ParameterRowTemplate">
     <Grid Margin="0,0,0,10">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="280" />
-        <ColumnDefinition Width="170" />
+        <ColumnDefinition Width="200" />
+        <!-- 编辑列按控件自适应：通道下拉的选项文字比数字框宽（"千分表3+4通道平均值"） -->
+        <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="*" />
       </Grid.ColumnDefinitions>
 
+      <!-- 名称（用户 2026-10-12：取消各项参数的说明，不再显示第二行小字） -->
       <TextBlock
         Grid.Column="0"
         Margin="0,0,12,0"
@@ -77,6 +95,8 @@
 
       <TextBox
         Grid.Column="1"
+        Width="150"
+        IsEnabled="{Binding IsEditable}"
         Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
         Visibility="{Binding IsTextBox, Converter={StaticResource BoolToVisibility}}"
       />
@@ -84,8 +104,21 @@
       <CheckBox
         Grid.Column="1"
         VerticalAlignment="Center"
+        IsEnabled="{Binding IsEditable}"
         IsChecked="{Binding SwitchValue}"
         Visibility="{Binding IsSwitch, Converter={StaticResource BoolToVisibility}}"
+      />
+
+      <!-- 通道号这类固定选项：下拉列表（现役用单选组，改下拉省空间） -->
+      <ComboBox
+        Grid.Column="1"
+        MinWidth="200"
+        IsEnabled="{Binding IsEditable}"
+        DisplayMemberPath="Label"
+        ItemsSource="{Binding Options}"
+        SelectedValue="{Binding Value, Mode=TwoWay}"
+        SelectedValuePath="Value"
+        Visibility="{Binding IsChoice, Converter={StaticResource BoolToVisibility}}"
       />
 
       <TextBlock
@@ -93,6 +126,13 @@
         Margin="10,0,0,0"
         Style="{StaticResource FieldLabelStyle}"
         Text="{Binding Hint}"
+      />
+
+      <TextBlock
+        Grid.Column="3"
+        Style="{StaticResource ParamPendingBadgeStyle}"
+        Text="{DynamicResource Param.PendingIntegration}"
+        Visibility="{Binding PendingIntegration, Converter={StaticResource BoolToVisibility}}"
       />
 
       <TextBlock
@@ -107,10 +147,11 @@
   <!-- 一个作用时点分区：标题 + 说明 + 该组的参数行 -->
   <DataTemplate x:Key="ParameterGroupTemplate">
     <ui:Card
-      MaxWidth="980"
+      Width="620"
       Margin="0,0,0,14"
       Padding="20"
       HorizontalAlignment="Left"
+      VerticalAlignment="Top"
       VerticalContentAlignment="Top"
     >
       <StackPanel>

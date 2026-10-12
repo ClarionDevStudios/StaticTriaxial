@@ -66,8 +66,9 @@ public static class BendingAnalyzer
     public const int MinimumEffectiveSamples = 3;
 
     /// <summary>
-    /// 修正直线的回退拟合区间：峰值荷载的 10%~80%。
-    /// **规范未规定拟合方法**，这里按现役实现口径取 10%~80%（属实现选择，可替换）。
+    /// 修正直线的拟合区间默认值：峰值荷载的 10%~80%。
+    /// **规范未规定拟合方法**，这里按现役实现口径取 10%~80%（现役代码默认值；现场可配，见参数表
+    /// `OriginCorrectionStart` / `OriginCorrectionEnd`）。
     /// </summary>
     public const double FallbackStartPercent = 10.0;
 
@@ -115,7 +116,10 @@ public static class BendingAnalyzer
         double spanMM,
         double widthMM,
         double heightMM,
-        bool enableOriginCorrection = true
+        bool enableOriginCorrection = true,
+        double originCorrectionStartPercent = FallbackStartPercent,
+        double originCorrectionEndPercent = FallbackEndPercent,
+        bool lockPeakDisplacement = true
     )
     {
         ArgumentNullException.ThrowIfNull(curve);
@@ -133,7 +137,11 @@ public static class BendingAnalyzer
 
         if (enableOriginCorrection)
         {
-            var tangent = FitTangentLine(curve);
+            var tangent = FitTangentLine(
+                curve,
+                originCorrectionStartPercent,
+                originCorrectionEndPercent
+            );
             if (tangent is null)
             {
                 throw new InvalidOperationException("无法拟合修正直线（峰值非正或上升段不足）");
@@ -143,11 +151,18 @@ public static class BendingAnalyzer
             originCorrection = Math.Max(0.0, -b / k);
         }
 
-        var correctedDeflection = Math.Max(0.0, peakDeflection - originCorrection);
+        // 锁定峰值位移（现役 LockDisplacement，**每个试验都需要的默认选中项**）：
+        //   开（默认）= 跨中挠度取**峰值荷载点**的位移；
+        //   关       = 跨中挠度取曲线里**最大位移**（破坏荷载仍取峰值荷载点）。
+        var reportedDeflection = lockPeakDisplacement
+            ? peakDeflection
+            : curve.Max(point => point.X);
+
+        var correctedDeflection = Math.Max(0.0, reportedDeflection - originCorrection);
 
         return new BendingSampleResult(
             RoundTo(peakLoad, StrengthDecimals),
-            RoundTo(peakDeflection, StrengthDecimals),
+            RoundTo(reportedDeflection, StrengthDecimals),
             RoundTo(correctedDeflection, DeflectionDecimals),
             FlexuralStrength(peakLoad, spanMM, widthMM, heightMM),
             MaxBendingTensileStrain(heightMM, correctedDeflection, spanMM),
@@ -227,7 +242,11 @@ public static class BendingAnalyzer
     /// 滑窗找 R² 最高的直线段（不足则回退到峰值 10%~80% 区间）→ 最小二乘 → 3σ 剔除重拟合。
     /// </summary>
     /// <returns>拟合成功的 (k, b)；失败返回 null。</returns>
-    public static (double K, double B)? FitTangentLine(IReadOnlyList<CurvePoint> curve)
+    public static (double K, double B)? FitTangentLine(
+        IReadOnlyList<CurvePoint> curve,
+        double startPercent = FallbackStartPercent,
+        double endPercent = FallbackEndPercent
+    )
     {
         const int smoothWindow = 5;
         const int minFitPoints = 12;
@@ -253,6 +272,23 @@ public static class BendingAnalyzer
 
         var smooth = MovingAverage(sorted, smoothWindow);
         var ascending = smooth[..(peakIndex + 1)];
+
+        // 拟合区间限制（现役把 OriginCorrectionStart/End 当"压力峰值%"传进 FindTangentLine）：
+        // 只在峰值荷载的 start%~end% 这一段里找直线段；点数不够就退回整段上升沿
+        var low = peakY * Math.Clamp(startPercent, 1.0, 99.0) / 100.0;
+        var high = peakY * Math.Clamp(endPercent, 2.0, 100.0) / 100.0;
+        if (low >= high)
+        {
+            low = peakY * FallbackStartPercent / 100.0;
+            high = peakY * FallbackEndPercent / 100.0;
+        }
+
+        var band = ascending.Where(p => p.Y >= low && p.Y <= high).ToArray();
+        if (band.Length >= 3)
+        {
+            ascending = band;
+            peakIndex = ascending.Length - 1; // 区间内的最后一点就是区间上沿
+        }
 
         // 滑窗自动选直线段
         var maxLength = Math.Min(
@@ -297,10 +333,8 @@ public static class BendingAnalyzer
         }
         else
         {
-            // 回退：峰值荷载 10%~80% 区间
-            var low = peakY * FallbackStartPercent / 100.0;
-            var high = peakY * FallbackEndPercent / 100.0;
-            fitPoints = [.. ascending.Where(p => p.Y >= low && p.Y <= high)];
+            // 回退：就用当前拟合区间内的点（上方已按区间裁过）
+            fitPoints = ascending;
         }
 
         if (fitPoints.Length < 3)

@@ -21,8 +21,8 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
 {
     private readonly ICommChannel _channel;
     private readonly Gr3FrameCodec _codec = new();
-    private readonly int _pressChannelIndex;
-    private readonly int _displaceChannelIndex;
+    private int _pressChannelIndex;
+    private DisplacementSource _displacementSource = DisplacementSource.Displace2;
     private readonly TimeSpan _timeout;
 
     private TaskCompletionSource<Gr3AckStatus>? _ackWaiter;
@@ -63,13 +63,13 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
     public Gr3DeviceController(
         ICommChannel channel,
         int pressChannelIndex = 0,
-        int displaceChannelIndex = 1,
+        DisplacementSource displacementSource = DisplacementSource.Displace2,
         TimeSpan? timeout = null
     )
     {
         _channel = channel;
         _pressChannelIndex = pressChannelIndex;
-        _displaceChannelIndex = displaceChannelIndex;
+        _displacementSource = displacementSource;
         _timeout = timeout ?? TimeSpan.FromSeconds(3);
     }
 
@@ -83,10 +83,9 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
     /// </summary>
     public double? DisplacementRangeMillimeters =>
         SystemInfo is { } info
-        && _displaceChannelIndex >= 0
-        && _displaceChannelIndex < info.DisplaceChannels.Count
-            ? info.DisplaceChannels[_displaceChannelIndex].ToEngineeringValue(
-                info.DisplaceChannels[_displaceChannelIndex].Scale
+        && _displacementSource.Channels().First < info.DisplaceChannels.Count
+            ? info.DisplaceChannels[_displacementSource.Channels().First].ToEngineeringValue(
+                info.DisplaceChannels[_displacementSource.Channels().First].Scale
             )
             : null;
 
@@ -140,21 +139,53 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
         Gr3A2RealtimeData data,
         Gr3A0SystemInfo? info,
         int pressChannelIndex,
-        int displaceChannelIndex,
+        DisplacementSource displaceSource,
         double elapsedSeconds
     )
     {
         var pressRaw = data.PressData[pressChannelIndex];
-        var displaceRaw = data.DisplaceData[displaceChannelIndex];
 
         var load = info is null
             ? pressRaw
             : info.PressChannels[pressChannelIndex].ToEngineeringValue(pressRaw);
-        var displacement = info is null
-            ? displaceRaw
-            : info.DisplaceChannels[displaceChannelIndex].ToEngineeringValue(displaceRaw);
 
-        return new TestSample(load, displacement, elapsedSeconds);
+        // 位移来源：单路 / 双路平均（用户在通道设置里选；双传感器 = 两路平均）。
+        // 保护口径按用户 2026-10-12 的要求取**两路里较大的那一路**（RawDisplacement 带出去给量程闸门）。
+        var (first, second) = displaceSource.Channels();
+        var micrometer = displaceSource.IsMicrometer();
+        var average = displaceSource.IsAverage();
+
+        var firstRaw = ReadRaw(data, info, micrometer, first);
+        var secondRaw = ReadRaw(data, info, micrometer, second);
+
+        var displacement = average ? (firstRaw + secondRaw) / 2.0 : firstRaw;
+        var guardDisplacement = Math.Max(firstRaw, secondRaw);
+
+        return new TestSample(load, displacement, elapsedSeconds)
+        {
+            // 量程保护用：两路里**较大**的那一路（单路来源即它自己）
+            RawDisplacement = guardDisplacement,
+        };
+
+        // 局部函数：按来源读一路（位移通道用 A0 的通道换算；千分表按现役口径 原始值/1000 = mm）
+        static double ReadRaw(
+            Gr3A2RealtimeData data,
+            Gr3A0SystemInfo? info,
+            bool micrometer,
+            int index
+        )
+        {
+            if (micrometer)
+            {
+                var value = data.MicrometerData[index];
+                return value / 1000.0;
+            }
+
+            var raw = data.DisplaceData[index];
+            return info is null
+                ? raw
+                : info.DisplaceChannels[index].ToEngineeringValue(raw);
+        }
     }
 
     /// <summary>把一帧上行指令喂给控制器（供接收回路与测试复用）。</summary>
@@ -178,7 +209,7 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
             case Gr3Constants.UplinkRealtimeData when Gr3UplinkParser.TryParseRealtimeData(frame, out var data):
                 LastMachineStatus = data.MachineStatus;
                 LastTestStatus = data.TestStatus;
-                var raw = ToSample(data, SystemInfo, _pressChannelIndex, _displaceChannelIndex, ElapsedSeconds);
+                var raw = ToSample(data, SystemInfo, _pressChannelIndex, DisplacementSource, ElapsedSeconds);
                 LastDisplacementMM = raw.Displacement;
                 SampleReceived?.Invoke(
                     this,
@@ -186,7 +217,6 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
                     {
                         // 接触调零（上位机软件偏移）：净值 = 原始 − 偏移；原始值一并带出去供量程保护判
                         Displacement = raw.Displacement - _displacementOffsetMM,
-                        RawDisplacement = raw.Displacement,
                     }
                 );
                 break;
@@ -275,6 +305,15 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
         JogAtSpeedAsync(direction, JogSpeedMillimetersPerMinute, cancellationToken);
 
     /// <summary>
+    /// 归位（现役 tpAutoReset）：反转下降，速率用调用方给的**试验速率**。
+    /// 换向由 <see cref="SendMotorAsync"/> 统一处理成"先停再反转"。
+    /// </summary>
+    public Task ReturnToStartAsync(
+        double millimetersPerMinute,
+        CancellationToken cancellationToken = default
+    ) => JogAtSpeedAsync(JogDirection.Down, millimetersPerMinute, cancellationToken);
+
+    /// <summary>
     /// 点动，显式指定速率（mm/min）。标定 / 需要精确速率时用，不加点动倍率。
     /// </summary>
     public Task JogAtSpeedAsync(
@@ -302,7 +341,7 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
                     recordInterval: 100,
                     recordStart: 0,
                     pressChannel: (byte)(_pressChannelIndex + 1),
-                    displaceChannel: (byte)(_displaceChannelIndex + 1)
+                    displaceChannel: (byte)DisplaceChannelDisplayNumber
                 ),
                 cancellationToken
             )
@@ -388,7 +427,24 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
     public int PressChannelDisplayNumber => _pressChannelIndex + 1;
 
     /// <summary>轴向位移通道的协议通道号（显示用）。</summary>
-    public int DisplaceChannelDisplayNumber => _displaceChannelIndex + 1;
+    public int DisplaceChannelDisplayNumber => _displacementSource.Channels().First + 1;
+
+    /// <summary>
+    /// 轴向压力通道号（1 基，1~4）—— 参数表「通道设置」页的取值经这里落到采样换算上。
+    /// 依据现役生产库：弯曲等所有方法默认通道 1（100.000kN 主传感器），通道 2 是 5kN 小量程。
+    /// </summary>
+    public int PressChannelNumber
+    {
+        get => _pressChannelIndex + 1;
+        set => _pressChannelIndex = Math.Clamp(value, 1, 4) - 1;
+    }
+
+    /// <summary>轴向位移通道号（1 基，1~4）。</summary>
+    public DisplacementSource DisplacementSource
+    {
+        get => _displacementSource;
+        set => _displacementSource = value;
+    }
 
     /// <summary>联机成功后启动保活循环（幂等）。</summary>
     private void StartKeepAlive()

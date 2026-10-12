@@ -21,7 +21,13 @@ public enum ParameterKind
 
     /// <summary>自由文本。</summary>
     Text = 2,
+
+    /// <summary>从固定选项里选一个（下拉列表；现役用单选组，我们改下拉以省空间）。</summary>
+    Choice = 3,
 }
+
+/// <summary>下拉列表的一个选项：<paramref name="Value"/> 入库，<paramref name="Label"/> 显示。</summary>
+public sealed record ParameterOption(string Value, string Label);
 
 /// <summary>参数的作用时点（界面据此分组与提示"什么时候生效"）。</summary>
 public enum ParameterScope
@@ -57,7 +63,19 @@ public sealed record ParameterDefinition(
     ParameterKind Kind = ParameterKind.Number,
     double? Minimum = null,
     double? Maximum = null,
-    ParameterScope Scope = ParameterScope.Runtime
+    ParameterScope Scope = ParameterScope.Runtime,
+
+    /// <summary>一句话说明（界面显示在名称下方，照现役窗体里每项的注释写：这一项管什么）。</summary>
+    string Description = "",
+
+    /// <summary>
+    /// **待接线**：现役有这个参数、但本软件还没有对应功能（或还没接线）。
+    /// 界面照现役的样子把它列出来，但**置灰 + 标注"待接线"**，不让改 —— 避免出现"改了没反应"的假旋钮。
+    /// </summary>
+    bool PendingIntegration = false,
+
+    /// <summary><see cref="ParameterKind.Choice"/> 的选项；其它类型为 null。</summary>
+    IReadOnlyList<ParameterOption>? Options = null
 );
 
 /// <summary>

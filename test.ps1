@@ -8,6 +8,15 @@ $env:DOTNET_CLI_HOME = 'E:\AiStudy\CodeX\.dotnetcli'
 $env:MSBUILDDISABLENODEREUSE = '1'
 
 Write-Host "DOTNET_CLI_HOME = $env:DOTNET_CLI_HOME"
+
+# 先整解构建：测试工程**不引用界面工程**（ANX.Ui/ANX.Host），界面里的编译错误会被"测试全绿"掩盖
+# —— 2026-10-12 实际踩过（VM 里少一个 using，`dotnet test` 照样报 136/136）。
+dotnet build "$PSScriptRoot\ANX.slnx" -m:1 --nologo
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "整解构建失败 —— 不执行测试（避免'测试全绿'掩盖编译错误）"
+    exit $LASTEXITCODE
+}
+
 dotnet test "$PSScriptRoot\ANX.slnx" -m:1 --nologo
 
 # 收尾同上（原因见 build.ps1 注释）：先留住测试结果，再收掉编译服务器

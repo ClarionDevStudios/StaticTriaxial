@@ -22,8 +22,26 @@ public partial class ParameterRow(ParameterDefinition definition, string hint) :
 
     public bool IsSwitch => definition.Kind == ParameterKind.Switch;
 
-    /// <summary>数字与文本都走文本框（与开关互斥显示）。</summary>
-    public bool IsTextBox => definition.Kind != ParameterKind.Switch;
+    /// <summary>下拉列表（通道号这类固定选项；现役用单选组，我们改下拉省空间）。</summary>
+    public bool IsChoice => definition.Kind == ParameterKind.Choice;
+
+    /// <summary>下拉列表的选项。</summary>
+    public IReadOnlyList<ParameterOption> Options => definition.Options ?? [];
+
+    /// <summary>数字与文本都走文本框（与开关 / 下拉互斥显示）。</summary>
+    public bool IsTextBox =>
+        definition.Kind is ParameterKind.Number or ParameterKind.Text;
+
+    /// <summary>一句话说明（照现役窗体每项的注释），显示在名称下方。</summary>
+    public string Description => definition.Description;
+
+    public bool HasDescription => !string.IsNullOrWhiteSpace(definition.Description);
+
+    /// <summary>现役有、本软件还没功能：置灰 + 标注"待接线"。</summary>
+    public bool PendingIntegration => definition.PendingIntegration;
+
+    /// <summary>可编辑（待接线的项不能改）。</summary>
+    public bool IsEditable => !definition.PendingIntegration;
 
     /// <summary>单位与范围提示（"mm/min  0.1~50"），显示在编辑框右侧。</summary>
     public string Hint { get; } = hint;
@@ -197,6 +215,7 @@ public abstract partial class EditableRowsViewModel : ViewModelBase
             _saved = values;
             RefreshDirty();
             Status = L("Param.Saved");
+            AfterSave(values);
         }
         catch (Exception ex)
         {
@@ -259,6 +278,9 @@ public abstract partial class EditableRowsViewModel : ViewModelBase
 
     /// <summary>派生类自己的闸门条件变了（例如换了试验单）时调用，刷新保存按钮。</summary>
     protected void RaiseCanSaveChanged() => RaiseStateChanged();
+
+    /// <summary>保存成功后的钩子（派生类用来把新值立刻推给设备 / 界面）。</summary>
+    protected virtual void AfterSave(IReadOnlyDictionary<string, string> values) { }
 
     private string BuildHint(ParameterDefinition definition)
     {

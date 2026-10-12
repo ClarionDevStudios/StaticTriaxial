@@ -63,10 +63,32 @@ public interface ITestDeviceController
     Task JogAsync(JogDirection direction, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// **归位**（现役弯曲线程的 tpAutoReset）：先停再反转（换向规矩由适配器保证），按给定速率把工作台
+    /// 送回起始位；走够时长由调用方 <see cref="StopAsync"/> 停机。速率用**试验速率**（现役同）。
+    /// 与 <see cref="ResetAsync"/>（设备侧清零 C3H）不是一回事。
+    /// </summary>
+    Task ReturnToStartAsync(
+        double millimetersPerMinute,
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>
     /// **平台升降速率**（mm/min）—— 点动用。与试验加载速率分开（用户 2026-10-12 要求两个速率），
     /// 由调用方从参数表取好再赋值；受电机上限约束（换算入口会截断）。
     /// </summary>
     double JogSpeedMillimetersPerMinute { get; set; }
+
+    /// <summary>
+    /// 轴向压力通道号（1 基，1~4）。由调用方从参数表取好再赋值（现役把通道号也放在参数表里）。
+    /// 不支持通道选择的设备可以不理会。
+    /// </summary>
+    int PressChannelNumber { get; set; }
+
+    /// <summary>
+    /// 轴向位移**来源**：位移通道 1~4 单路 / 千分表 1~4 单路 / 四组双通道平均（双传感器 = 两路平均）。
+    /// 由调用方从参数表"通道设置"取好再赋值（用户 2026-10-12：选择不固定，四种平均方式都可能用）。
+    /// </summary>
+    DisplacementSource DisplacementSource { get; set; }
 
     /// <summary>停止电机。</summary>
     Task StopAsync(CancellationToken cancellationToken = default);

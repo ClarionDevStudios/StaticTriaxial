@@ -20,6 +20,7 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
     private double _jogDisplacementMM;
     private double _displacementOffsetMM;
     private double _lastRawDisplacementMM;
+    private double? _returnSpeedMillimetersPerMinute;
 
     public SimulatedDeviceController(
         double peakLoadKN = 9.0,
@@ -54,6 +55,12 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
 
     /// <summary>平台升降速率（点动用）—— 与试验速率分开，界面按住上下按钮时用这个。</summary>
     public double JogSpeedMillimetersPerMinute { get; set; } = 50.0;
+
+    /// <summary>模拟器只有一个虚拟通道，通道号仅作为契约占位。</summary>
+    public int PressChannelNumber { get; set; } = 1;
+
+    /// <summary>模拟器只有一个虚拟通道，位移来源仅作为契约占位。</summary>
+    public DisplacementSource DisplacementSource { get; set; } = DisplacementSource.Displace2;
 
     public event EventHandler<TestSample>? SampleReceived;
 
@@ -93,9 +100,23 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
         return StartAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// 归位：反转下降，速率取调用方给的**试验速率**（真机也是这个口径）。
+    /// 复用点动那套采样循环，只是位移速度换成归位速率。
+    /// </summary>
+    public Task ReturnToStartAsync(
+        double millimetersPerMinute,
+        CancellationToken cancellationToken = default
+    )
+    {
+        _returnSpeedMillimetersPerMinute = millimetersPerMinute;
+        return JogAsync(JogDirection.Down, cancellationToken);
+    }
+
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
         _jogDirection = null;
+        _returnSpeedMillimetersPerMinute = null;
 
         if (_cts is not null)
         {
@@ -178,7 +199,10 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
     private TestSample JogSample(JogDirection direction, double seconds)
     {
         var travelMM =
-            JogSpeedMillimetersPerMinute / 60.0 * _sampleIntervalSeconds * _timeScale;
+            (_returnSpeedMillimetersPerMinute ?? JogSpeedMillimetersPerMinute)
+            / 60.0
+            * _sampleIntervalSeconds
+            * _timeScale;
 
         _jogDisplacementMM += direction == JogDirection.Up ? travelMM : -travelMM;
         _jogDisplacementMM = Math.Max(0, _jogDisplacementMM);
