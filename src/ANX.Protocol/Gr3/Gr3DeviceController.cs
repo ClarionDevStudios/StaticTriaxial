@@ -206,10 +206,32 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
     /// </summary>
     public double JogSpeedMillimetersPerMinute { get; set; } = 50.0;
 
-    public Task SetSpeedAsync(double millimetersPerMinute, CancellationToken cancellationToken = default)
+    public async Task SetSpeedAsync(
+        double millimetersPerMinute,
+        CancellationToken cancellationToken = default
+    )
     {
+        var changed = Math.Abs(SpeedMillimetersPerMinute - millimetersPerMinute) > 0.0001;
         SpeedMillimetersPerMinute = millimetersPerMinute;
-        return Task.CompletedTask;
+
+        // 协议语义（用户 2026-10-10 给的 C4 说明）：**同向运转时只有重发电机指令才改速度**。
+        // 现役 `SetVelocityCmd` 每次调用都重发 C4；ANX 之前只改了本地字段、没重发 ——
+        // 于是接触后"切到试验速率"实际不生效，整轮都按接近速率跑。
+        var direction =
+            LastMachineStatus.HasFlag(Gr3MachineStatus.MotorForward) ? Gr3Constants.MotorOrderForwardUp
+            : LastMachineStatus.HasFlag(Gr3MachineStatus.MotorReverse) ? Gr3Constants.MotorOrderReverseDown
+            : Gr3Constants.MotorOrderStop;
+
+        if (!changed || direction == Gr3Constants.MotorOrderStop)
+        {
+            return; // 值没变、或电机没在转：速率留在字段里，下次 Start / Jog 时带上
+        }
+
+        await SendAndWaitAckAsync(
+                Gr3DownlinkCommands.MotorLoad(direction, Gr3MotorSpeed.ToWire(millimetersPerMinute)),
+                cancellationToken
+            )
+            .ConfigureAwait(false);
     }
 
     /// <summary>

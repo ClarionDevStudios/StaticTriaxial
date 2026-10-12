@@ -128,6 +128,49 @@ public sealed class DeviceChainTests
     }
 
     /// <summary>
+    /// 电机运转中改速率**必须重发 C4**（协议：同向运转时只有重发才改速度；现役 `SetVelocityCmd`
+    /// 每次调用都重发）。ANX 之前只改本地字段 → "接触后切到试验速率"实际不生效，整轮按接近速率跑。
+    /// </summary>
+    [Fact]
+    public async Task 电机运转中改速率应重发C4()
+    {
+        var channel = new FakeChannel { AutoAck = true };
+        await using var controller = new Gr3DeviceController(channel);
+
+        var connect = controller.ConnectAsync();
+        channel.Feed(Gr3FrameCodec.BuildDatagram(Gr3Constants.UplinkSystemInfo, BuildSystemInfoPayload(), 1));
+        await connect;
+
+        // 电机没在转：只记速率，不发帧
+        var sentBefore = channel.SentFrames.Count;
+        await controller.SetSpeedAsync(50);
+        Assert.Equal(sentBefore, channel.SentFrames.Count);
+
+        // 机器状态报"正转运转中"（Bit3 = 0x08）
+        channel.Feed(
+            Gr3FrameCodec.BuildDatagram(
+                Gr3Constants.UplinkRealtimeData,
+                BuildRealtimePayload(0, 0, machineStatus: 0x08),
+                2
+            )
+        );
+        Assert.True(controller.IsMotorRunning);
+
+        // 值没变：不重复下发
+        await controller.SetSpeedAsync(50);
+        Assert.Equal(sentBefore, channel.SentFrames.Count);
+
+        // 值变了：按当前方向重发 C4（正转 = 1，30mm/min × 10 = 300 = 0x012C）
+        await controller.SetSpeedAsync(30);
+
+        var frame = channel.SentFrames[^1];
+        Assert.Equal(Gr3Constants.DownlinkMotorLoad, frame[10]);
+        Assert.Equal(Gr3Constants.MotorOrderForwardUp, frame[11]);
+        Assert.Equal(0x01, frame[12]);
+        Assert.Equal(0x2C, frame[13]);
+    }
+
+    /// <summary>
     /// 量程来自 A0H 的通道配置，且**轴向压力用压力通道 1（索引 0）** —— 依据现役生产库
     /// `TestParameterConfig.AxialPressureChannel = 0`（100.000kN 主传感器）。假 A0 里通道 1 = 1000/100 = 10.00kN。
     /// </summary>
@@ -268,7 +311,11 @@ public sealed class DeviceChainTests
     }
 
     /// <summary>A2H 数据域（71 B）：按工程量换算回原始码值。</summary>
-    private static byte[] BuildRealtimePayload(double loadKN, double displacementMM)
+    private static byte[] BuildRealtimePayload(
+        double loadKN,
+        double displacementMM,
+        byte machineStatus = 0
+    )
     {
         var payload = new List<byte>();
 
@@ -290,7 +337,7 @@ public sealed class DeviceChainTests
         payload.AddRange(new byte[4 * 4]); // 微米 4 通道
         payload.AddRange([0, 0]); // 目标温度
         payload.AddRange([0, 0]); // 当前温度
-        payload.Add(0); // 机器状态
+        payload.Add(machineStatus); // 机器状态
         payload.Add(0); // 试验状态
         payload.AddRange([0, 0]); // 端口输出 B
         payload.Add(0); // 端口输入 A

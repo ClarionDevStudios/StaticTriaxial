@@ -71,6 +71,12 @@ internal static class Program
             );
         }
 
+        // 运行中改速率（会真的动工作台）：验证"改速度必须重发 C4"这条协议语义
+        if (Array.IndexOf(args, "--speed-change") >= 0)
+        {
+            return await RunSpeedChangeAsync(host, port, localPort, waitMs);
+        }
+
         var codec = new Gr3FrameCodec();
 
         await using var channel = new UdpChannel(new UdpChannelOptions(host, port, localPort));
@@ -362,6 +368,85 @@ internal static class Program
         Console.WriteLine("判读要点：");
         Console.WriteLine("  · ② 正转=True、反转=False；⑤ 反转=True、正转=False；③⑥ 两位都 False。");
         Console.WriteLine("  · ④ 清零前位移应偏离 0（正转已让工作台离开起点），清零后回到 ~0。");
+        return 0;
+    }
+
+    /// <summary>
+    /// 运行中改速率（会真的动工作台）：先按 5mm/min 正转，**不停机**再改成 50mm/min，
+    /// 分别量两段的位移速率。用来验证"同向运转时只有重发 C4 才改速度"这条语义
+    ///（ANX 2026-10-12 之前只改本地字段、不重发 → 速率不生效）。
+    /// </summary>
+    private static async Task<int> RunSpeedChangeAsync(string host, int port, int localPort, int waitMs)
+    {
+        const double SlowMillimetersPerMinute = 5.0;
+        const double FastMillimetersPerMinute = 50.0;
+        const double SegmentSeconds = 4.0;
+
+        Console.WriteLine("=== 运行中改速率（会真的动工作台：请空载、上下留行程余量）===");
+        Console.WriteLine(
+            $"流程：按试验路径启动（Start：C1 + C4 带 {SlowMillimetersPerMinute:0.#} mm/min）跑 {SegmentSeconds:0.#}s 量速率"
+                + $" → **不停机**只改速率到 {FastMillimetersPerMinute:0.#} mm/min 再跑 {SegmentSeconds:0.#}s 量速率"
+        );
+        Console.WriteLine();
+
+        await using var channel = new UdpChannel(new UdpChannelOptions(host, port, localPort));
+        await using var controller = new Gr3DeviceController(
+            channel,
+            pressChannelIndex: 0,
+            displaceChannelIndex: 1
+        );
+
+        var lastSample = default(TestSample);
+        controller.SampleReceived += (_, sample) => lastSample = sample;
+
+        await controller.ConnectAsync();
+        Console.WriteLine("联机成功（A0 已收到）");
+        await Task.Delay(Math.Max(800, waitMs));
+
+        await controller.StopAsync();
+        await Task.Delay(400);
+
+        var start = lastSample.Displacement;
+        // 走试验路径：速率由 SetSpeedAsync 记下，StartAsync 的 C4 带它出去
+        //（手动点动那一路用的是 JogSpeedMillimetersPerMinute，不在这里测）
+        await controller.SetSpeedAsync(SlowMillimetersPerMinute);
+        await controller.StartAsync();
+
+        await Task.Delay(TimeSpan.FromSeconds(SegmentSeconds));
+        var slowEnd = lastSample.Displacement;
+
+        // 关键动作：不停机，只改速率 —— 控制器应当自己重发 C4（协议：同向运转时只有重发才改速度）
+        await controller.SetSpeedAsync(FastMillimetersPerMinute);
+        await Task.Delay(TimeSpan.FromSeconds(SegmentSeconds));
+        var fastEnd = lastSample.Displacement;
+
+        await controller.StopAsync();
+        await Task.Delay(400);
+        var status = controller.LastMachineStatus;
+
+        Console.WriteLine(
+            $"  第一段 {SlowMillimetersPerMinute:0.#} mm/min：位移 {start:F4} → {slowEnd:F4} mm"
+                + $" → 实测 {(slowEnd - start) / SegmentSeconds * 60:0.###} mm/min"
+        );
+        Console.WriteLine(
+            $"  第二段 {FastMillimetersPerMinute:0.#} mm/min（运行中改）：位移 {slowEnd:F4} → {fastEnd:F4} mm"
+                + $" → 实测 {(fastEnd - slowEnd) / SegmentSeconds * 60:0.###} mm/min"
+        );
+        Console.WriteLine($"  末状态：机器 0x{(byte)status:X2}（应为 0x00，电机已停）");
+
+        // 倒回原位，行程不累积
+        await controller.SetSpeedAsync(FastMillimetersPerMinute);
+        var backSeconds = (fastEnd - start) / FastMillimetersPerMinute * 60.0 + 0.5;
+        await controller.JogAtSpeedAsync(JogDirection.Down, FastMillimetersPerMinute);
+        await Task.Delay(TimeSpan.FromSeconds(Math.Max(1.0, backSeconds)));
+        await controller.StopAsync();
+        Console.WriteLine($"  回程后位移 {lastSample.Displacement:F4} mm");
+
+        Console.WriteLine();
+        Console.WriteLine(
+            "判读：第二段实测应明显大于第一段（≈10 倍）→ 重发 C4 生效；"
+                + "若两段速率接近 → 改速度没下发（本修复失效）。"
+        );
         return 0;
     }
 

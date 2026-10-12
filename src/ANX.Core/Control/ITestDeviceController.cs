@@ -47,7 +47,10 @@ public interface ITestDeviceController
     /// <summary>断开联机。</summary>
     Task DisconnectAsync();
 
-    /// <summary>设定加载速率（mm/min）。</summary>
+    /// <summary>
+    /// 设定加载速率（mm/min）。**电机正在运转时会同时把新速率下发**（协议规定同向运转时
+    /// 只有重发电机指令才改速度，现役 `SetVelocityCmd` 同样每次重发）—— 否则"接触后切到试验速率"不生效。
+    /// </summary>
     Task SetSpeedAsync(double millimetersPerMinute, CancellationToken cancellationToken = default);
 
     /// <summary>启动加载。</summary>
