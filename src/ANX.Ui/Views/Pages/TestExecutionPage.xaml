@@ -161,9 +161,36 @@
       </Grid.ColumnDefinitions>
 
       <ui:Card Grid.Column="0" Margin="0,0,8,0" Padding="12" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch">
-        <DockPanel>
-          <StackPanel DockPanel.Dock="Top">
-            <UniformGrid Columns="3">
+        <!--
+          用显式行高的 Grid（不是 DockPanel）：列表行给 `*`，高度就是"剩下的空间"，
+          不会有列表被底部按钮行盖住的问题（用户 2026-10-13 反馈）。
+          行序也是用户定的：先单号行、再试样按钮行、中间列表、底部启动/有效性。
+        -->
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+
+          <!-- ① 单号行：单号 +（点中列表条目时）该条目对应的试样编号（用户 2026-10-13） -->
+          <StackPanel Grid.Row="0" Orientation="Horizontal">
+            <TextBlock
+              VerticalAlignment="Center"
+              Style="{StaticResource FieldLabelStyle}"
+              Text="{DynamicResource Exec.SheetId}"
+            />
+            <TextBlock
+              Margin="8,0,0,0"
+              VerticalAlignment="Center"
+              Style="{StaticResource MonoTextStyle}"
+              Text="{Binding ViewModel.SheetDisplayText, Mode=OneWay}"
+            />
+          </StackPanel>
+
+          <!-- ② 试样按钮行 -->
+          <UniformGrid Grid.Row="1" Margin="0,12,0,0" Columns="3">
               <ui:Button
                 Margin="0,0,4,0"
                 Appearance="Primary"
@@ -184,26 +211,10 @@
                 Content="{DynamicResource Exec.DeleteSample}"
                 Icon="{ui:SymbolIcon Delete24}"
               />
-            </UniformGrid>
-
-            <!-- 单号标签与单号内容**同一行**（用户 2026-10-13） -->
-            <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
-              <TextBlock
-                VerticalAlignment="Center"
-                Style="{StaticResource FieldLabelStyle}"
-                Text="{DynamicResource Exec.SheetId}"
-              />
-              <TextBlock
-                Margin="8,0,0,0"
-                VerticalAlignment="Center"
-                Style="{StaticResource MonoTextStyle}"
-                Text="{Binding ViewModel.SheetText, Mode=OneWay}"
-              />
-            </StackPanel>
-          </StackPanel>
+          </UniformGrid>
 
           <!-- 启动/停止 与 有效性计算 并排一行；启动按钮的文字与图标随运行状态切换（用户 2026-10-12） -->
-          <Grid DockPanel.Dock="Bottom">
+          <Grid Grid.Row="3" Margin="0,12,0,0">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="Auto" />
@@ -283,6 +294,7 @@
           -->
           <DataGrid
             x:Name="SampleGrid"
+            Grid.Row="2"
             Margin="0,12,0,0"
             AutoGenerateColumns="False"
             CanUserAddRows="False"
@@ -295,7 +307,7 @@
             SelectedItem="{Binding ViewModel.SelectedSample, Mode=TwoWay}"
             SelectionMode="Single"
           />
-        </DockPanel>
+        </Grid>
       </ui:Card>
 
       <ui:Card Grid.Column="1" Margin="0,0,8,0" Padding="8" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch">

@@ -254,10 +254,25 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// </summary>
     public bool CanStartOrStop => IsRunning || CanStartTest;
 
-    partial void OnSelectedSampleChanged(SampleListRow? value) => NotifySampleCommands();
+    partial void OnSelectedSampleChanged(SampleListRow? value)
+    {
+        OnPropertyChanged(nameof(SheetDisplayText));
+        NotifySampleCommands();
+    }
+
+    /// <summary>
+    /// 单号行显示的内容：**单号 +（点中列表条目时）那条的试样编号**（用户 2026-10-13）。
+    /// 没选中条目就只显示单号。
+    /// </summary>
+    public string SheetDisplayText =>
+        SelectedSample is { } sample ? $"{SheetText} · {sample.SampleId}" : SheetText;
 
     /// <summary>单号有了/没了也影响按钮可用性（启动试验要求有单号）。</summary>
-    partial void OnSheetTextChanged(string value) => NotifySampleCommands();
+    partial void OnSheetTextChanged(string value)
+    {
+        OnPropertyChanged(nameof(SheetDisplayText));
+        NotifySampleCommands();
+    }
 
     /// <summary>两个按钮的可用性一起刷新（规则不同，但状态变化点相同）。</summary>
     private void NotifySampleCommands()
