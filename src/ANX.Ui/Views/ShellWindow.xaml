@@ -35,6 +35,7 @@
       Grid.Row="1"
       FooterMenuItemsSource="{Binding ViewModel.NavigationFooter, Mode=OneWay}"
       IsBackButtonVisible="Collapsed"
+      IsPaneOpen="{Binding ViewModel.IsPaneOpen, Mode=TwoWay}"
       IsPaneToggleVisible="True"
       MenuItemsSource="{Binding ViewModel.NavigationItems, Mode=OneWay}"
       OpenPaneLength="160"

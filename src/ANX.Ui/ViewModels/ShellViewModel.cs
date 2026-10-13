@@ -18,6 +18,13 @@ public partial class ShellViewModel : ViewModelBase
     [ObservableProperty]
     private ObservableCollection<object> _navigationFooter = [];
 
+    /// <summary>
+    /// 导航栏是否展开（与外壳里的 `NavigationView.IsPaneOpen` 双向绑定）。
+    /// 折叠时项上只剩图标，此时才给每项挂文字提示（用户 2026-10-13）。
+    /// </summary>
+    [ObservableProperty]
+    private bool _isPaneOpen = true;
+
     public ShellViewModel(ILocalizationService localization, INavigationService navigationService)
         : base(localization)
     {
@@ -68,6 +75,28 @@ public partial class ShellViewModel : ViewModelBase
                 Command = ExitCommand,
             },
         ];
+
+        UpdateNavigationToolTips();
+    }
+
+    partial void OnIsPaneOpenChanged(bool value) => UpdateNavigationToolTips();
+
+    /// <summary>
+    /// **折叠时**给每个导航项挂上文字提示（用户 2026-10-13：折叠后鼠标悬停要能看到该项是什么）。
+    /// 展开时项上本来就有文字，提示是多余的，所以置空 —— 提示只在"看不出来"的时候出现。
+    /// 文案直接取项的 <see cref="NavigationViewItem.Content"/>（也就是当前语言的导航名），
+    /// 换语言后 <see cref="RebuildNavigation"/> 会重建项并重新挂一遍。
+    /// </summary>
+    private void UpdateNavigationToolTips()
+    {
+        foreach (
+            var item in NavigationItems
+                .Concat(NavigationFooter)
+                .OfType<NavigationViewItem>()
+        )
+        {
+            item.ToolTip = IsPaneOpen ? null : item.Content;
+        }
     }
 
     [RelayCommand]
