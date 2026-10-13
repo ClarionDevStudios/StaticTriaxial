@@ -241,7 +241,23 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// </summary>
     public bool CanDeleteSample => CanAddSample && SelectedSample is not null;
 
+    /// <summary>
+    /// 能不能**启动试验**（用户 2026-10-13 三条）：有试验单号 + 试样信息列表有数据 +
+    /// 选中的那件不是"完成"状态（选中已做完的件时不给启动，免得以为在重跑它）。
+    /// </summary>
+    public bool CanStartTest =>
+        CanAddSample && SelectedSample is not { IsCompleted: true };
+
+    /// <summary>
+    /// 启动/停止按钮的可用性：**试验中永远可用**（不然停不下来 —— 用户 2026-10-12 真机踩过），
+    /// 待机时按 <see cref="CanStartTest"/>。
+    /// </summary>
+    public bool CanStartOrStop => IsRunning || CanStartTest;
+
     partial void OnSelectedSampleChanged(SampleListRow? value) => NotifySampleCommands();
+
+    /// <summary>单号有了/没了也影响按钮可用性（启动试验要求有单号）。</summary>
+    partial void OnSheetTextChanged(string value) => NotifySampleCommands();
 
     /// <summary>两个按钮的可用性一起刷新（规则不同，但状态变化点相同）。</summary>
     private void NotifySampleCommands()
@@ -249,9 +265,12 @@ public partial class TestExecutionViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanAddSample));
         OnPropertyChanged(nameof(CanEditSample));
         OnPropertyChanged(nameof(CanDeleteSample));
+        OnPropertyChanged(nameof(CanStartTest));
+        OnPropertyChanged(nameof(CanStartOrStop));
         NewSampleCommand.NotifyCanExecuteChanged();
         EditSampleCommand.NotifyCanExecuteChanged();
         DeleteSampleCommand.NotifyCanExecuteChanged();
+        StartOrStopCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>重新读当前试验单的试样信息列表（打开页面 / 换单 / 存过试样信息 / 跑完一件都调）。</summary>
@@ -503,6 +522,8 @@ public partial class TestExecutionViewModel : ViewModelBase
         UpdateCanJog();
         OnPropertyChanged(nameof(StartStopText));
         OnPropertyChanged(nameof(StartStopSymbol));
+        OnPropertyChanged(nameof(CanStartOrStop));
+        StartOrStopCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>启动/停止按钮的文字：待机"启动试验"，试验中"停止试验"（用户 2026-10-12）。</summary>
@@ -569,7 +590,7 @@ public partial class TestExecutionViewModel : ViewModelBase
     }
 
     /// <summary>开始 / 停止一个试件。</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanStartOrStop))]
     private void StartOrStop()
     {
         if (IsRunning)
