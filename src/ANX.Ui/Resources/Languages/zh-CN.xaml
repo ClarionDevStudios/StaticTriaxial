@@ -53,7 +53,7 @@
   <sys:String x:Key="Exec.StopTest">停止试验</sys:String>
   <sys:String x:Key="Exec.ClearInfo">清空信息</sys:String>
   <sys:String x:Key="Exec.SheetId">试验单号</sys:String>
-  <sys:String x:Key="Exec.SampleHint">每次启动试验跑一个试件：阶段机判定结束后自动算结果并落库。一组跑完点有效性计算，剔除超差件并算出组统计。</sys:String>
+  <sys:String x:Key="Exec.SampleListId">试件号</sys:String>
   <sys:String x:Key="Exec.Connection">连接状态</sys:String>
   <sys:String x:Key="Exec.Connect">联机</sys:String>
   <sys:String x:Key="Exec.NoDevice">未配置设备（Debug 构建使用模拟器）</sys:String>

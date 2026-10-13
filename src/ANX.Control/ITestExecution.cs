@@ -60,6 +60,15 @@ public interface ITestExecution : ICurveAxisSource
         CancellationToken cancellationToken = default
     );
 
+    /// <summary>
+    /// 读**这张试验单里已有的试样信息**（每个试件一行：试件号 + <see cref="SampleFields"/> 各字段），
+    /// 供试验执行页的试样信息列表显示（用户 2026-10-13）。只读，不改库；按试件号顺序返回。
+    /// </summary>
+    Task<IReadOnlyList<IReadOnlyDictionary<string, string>>> ReadSampleRowsAsync(
+        string sheetId,
+        CancellationToken cancellationToken = default
+    );
+
     /// <summary>保存一件试样的信息（明细行即"试样记录"；曲线与判定结果由试验结束时的收尾写入）。</summary>
     Task SaveSampleInfoAsync(
         string sheetId,

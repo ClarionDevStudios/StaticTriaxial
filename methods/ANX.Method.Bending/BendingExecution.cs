@@ -129,6 +129,77 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
     }
 
     /// <inheritdoc />
+    public Task<IReadOnlyList<IReadOnlyDictionary<string, string>>> ReadSampleRowsAsync(
+        string sheetId,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var columns = new[] { "SampleID", "SheetIndex" }
+            .Concat(BendingSampleFields.Definitions.Select(definition => definition.Key))
+            .ToArray();
+
+        // 按序号排（SheetIndex 就是试件号里的序号）；老记录该列为空 → 从试件号里解析序号
+        // （否则那些行会被当成"没有序号"甩到最后，新旧混排时看着像乱序）
+        var rows = sheets
+            .ReadDetailRows(sheetId, columns)
+            .OrderBy(row =>
+                TryReadIndex(row["SheetIndex"])
+                ?? SampleNumbering.ParseIndex(
+                    Convert.ToString(
+                        row["SampleID"],
+                        System.Globalization.CultureInfo.InvariantCulture
+                    )
+                )
+                ?? int.MaxValue
+            )
+            .ThenBy(
+                row => Convert.ToString(row["SampleID"], System.Globalization.CultureInfo.InvariantCulture),
+                StringComparer.Ordinal
+            )
+            .ToArray();
+
+        var result = new List<IReadOnlyDictionary<string, string>>(rows.Length);
+
+        foreach (var row in rows)
+        {
+            var values = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["SampleID"] =
+                    Convert.ToString(
+                        row["SampleID"],
+                        System.Globalization.CultureInfo.InvariantCulture
+                    ) ?? string.Empty,
+            };
+
+            foreach (var definition in BendingSampleFields.Definitions)
+            {
+                values[definition.Key] = FormatSampleField(row, definition);
+            }
+
+            result.Add(values);
+        }
+
+        return Task.FromResult<IReadOnlyList<IReadOnlyDictionary<string, string>>>(result);
+    }
+
+    /// <summary>明细行上的一个试样信息字段取成显示文本（数值按 0.### 显示；空值回落到字段默认值）。</summary>
+    private static string FormatSampleField(
+        IReadOnlyDictionary<string, object?> row,
+        ParameterDefinition definition
+    )
+    {
+        if (!row.TryGetValue(definition.Key, out var raw) || raw is null || raw is DBNull)
+        {
+            return definition.DefaultValue;
+        }
+
+        return raw is double number
+            ? number.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)
+            : Convert.ToString(raw, System.Globalization.CultureInfo.InvariantCulture)
+                ?? string.Empty;
+    }
+
+    /// <inheritdoc />
     public Task SaveSampleInfoAsync(
         string sheetId,
         string sampleId,

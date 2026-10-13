@@ -49,6 +49,8 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
 
         InitializeComponent();
 
+        BuildSampleColumns();
+
         // 节流重画：收点只入列 + 置脏，由这个定时器按固定节奏真正重画一次。
         // 用 Render 优先级：跟渲染同批处理，不会插在输入/布局中间（与 IAP 的曲线演示页同一手法）。
         _redrawTimer = new DispatcherTimer(DispatcherPriority.Render)
@@ -90,6 +92,29 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
     }
 
     public TestExecutionViewModel ViewModel { get; }
+
+    /// <summary>
+    /// 按**方法声明的试样信息字段**生成试样列表的列（用户 2026-10-13）。
+    /// 列数随方法变（弯曲是 试件号 + 跨径 / 宽 / 高），所以只能在 code-behind 里建；
+    /// 单元格绑定到行的下标（行就是 <c>string[]</c>，列序与 ViewModel 的表头一致）。
+    /// </summary>
+    private void BuildSampleColumns()
+    {
+        var headers = ViewModel.SampleColumnHeaders;
+        for (var i = 0; i < headers.Count; i++)
+        {
+            SampleGrid.Columns.Add(
+                new DataGridTextColumn
+                {
+                    Header = headers[i],
+                    Binding = new System.Windows.Data.Binding($"[{i}]"),
+                    Width = i == 0
+                        ? new DataGridLength(1, DataGridLengthUnitType.Auto)
+                        : new DataGridLength(1, DataGridLengthUnitType.Star),
+                }
+            );
+        }
+    }
 
     /// <summary>是否正在点动（避免"松开"与"失去鼠标捕获"各停一次、日志打两遍）。</summary>
     private bool _jogging;

@@ -53,7 +53,7 @@
   <sys:String x:Key="Exec.StopTest">Stop test</sys:String>
   <sys:String x:Key="Exec.ClearInfo">Clear</sys:String>
   <sys:String x:Key="Exec.SheetId">Sheet ID</sys:String>
-  <sys:String x:Key="Exec.SampleHint">Each start runs one specimen: when the sequencer finishes the result is computed and stored. Click Validity check when the group is done — it drops out-of-tolerance specimens and computes the group statistics.</sys:String>
+  <sys:String x:Key="Exec.SampleListId">Sample</sys:String>
   <sys:String x:Key="Exec.Connection">Connection</sys:String>
   <sys:String x:Key="Exec.Connect">Connect</sys:String>
   <sys:String x:Key="Exec.NoDevice">No device configured (Debug builds use the simulator)</sys:String>

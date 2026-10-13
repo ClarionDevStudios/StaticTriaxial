@@ -187,12 +187,20 @@
               />
             </UniformGrid>
 
-            <TextBlock
-              Margin="0,12,0,0"
-              Style="{StaticResource FieldLabelStyle}"
-              Text="{DynamicResource Exec.SheetId}"
-            />
-            <TextBlock Style="{StaticResource MonoTextStyle}" Text="{Binding ViewModel.SheetText, Mode=OneWay}" />
+            <!-- 单号标签与单号内容**同一行**（用户 2026-10-13） -->
+            <StackPanel Margin="0,12,0,0" Orientation="Horizontal">
+              <TextBlock
+                VerticalAlignment="Center"
+                Style="{StaticResource FieldLabelStyle}"
+                Text="{DynamicResource Exec.SheetId}"
+              />
+              <TextBlock
+                Margin="8,0,0,0"
+                VerticalAlignment="Center"
+                Style="{StaticResource MonoTextStyle}"
+                Text="{Binding ViewModel.SheetText, Mode=OneWay}"
+              />
+            </StackPanel>
           </StackPanel>
 
           <!-- 启动/停止 与 有效性计算 并排一行；启动按钮的文字与图标随运行状态切换（用户 2026-10-12） -->
@@ -235,11 +243,21 @@
             />
           </Grid>
 
-          <TextBlock
+          <!--
+            试样信息列表：只显示**本试验单**的试样（用户 2026-10-13）。
+            列由 code-behind 按方法声明的试样信息字段生成（方法不同字段不同），所以这里不开自动生成。
+          -->
+          <DataGrid
+            x:Name="SampleGrid"
             Margin="0,12,0,0"
-            Style="{StaticResource FieldLabelStyle}"
-            Text="{DynamicResource Exec.SampleHint}"
-            TextWrapping="Wrap"
+            AutoGenerateColumns="False"
+            CanUserAddRows="False"
+            CanUserDeleteRows="False"
+            CanUserReorderColumns="False"
+            CanUserResizeRows="False"
+            HeadersVisibility="Column"
+            IsReadOnly="True"
+            ItemsSource="{Binding ViewModel.SampleRows}"
           />
         </DockPanel>
       </ui:Card>

@@ -155,6 +155,18 @@ public partial class TestExecutionViewModel : ViewModelBase
         _exporter = exporter;
         _modalPages = modalPages;
 
+        // 试样信息列表的表头：试件号 + 方法声明的各试样信息字段（带单位），列序与 BuildSampleCells 一致
+        _sampleFieldKeys = [.. execution.SampleFields.Select(field => field.Key)];
+        SampleColumnHeaders =
+        [
+            L("Exec.SampleListId"),
+            .. execution.SampleFields.Select(field =>
+                string.IsNullOrWhiteSpace(field.Unit)
+                    ? field.DisplayName
+                    : $"{field.DisplayName} ({field.Unit})"
+            ),
+        ];
+
         // 试验单弹窗确定后当前试验单会变 —— 立即把单号显示刷过来（用户 2026-10-13：
         // 试验单改成弹窗后不再有"确定即导航回来"的那次刷新）
         if (_currentSheet is not null)
@@ -182,6 +194,63 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// <summary>方法名（标题栏用）。</summary>
     public string HeaderText => $"{_execution.MethodName}（{_execution.MethodCode}）";
 
+    /// <summary>
+    /// 试样信息列表的**表头**（用户 2026-10-13）：第一列试件号，其余按方法声明的试样信息字段
+    /// （跨径 / 试件宽度 / 试件高度…）。方法不同表头不同，界面按它生成列。
+    /// </summary>
+    public IReadOnlyList<string> SampleColumnHeaders { get; }
+
+    /// <summary>试样信息字段的键（列序与表头一致：表头第 0 列是试件号，其余对应这里的字段）。</summary>
+    private readonly IReadOnlyList<string> _sampleFieldKeys;
+
+    /// <summary>
+    /// 当前试验单里的试样信息（只显示**本单**的，用户 2026-10-13）。
+    /// 每行是一串单元格文本，列序与 <see cref="SampleColumnHeaders"/> 一致。
+    /// </summary>
+    public ObservableCollection<string[]> SampleRows { get; } = [];
+
+    /// <summary>重新读当前试验单的试样信息列表（打开页面 / 换单 / 存过试样信息 / 跑完一件都调）。</summary>
+    public async Task ReloadSampleRowsAsync()
+    {
+        SampleRows.Clear();
+
+        if (CurrentSheetId is not { Length: > 0 } sheetId)
+        {
+            return;
+        }
+
+        var rows = await _execution.ReadSampleRowsAsync(sheetId);
+        foreach (var row in rows)
+        {
+            SampleRows.Add(BuildSampleCells(row));
+        }
+    }
+
+    /// <summary>
+    /// 当前正在做的试验单：**优先"试验单弹窗里选定的单"**（<see cref="ICurrentSheetContext"/>），
+    /// 没选过才用自己自动建的那张（<c>_sheetId</c>）。
+    /// 列表与曲线都按这个口径取 —— 一开始只认 `_sheetId`，导致"选了已有单，列表却空着"（用户 2026-10-13 实测）。
+    /// </summary>
+    private string? CurrentSheetId =>
+        _currentSheet?.SheetId is { Length: > 0 } selected ? selected : _sheetId;
+
+    /// <summary>进页面（导航进来或重新显示）时把列表读一遍。</summary>
+    public override void OnOpened() => _ = ReloadSampleRowsAsync();
+
+    /// <summary>把一行"字段 → 文本"按表头顺序摊成单元格（字段缺了给空串，不抛）。</summary>
+    private string[] BuildSampleCells(IReadOnlyDictionary<string, string> row)
+    {
+        var cells = new string[SampleColumnHeaders.Count];
+        for (var i = 0; i < cells.Length; i++)
+        {
+            cells[i] = i == 0
+                ? row.GetValueOrDefault("SampleID") ?? string.Empty
+                : row.GetValueOrDefault(_sampleFieldKeys[i - 1]) ?? string.Empty;
+        }
+
+        return cells;
+    }
+
     /// <summary>当前试验单变了（试验单弹窗里新建或选中）：刷新单号显示并记一行日志。</summary>
     private void OnCurrentSheetChanged(object? sender, EventArgs e)
     {
@@ -192,6 +261,12 @@ public partial class TestExecutionViewModel : ViewModelBase
 
         SheetText = sheetId;
         Append($"{L("Exec.SheetSelected")} {sheetId}");
+
+        // 选定的单就是"当前单"：运行、打印报表、试样列表都改用它（否则会各认各的）
+        _sheetId = sheetId;
+
+        // 换单了：试样信息列表跟着换成新单的（用户 2026-10-13：只显示本试验单的试样）
+        _ = ReloadSampleRowsAsync();
     }
 
     /// <summary>规范依据。</summary>
@@ -578,11 +653,19 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// </summary>
     [RelayCommand]
     private void OpenSampleEditor() =>
+        ShowSampleEditorDialog();
+
+    /// <summary>开弹窗、关掉后把试样信息列表刷一遍（弹窗里可能刚存了一件）。</summary>
+    private void ShowSampleEditorDialog()
+    {
         _modalPages?.Show(
             typeof(Views.Pages.SampleEditorPage),
             SampleDialogWidth,
             SampleDialogHeight
         );
+
+        _ = ReloadSampleRowsAsync();
+    }
 
     /// <summary>去历史数据页（报表导出的入口在那里）。</summary>
     [RelayCommand]
@@ -624,6 +707,9 @@ public partial class TestExecutionViewModel : ViewModelBase
             numberPrefix: "WT"
         );
         SheetText = _sheetId;
+
+        // 自动建的单也要让"试样信息列表"跟着（列的是本单的试样）
+        await ReloadSampleRowsAsync();
 
         // 试件号由方法侧按库里已有明细算，避免覆盖同号试件
         var sampleId = await _execution.NextSampleIdAsync(_sheetId);
@@ -886,6 +972,9 @@ public partial class TestExecutionViewModel : ViewModelBase
         }
 
         Append($"{L("Exec.SampleDone")} #{sampleId} · {sequencer.Curve.Count} {L("Exec.Points")}");
+
+        // 这一件已经落库（含尺寸与判定值）：列表刷新一次就能看到它
+        await ReloadSampleRowsAsync();
     }
 
     private void UpdateLiveValues(TestSample sample, IReadOnlyList<CurvePoint> newCurvePoints)
