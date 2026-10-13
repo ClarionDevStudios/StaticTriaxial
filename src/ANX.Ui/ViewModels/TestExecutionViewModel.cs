@@ -225,28 +225,27 @@ public partial class TestExecutionViewModel : ViewModelBase
     private SampleListRow? _selectedSample;
 
     /// <summary>
-    /// 能不能点「新建试样」：有试验单号 + 列表里有数据（用户 2026-10-13 前两条规则）。
-    /// **与"选中的那件做完没做完"无关** —— 做完的件照样能新建下一件。
+    /// 能不能点「新建试样」：**只要有试验单号就行**（用户 2026-10-13 明确"任何时候不要自动新建试样信息"——
+    /// 系统不再替用户建试样，那么空单里的第一件就必须由用户自己点「新建试样」建出来，
+    /// 所以这里**不能**再要求"列表里已有数据"，否则新单会卡死）。
     /// </summary>
-    public bool CanAddSample => SheetText.Length > 0 && SampleRows.Count > 0;
+    public bool CanAddSample => SheetText.Length > 0;
 
     /// <summary>
-    /// 能不能点「编辑试样」：在 <see cref="CanAddSample"/> 之上再加一条 ——
-    /// 选中的那件**没做完**（用户 2026-10-13：做完的只灰"编辑"）。
+    /// 能不能点「编辑试样」：**选中了一件、且它没做完**（用户 2026-10-13：做完的只灰"编辑"）。
     /// </summary>
-    public bool CanEditSample => CanAddSample && SelectedSample is not { IsCompleted: true };
+    public bool CanEditSample => SelectedSample is { IsCompleted: false };
 
     /// <summary>
     /// 能不能点「删除试样」：要**选中了一件**才谈得上删（做完的也能删，用户 2026-10-13 明确）。
     /// </summary>
-    public bool CanDeleteSample => CanAddSample && SelectedSample is not null;
+    public bool CanDeleteSample => SelectedSample is not null;
 
     /// <summary>
-    /// 能不能**启动试验**（用户 2026-10-13 三条）：有试验单号 + 试样信息列表有数据 +
-    /// 选中的那件不是"完成"状态（选中已做完的件时不给启动，免得以为在重跑它）。
+    /// 能不能**启动试验**（用户 2026-10-13）：**必须选中一件没做完的试样** ——
+    /// 启动只跑选中的那件，不会再自动建新件；选中的已做完也不给跑（免得以为在重跑它）。
     /// </summary>
-    public bool CanStartTest =>
-        CanAddSample && SelectedSample is not { IsCompleted: true };
+    public bool CanStartTest => SelectedSample is { IsCompleted: false };
 
     /// <summary>
     /// 启动/停止按钮的可用性：**试验中永远可用**（不然停不下来 —— 用户 2026-10-12 真机踩过），
@@ -875,12 +874,16 @@ public partial class TestExecutionViewModel : ViewModelBase
         // 自动建的单也要让"试样信息列表"跟着（列的是本单的试样）
         await ReloadSampleRowsAsync();
 
-        // 试件号：**列表里选中哪一件就跑哪一件**（用户 2026-10-13 反馈：选了 3 却新增了 S027）——
-        // 判定落库是"有则更新、无则追加"，所以重跑未完成的件会覆盖它自己的曲线与结果，不会多出一行。
-        // 没选中任何条目时才新建下一件（号码由方法侧按库里已有明细算）。
-        var sampleId = pickedSampleId is { Length: > 0 }
-            ? pickedSampleId
-            : await _execution.NextSampleIdAsync(_sheetId);
+        // 试件号：**只能用列表里选中的那一件**（用户 2026-10-13：任何时候都不要自动新建试样信息）。
+        // 判定落库是"有则更新、无则追加"，所以重跑未完成的件会覆盖它自己的曲线与结果，不会多出一行；
+        // 没选中就没有可做的对象 —— 提示用户先新建/选中试样，**不替他建**。
+        if (pickedSampleId is not { Length: > 0 })
+        {
+            Append(L("Exec.SelectSampleFirst"));
+            return;
+        }
+
+        var sampleId = pickedSampleId;
         _sampleCounter++;
 
         // 运行参数从**参数表**来（接触阈值 / 破坏判据 / 确认帧数 / 加载速率），不再用写死的默认值
