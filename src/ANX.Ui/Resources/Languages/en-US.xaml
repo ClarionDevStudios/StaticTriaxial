@@ -54,6 +54,8 @@
   <sys:String x:Key="Exec.SampleNotFound">Sample not found (maybe already deleted)</sys:String>
   <sys:String x:Key="Exec.DeleteSampleFailed">Delete sample failed</sys:String>
   <sys:String x:Key="Exec.StartTest">Start test</sys:String>
+  <sys:String x:Key="Exec.RunningHint">Test running</sys:String>
+  <sys:String x:Key="Exec.IdleHint">Idle</sys:String>
   <sys:String x:Key="Exec.StopTest">Stop test</sys:String>
   <sys:String x:Key="Exec.ClearInfo">Clear</sys:String>
   <sys:String x:Key="Exec.SheetId">Sheet ID</sys:String>

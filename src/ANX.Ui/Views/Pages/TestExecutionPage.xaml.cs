@@ -1,5 +1,6 @@
 namespace ANX.Ui.Views.Pages;
 
+using System.ComponentModel;
 using ANX.Control;
 using ANX.Core;
 using ANX.Core.Control;
@@ -64,6 +65,9 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
         viewModel.CurveCleared += OnCurveCleared;
         viewModel.CurveAnnotated += OnCurveAnnotated;
 
+        // 运行指示动画跟着"跑没跑试验"开 / 停
+        viewModel.PropertyChanged += OnViewModelPropertyChanged;
+
         // 换主题 → 配色变；换语言 → 轴名变。两者都要重画一次。
         themeService.ThemeChanged += (_, themeName) => ApplyChartStyle(themeName);
         localizationService.LanguageChanged += (_, _) => ApplyChartStyle(_theme.CurrentTheme);
@@ -75,6 +79,7 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
             ApplyChartStyle(_theme.CurrentTheme);
             ViewModel.BeginLiveReadout();
             _redrawTimer.Start();
+            UpdateRunningAnimation(); // 从别的页回来时按当前状态对齐（可能正在跑）
         };
 
         // 离开页面就退订实时刷新（换页后别再空转刷卡片）
@@ -82,6 +87,7 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
         {
             ViewModel.EndLiveReadout();
             _redrawTimer.Stop();      // 离开页面别让定时器继续跑
+            StopRunningAnimation();   // 不在前台了就别转
         };
 
         // 页面高度对到内容宿主的可见区：页内 `*` 行（操控信息列表等）才有真实高度、在页内自己滚动，
@@ -92,6 +98,53 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
     }
 
     public TestExecutionViewModel ViewModel { get; }
+
+    /// <summary>
+    /// 运行指示动画：匀速转一圈 1.2 秒、无限循环（用户 2026-10-13：
+    /// 试验过程中开启动画，否则停止动画）。
+    /// </summary>
+    private static readonly System.Windows.Media.Animation.DoubleAnimation SpinnerAnimation = new(
+        0,
+        360,
+        TimeSpan.FromSeconds(1.2)
+    )
+    {
+        RepeatBehavior = System.Windows.Media.Animation.RepeatBehavior.Forever,
+    };
+
+    /// <summary>按运行状态开 / 停动画。<b>停</b>是把动画时钟摘掉（不是暂停），角度复位到 0。</summary>
+    private void UpdateRunningAnimation()
+    {
+        if (ViewModel.IsRunning)
+        {
+            RunningSpinnerRotate.BeginAnimation(
+                System.Windows.Media.RotateTransform.AngleProperty,
+                SpinnerAnimation
+            );
+        }
+        else
+        {
+            StopRunningAnimation();
+        }
+    }
+
+    /// <summary>停动画：把角度上的动画时钟摘掉（真正停下，不是暂停），角度复位 0。</summary>
+    private void StopRunningAnimation()
+    {
+        RunningSpinnerRotate.BeginAnimation(
+            System.Windows.Media.RotateTransform.AngleProperty,
+            null
+        );
+        RunningSpinnerRotate.Angle = 0;
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (string.Equals(e.PropertyName, nameof(TestExecutionViewModel.IsRunning), StringComparison.Ordinal))
+        {
+            UpdateRunningAnimation();
+        }
+    }
 
     /// <summary>
     /// 按**方法声明的试样信息字段**生成试样列表的列（用户 2026-10-13）。

@@ -54,6 +54,8 @@
   <sys:String x:Key="Exec.SampleNotFound">没找到这件试样（可能已被删）</sys:String>
   <sys:String x:Key="Exec.DeleteSampleFailed">删除试样失败</sys:String>
   <sys:String x:Key="Exec.StartTest">启动试验</sys:String>
+  <sys:String x:Key="Exec.RunningHint">试验进行中</sys:String>
+  <sys:String x:Key="Exec.IdleHint">待机中</sys:String>
   <sys:String x:Key="Exec.StopTest">停止试验</sys:String>
   <sys:String x:Key="Exec.ClearInfo">清空信息</sys:String>
   <sys:String x:Key="Exec.SheetId">试验单号</sys:String>

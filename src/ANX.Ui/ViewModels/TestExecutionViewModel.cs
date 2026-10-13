@@ -522,6 +522,8 @@ public partial class TestExecutionViewModel : ViewModelBase
         UpdateCanJog();
         OnPropertyChanged(nameof(StartStopText));
         OnPropertyChanged(nameof(StartStopSymbol));
+        OnPropertyChanged(nameof(RunningBrush));
+        OnPropertyChanged(nameof(RunningHintText));
         OnPropertyChanged(nameof(CanStartOrStop));
         StartOrStopCommand.NotifyCanExecuteChanged();
     }
@@ -532,6 +534,20 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// <summary>启动/停止按钮的图标：待机播放、试验中停止。</summary>
     public Wpf.Ui.Controls.SymbolRegular StartStopSymbol =>
         IsRunning ? Wpf.Ui.Controls.SymbolRegular.Stop24 : Wpf.Ui.Controls.SymbolRegular.Play24;
+
+    /// <summary>
+    /// 运行指示动画的颜色：试验中给"成功绿"，待机用次级文字色（用户 2026-10-13 的动画控件）。
+    /// 两个键都是本工程已经在用的主题资源键，取不到就回落成不设置（用继承色）。
+    /// </summary>
+    public Brush? RunningBrush =>
+        System.Windows.Application.Current?.TryFindResource(
+            IsRunning ? "SystemFillColorSuccessBrush" : "TextFillColorSecondaryBrush"
+        ) as Brush;
+
+    /// <summary>
+    /// 运行指示动画的提示文字：试验中"试验进行中"，其它时候"待机中"（用户 2026-10-13）。
+    /// </summary>
+    public string RunningHintText => L(IsRunning ? "Exec.RunningHint" : "Exec.IdleHint");
 
     private void UpdateCanJog() => CanJog = !IsRunning && _device?.IsConnected == true;
 

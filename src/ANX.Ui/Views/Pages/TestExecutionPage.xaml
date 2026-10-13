@@ -207,11 +207,14 @@
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
             <ui:Button
               Grid.Column="0"
               Height="64"
+              Margin="0"
+              HorizontalAlignment="Stretch"
               Appearance="Primary"
               AutomationProperties.Name="{Binding ViewModel.StartStopText, Mode=OneWay}"
               Command="{Binding ViewModel.StartOrStopCommand}"
@@ -230,11 +233,43 @@
               </StackPanel>
             </ui:Button>
 
-            <ui:Button
+            <!--
+              运行指示动画（用户 2026-10-13）：夹在「启动试验」与「有效性计算」中间，
+              试验过程中转起来、停止时停住（开关在 code-behind 里按 IsRunning 控制）。
+            -->
+            <!-- 等高的指示框（64 = 两侧按钮高度），左右各留 16 的等距间隙 -->
+            <Border
               Grid.Column="1"
+              Width="60"
+              Height="64"
+              Margin="16,0"
+              VerticalAlignment="Center"
+              Background="{DynamicResource ApplicationBackgroundBrush}"
+              BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+              BorderThickness="1"
+              CornerRadius="4"
+              ToolTip="{Binding ViewModel.RunningHintText, Mode=OneWay}"
+            >
+              <ui:SymbolIcon
+                x:Name="RunningSpinner"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                AutomationProperties.Name="{Binding ViewModel.RunningHintText, Mode=OneWay}"
+                FontSize="28"
+                Foreground="{Binding ViewModel.RunningBrush, Mode=OneWay}"
+                RenderTransformOrigin="0.5,0.5"
+                Symbol="ArrowSync24"
+              >
+                <ui:SymbolIcon.RenderTransform>
+                  <RotateTransform x:Name="RunningSpinnerRotate" />
+                </ui:SymbolIcon.RenderTransform>
+              </ui:SymbolIcon>
+            </Border>
+
+            <ui:Button
+              Grid.Column="2"
               MinWidth="120"
               Height="64"
-              Margin="8,0,0,0"
               Appearance="Primary"
               Command="{Binding ViewModel.EvaluateValidityCommand}"
               Content="{DynamicResource Exec.Validity}"
