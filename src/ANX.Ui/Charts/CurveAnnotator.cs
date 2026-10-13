@@ -79,13 +79,16 @@ public static class CurveAnnotator
             ink
         );
 
-        // ③ 拟合区间两端：峰值荷载 × 起/止百分比 与修正直线的交点，标出该处荷载值
+        // ③ 拟合区间两端：峰值荷载 × 起/止百分比 —— 标在**曲线上**（用户 2026-10-13 更正：
+        // 这两点是拟合区间的上下沿，落在实测曲线上，不是落在修正直线上），标注该处荷载值。
+        // 曲线上升段没经过该荷载（异常数据）才回落到修正直线上求交点，免得标记掉到图外。
         foreach (var percent in new[] { fit.StartPercent, fit.EndPercent })
         {
             var load = peak.Y * percent / 100.0;
-            var x = fit.XAt(load);
-            _ = plot.Add.Marker(x, load, MarkerShape.OpenCircle, 10, ink);
-            AddLabel(plot, $"{percent:0.#}% {load:0.00} kN", x, load, ink);
+            var point =
+                CurveDisplay.PointAtLoad(points, load) ?? new CurvePoint(fit.XAt(load), load);
+            _ = plot.Add.Marker(point.X, point.Y, MarkerShape.OpenCircle, 10, ink);
+            AddLabel(plot, $"{percent:0.#}% {load:0.00} kN", point.X, point.Y, ink);
         }
     }
 

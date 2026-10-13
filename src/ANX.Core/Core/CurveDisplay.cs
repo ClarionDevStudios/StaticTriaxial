@@ -1,7 +1,7 @@
 namespace ANX.Core;
 
 /// <summary>
-/// 曲线**回放显示**的修正（只影响画面，绝不改库里已存数据）。
+/// 曲线**显示**用的小工具（回放修正与取点；都只影响画面，绝不改库里已存数据）。
 /// </summary>
 public static class CurveDisplay
 {
@@ -34,5 +34,66 @@ public static class CurveDisplay
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// 在曲线的**上升段**（首点 → 峰值点）上找荷载等于 <paramref name="loadKN"/> 的那一点。
+    ///
+    /// **为什么要插值**：采样是 20ms 一拍，直接取"第一个超过该荷载的点"会带最多半拍的偏差；
+    /// 10% / 80% 这两个点是**拟合区间的上下沿**，画在曲线上要落在准确位置。
+    /// （用户 2026-10-13 更正：这两个点标在**曲线**上，不是标在修正直线上。）
+    /// </summary>
+    /// <returns>
+    /// 交点（<c>Y</c> 取 <paramref name="loadKN"/>）；曲线上升段没经过该荷载时回 <c>null</c>
+    /// —— 峰值低于该荷载，或空曲线。首点就已经高于该荷载时回**首点**（起步很陡，没有可插值的区间）。
+    /// </returns>
+    public static CurvePoint? PointAtLoad(IReadOnlyList<CurvePoint> points, double loadKN)
+    {
+        ArgumentNullException.ThrowIfNull(points);
+
+        if (points.Count == 0)
+        {
+            return null;
+        }
+
+        // 峰值（Y 最大）那个点的下标：只找它之前的上升段，别把破坏后的下降段算进来
+        var peakIndex = 0;
+        for (var i = 1; i < points.Count; i++)
+        {
+            if (points[i].Y > points[peakIndex].Y)
+            {
+                peakIndex = i;
+            }
+        }
+
+        if (points[peakIndex].Y < loadKN)
+        {
+            return null; // 整条曲线都到不了这个荷载
+        }
+
+        if (points[0].Y >= loadKN)
+        {
+            return points[0];
+        }
+
+        for (var i = 1; i <= peakIndex; i++)
+        {
+            if (points[i].Y < loadKN)
+            {
+                continue;
+            }
+
+            var prev = points[i - 1];
+            var delta = points[i].Y - prev.Y;
+            if (delta <= 0)
+            {
+                return points[i]; // 不升反降（理论上不出现）：保守回当前点，不插值
+            }
+
+            var t = (loadKN - prev.Y) / delta;
+            return new CurvePoint(prev.X + ((points[i].X - prev.X) * t), loadKN);
+        }
+
+        return points[peakIndex];
     }
 }

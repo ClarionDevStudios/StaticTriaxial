@@ -46,4 +46,47 @@ public sealed class CurveDisplayTests
 
         Assert.Same(curve, CurveDisplay.ZeroFirstPointX(curve));
     }
+
+    [Fact]
+    public void 上升段按荷载取点_线性插值()
+    {
+        // 峰值 5kN 在 (3, 5)：40% = 2kN 落在 (1,1)~(3,5) 之间，t = 0.25 → (1.5, 2)
+        List<CurvePoint> curve = [new(0, 0), new(1, 1), new(3, 5), new(6, 3)];
+
+        var point = CurveDisplay.PointAtLoad(curve, 2.0);
+
+        Assert.NotNull(point);
+        Assert.Equal(1.5, point!.Value.X, 1e-9);
+        Assert.Equal(2.0, point.Value.Y, 1e-9);
+    }
+
+    [Fact]
+    public void 上升段取点_只看峰值前的上升段()
+    {
+        // 下降段上也经过 2kN，但拟合区间取的是上升段 → 必须回 (1, 1)~(3, 5) 这一段
+        List<CurvePoint> curve = [new(0, 0), new(1, 1), new(3, 5), new(4, 4), new(6, 2)];
+
+        var point = CurveDisplay.PointAtLoad(curve, 2.0);
+
+        Assert.Equal(1.5, point!.Value.X, 1e-9); // 不是下降段的 6mm
+    }
+
+    [Fact]
+    public void 峰值不到该荷载时回null()
+    {
+        List<CurvePoint> curve = [new(0, 0), new(1, 3), new(2, 2)];
+
+        Assert.Null(CurveDisplay.PointAtLoad(curve, 5.0));
+        Assert.Null(CurveDisplay.PointAtLoad([], 1.0));
+    }
+
+    [Fact]
+    public void 首点已高于该荷载时回首点()
+    {
+        List<CurvePoint> curve = [new(0, 4), new(1, 6), new(2, 3)];
+
+        var point = CurveDisplay.PointAtLoad(curve, 2.0);
+
+        Assert.Equal(new CurvePoint(0, 4), point);
+    }
 }
