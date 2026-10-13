@@ -337,6 +337,9 @@ public sealed class TestSheetService : ITestSheetService
         using var command = connection.CreateCommand();
 
         // 先过滤、最后投影（EF Core 的口径同理；这里用 SQL 直写）
+        // 排序：**按时间倒序**（最新的试验单在最上面；用户 2026-10-13 要求）。
+        // `CreatedOn` 存的是 `yyyy-MM-dd HH:mm:ss` 文本，定长格式下文本序 = 时间序，可以直接 ORDER BY；
+        // 同一秒建的单再按单号倒序（单号 = 前缀 + 日期 + 流水，倒序即新的在前）。
         command.CommandText = $"""
             SELECT m.SheetID,
                    m.ProjectName,
@@ -344,7 +347,7 @@ public sealed class TestSheetService : ITestSheetService
                    (SELECT COUNT(1) FROM {method.DetailTable.TableName} d WHERE d.SheetID = m.SheetID)
             FROM {method.MainTable.TableName} m
             WHERE ($keyword IS NULL OR m.SheetID LIKE $like OR m.ProjectName LIKE $like)
-            ORDER BY m.SheetID;
+            ORDER BY m.CreatedOn DESC, m.SheetID DESC;
             """;
         command.Parameters.AddWithValue("$keyword", (object?)keyword ?? DBNull.Value);
         command.Parameters.AddWithValue("$like", $"%{keyword}%");

@@ -81,6 +81,7 @@ public partial class HistoryViewModel : ViewModelBase
     {
         Sheets.Clear();
         Samples.Clear();
+        SelectedAnnotation = null;
 
         var sheets = await _browser.QueryAsync(
             string.IsNullOrWhiteSpace(Keyword) ? null : Keyword
@@ -93,6 +94,13 @@ public partial class HistoryViewModel : ViewModelBase
         Status = $"{L("History.Found")} {Sheets.Count} {L("History.SheetsUnit")}";
         SelectedSheet = Sheets.FirstOrDefault();
     }
+
+    /// <summary>
+    /// **进页面就自动加载**列表（用户 2026-10-13：不要"必须先点查询"才出数据）。
+    /// 与试验单页同口径（<c>SheetSelectionViewModel.OnNavigatedTo</c>；现役 `FormCreate` 也是打开即 `Open`）。
+    /// 「查询」按钮保留，只当手动按关键字再查一次。
+    /// </summary>
+    public override void OnNavigatedTo() => _ = SearchAsync();
 
     /// <summary>导出选中试验单的中文报表。</summary>
     [RelayCommand]
