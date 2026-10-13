@@ -100,7 +100,6 @@ public partial class TestExecutionViewModel : ViewModelBase
     private readonly ICurrentSheetContext? _currentSheet;
     private readonly INavigationService? _navigation;
     private readonly IReportExportService? _exporter;
-    private readonly List<CurvePoint> _curve = [];
     private readonly Dictionary<string, double> _peaks = new(StringComparer.Ordinal);
     private TestSequencer? _sequencer;
     private readonly MotorStallGuard _stallGuard = new();
@@ -418,7 +417,6 @@ public partial class TestExecutionViewModel : ViewModelBase
         // 点"启动试验"**立刻**把峰值清零、清空上一轮曲线：峰值只反映本轮（用户 2026-10-12）。
         ResetLiveValues();
         _contactEstablished = false; // 接触成立后才开始累计峰值、才显示试验计时
-        _curve.Clear();
         CurveCleared?.Invoke(this, EventArgs.Empty);
 
         // **不能 await 整轮**：命令若等到整轮结束才完成，执行期间按钮会被置灰，
@@ -809,7 +807,6 @@ public partial class TestExecutionViewModel : ViewModelBase
 
         foreach (var point in newCurvePoints)
         {
-            _curve.Add(point);
             CurvePointAdded?.Invoke(this, point);
         }
     }
