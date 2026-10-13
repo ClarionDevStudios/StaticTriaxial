@@ -11,6 +11,9 @@ using Microsoft.Data.Sqlite;
 /// </summary>
 public sealed class TestSheetService : ITestSheetService
 {
+    /// <summary>记录唯一标识列名（主表与明细表同名）。云端按它去重，不能为空（用户 2026-10-13）。</summary>
+    private const string UuidColumn = "UUID";
+
     private readonly DatabaseInitializer _initializer;
     private readonly SheetNumberGenerator _numbers;
     private readonly Dictionary<string, IMethodPersistenceModule> _methods;
@@ -41,17 +44,21 @@ public sealed class TestSheetService : ITestSheetService
         using var transaction = connection.BeginTransaction();
 
         var sheetId = number.ToString();
-        Insert(
-            connection,
-            transaction,
-            method.MainTable,
-            new Dictionary<string, object?>(StringComparer.Ordinal)
-            {
-                ["SheetID"] = sheetId,
-                ["ProjectName"] = projectName,
-                ["CreatedOn"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-            }
-        );
+        var values = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["SheetID"] = sheetId,
+            ["ProjectName"] = projectName,
+            ["CreatedOn"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+        };
+
+        // 主表带 UUID（用户 2026-10-13）：上传云端时按它去重，防同号单重复入库。
+        // 现役同口径（`uEditBendingTestForm.pas`：`FRecAsphaltBendingTestMain.UUID := GenerateCleanGUID`）。
+        if (IsDeclared(method.MainTable, UuidColumn))
+        {
+            values[UuidColumn] = RecordUuid.New();
+        }
+
+        Insert(connection, transaction, method.MainTable, values);
 
         transaction.Commit();
         return Task.FromResult(sheetId);
@@ -92,6 +99,20 @@ public sealed class TestSheetService : ITestSheetService
 
         using var connection = _initializer.OpenConnection();
         using var transaction = connection.BeginTransaction();
+
+        // 明细沿用**同一张试验单的 UUID**（用户 2026-10-13；现役 `uBendingTestForm.pas:836`：
+        // `FRecAsphaltBendingTestDetailInfo.UUID := FRecAsphaltBendingTestMain.UUID`）——
+        // 上传云端时按 UUID 归组，单与它的试件是一份数据，不会各传各的。
+        if (IsDeclared(method.DetailTable, UuidColumn))
+        {
+            values[UuidColumn] = ResolveSheetUuid(
+                connection,
+                transaction,
+                method.MainTable,
+                sheetId
+            );
+        }
+
         Insert(connection, transaction, method.DetailTable, values);
         transaction.Commit();
 
@@ -257,6 +278,17 @@ public sealed class TestSheetService : ITestSheetService
                 foreach (var (name, value) in fields)
                 {
                     values[name] = value;
+                }
+
+                // 明细第一次落地的另一条路径（只填试样信息、还没跑试验）：UUID 同样沿用所属单
+                if (IsDeclared(method.DetailTable, UuidColumn))
+                {
+                    values[UuidColumn] = ResolveSheetUuid(
+                        connection,
+                        transaction,
+                        method.MainTable,
+                        sheetId
+                    );
                 }
 
                 Insert(connection, transaction, method.DetailTable, values);
@@ -483,6 +515,46 @@ public sealed class TestSheetService : ITestSheetService
 
     private static bool IsDeclared(TableDefinition table, string columnName) =>
         table.Columns.Any(c => string.Equals(c.Name, columnName, StringComparison.Ordinal));
+
+    /// <summary>
+    /// 取这张试验单的 UUID。**自愈**：老记录（本功能之前建的库）主表 UUID 是空的，
+    /// 这时补一个并写回主表 —— 否则明细拿起 UUID 来会得到空串，云端两份数据对不上。
+    /// 调用方已经开好连接与事务，这里的读写与明细插入同属一次事务。
+    /// </summary>
+    private static string ResolveSheetUuid(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        TableDefinition mainTable,
+        string sheetId
+    )
+    {
+        using (var read = connection.CreateCommand())
+        {
+            read.Transaction = transaction;
+            read.CommandText =
+                $"SELECT {UuidColumn} FROM {mainTable.TableName} WHERE {mainTable.PrimaryKeyColumn} = $key;";
+            read.Parameters.AddWithValue("$key", sheetId);
+
+            if (read.ExecuteScalar() is string existing && existing.Length > 0)
+            {
+                return existing;
+            }
+        }
+
+        var uuid = RecordUuid.New();
+
+        using (var write = connection.CreateCommand())
+        {
+            write.Transaction = transaction;
+            write.CommandText =
+                $"UPDATE {mainTable.TableName} SET {UuidColumn} = $uuid WHERE {mainTable.PrimaryKeyColumn} = $key;";
+            write.Parameters.AddWithValue("$uuid", uuid);
+            write.Parameters.AddWithValue("$key", sheetId);
+            write.ExecuteNonQuery();
+        }
+
+        return uuid;
+    }
 
     private static void Insert(
         SqliteConnection connection,

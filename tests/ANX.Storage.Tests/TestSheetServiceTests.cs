@@ -101,6 +101,34 @@ public sealed class TestSheetServiceTests : IDisposable
         Assert.Empty(CurveJson.Decode("[]"));
     }
 
+    /// <summary>
+    /// 明细第一次落地的另一条路径（只填试样信息、还没跑试验）也要带 UUID ——
+    /// 否则"填了尺寸还没做试验"的试件上传云端时没有归属标识。
+    /// </summary>
+    [Fact]
+    public async Task 只填试样信息时明细也要带所属单的UUID()
+    {
+        var service = CreateService();
+        var sheetId = await service.CreateAsync("T0715", "项目", "WT");
+
+        await service.UpsertSampleInfoAsync(
+            sheetId,
+            "1",
+            new Dictionary<string, double>(StringComparer.Ordinal)
+            {
+                ["SpanLength"] = 200,
+                ["SampleWidth"] = 30,
+                ["SampleHeight"] = 35,
+            }
+        );
+
+        var mainUuid = Convert.ToString(service.ReadMainRow(sheetId, ["UUID"])["UUID"]);
+        var sample = Convert.ToString(service.ReadDetailRow(sheetId, "1", ["UUID"])!["UUID"]);
+
+        Assert.False(string.IsNullOrWhiteSpace(mainUuid));
+        Assert.Equal(mainUuid, sample);
+    }
+
     private static Dictionary<string, double> Sample(double strength, double strain) =>
         new(StringComparer.Ordinal)
         {
@@ -112,6 +140,65 @@ public sealed class TestSheetServiceTests : IDisposable
             ["MaxBendingTensileStrain"] = strain,
             ["IsEffective"] = 1,
         };
+
+    /// <summary>
+    /// UUID 口径（用户 2026-10-13）：建单时主表生成 UUID，**明细沿用同一张单的 UUID**
+    /// —— 现役 `uBendingTestForm.pas:836` 同口径，云端按 UUID 去重防同号单重复。
+    /// </summary>
+    [Fact]
+    public async Task 试验单与它的试样共用同一个UUID()
+    {
+        var service = CreateService();
+        var sheetId = await service.CreateAsync("T0715", "项目", "WT");
+
+        var curve = new CurvePoint[] { new(0, 0), new(1, 5), new(2, 3) };
+        await service.AppendSampleAsync(sheetId, "1", curve, Sample(strength: 73.47, strain: 23625));
+        await service.AppendSampleAsync(sheetId, "2", curve, Sample(strength: 74.10, strain: 23700));
+
+        var mainUuid = Convert.ToString(service.ReadMainRow(sheetId, ["UUID"])["UUID"]);
+
+        Assert.False(string.IsNullOrWhiteSpace(mainUuid));
+        Assert.True(Guid.TryParse(mainUuid, out _), $"应是标准 GUID 文本，实际 '{mainUuid}'");
+        Assert.Equal(36, mainUuid!.Length);                       // 带连字符、无花括号（现役 GenerateCleanGUID）
+        Assert.Equal(mainUuid, mainUuid.ToUpperInvariant());      // 大写
+
+        var sample1 = Convert.ToString(service.ReadDetailRow(sheetId, "1", ["UUID"])!["UUID"]);
+        var sample2 = Convert.ToString(service.ReadDetailRow(sheetId, "2", ["UUID"])!["UUID"]);
+
+        Assert.Equal(mainUuid, sample1);
+        Assert.Equal(mainUuid, sample2);
+    }
+
+    /// <summary>
+    /// 老库（本功能之前建的）主表 UUID 是空的：追加试样时要**自愈** —— 补一个写回主表，
+    /// 明细拿到的就是它，不会出现"主表空、明细空"这种云端没法去重的数据。
+    /// </summary>
+    [Fact]
+    public async Task 老记录没有UUID时追加试样会补上并写回主表()
+    {
+        var service = CreateService();
+        var sheetId = await service.CreateAsync("T0715", "项目", "WT");
+
+        // 模拟老库：把主表的 UUID 抹掉
+        using (var connection = new SqliteConnection($"Data Source={_databasePath}"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE BendingTestMain SET UUID = NULL WHERE SheetID = $key;";
+            command.Parameters.AddWithValue("$key", sheetId);
+            Assert.Equal(1, command.ExecuteNonQuery());
+        }
+
+        var curve = new CurvePoint[] { new(0, 0), new(1, 5) };
+        await service.AppendSampleAsync(sheetId, "1", curve, Sample(strength: 73.47, strain: 23625));
+
+        var healed = Convert.ToString(service.ReadMainRow(sheetId, ["UUID"])["UUID"]);
+        var sample = Convert.ToString(service.ReadDetailRow(sheetId, "1", ["UUID"])!["UUID"]);
+
+        Assert.False(string.IsNullOrWhiteSpace(healed));
+        Assert.True(Guid.TryParse(healed, out _));
+        Assert.Equal(healed, sample);
+    }
 
     private TestSheetService CreateService()
     {
