@@ -99,6 +99,16 @@ public interface ITestExecution : ICurveAxisSource
     Task<string> NextSampleIdAsync(string sheetId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 删除一件试样的明细行（曲线 / 判定值 / 试样信息一起删；用户 2026-10-13）。
+    /// 「删除试样」按钮用它；返回是否删到了行。
+    /// </summary>
+    Task<bool> DeleteSampleAsync(
+        string sheetId,
+        string sampleId,
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>
     /// 一个试件跑完：用曲线做判定并落库。
     /// </summary>
     /// <returns>判定出的指标（键与 <see cref="Metrics"/> 对应）；未结算时返回 null。</returns>

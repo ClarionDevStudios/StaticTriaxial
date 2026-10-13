@@ -49,6 +49,10 @@
   <sys:String x:Key="Exec.NewSample">新建试样</sys:String>
   <sys:String x:Key="Exec.EditSample">编辑试样</sys:String>
   <sys:String x:Key="Exec.DeleteSample">删除试样</sys:String>
+  <sys:String x:Key="Exec.DeleteSampleConfirm">删除试样 {0}？它的曲线、判定值与试样信息会一起删除，不能撤销。继续？</sys:String>
+  <sys:String x:Key="Exec.SampleDeleted">已删除试样</sys:String>
+  <sys:String x:Key="Exec.SampleNotFound">没找到这件试样（可能已被删）</sys:String>
+  <sys:String x:Key="Exec.DeleteSampleFailed">删除试样失败</sys:String>
   <sys:String x:Key="Exec.StartTest">启动试验</sys:String>
   <sys:String x:Key="Exec.StopTest">停止试验</sys:String>
   <sys:String x:Key="Exec.ClearInfo">清空信息</sys:String>

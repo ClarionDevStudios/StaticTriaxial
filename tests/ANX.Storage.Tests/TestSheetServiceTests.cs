@@ -166,6 +166,35 @@ public sealed class TestSheetServiceTests : IDisposable
         Assert.Empty(service.ReadCurve(sheetA, "S999"));
     }
 
+    /// <summary>
+    /// 删除一件试样（用户 2026-10-13）：只删那一行，同单别的件不动；删掉的号可以再用。
+    /// </summary>
+    [Fact]
+    public async Task 删除一件试样只删那一行()
+    {
+        var service = CreateService();
+        var sheetId = await service.CreateAsync("T0715", "删除验证", "WT");
+        var other = await service.CreateAsync("T0715", "别的不动", "WT");
+
+        var curve = new CurvePoint[] { new(0, 0), new(1, 5), new(2, 3) };
+        await service.AppendSampleAsync(sheetId, "S001", curve, Sample(strength: 70, strain: 23000));
+        await service.AppendSampleAsync(sheetId, "S002", curve, Sample(strength: 71, strain: 23100));
+        await service.AppendSampleAsync(other, "S001", curve, Sample(strength: 72, strain: 23200));
+
+        Assert.True(await service.DeleteSampleAsync(sheetId, "S002"));
+
+        // 只有 S002 没了：同单的 S001 与另一张单的同号件都在
+        Assert.Null(service.ReadDetailRow(sheetId, "S002", ["SampleID"]));
+        Assert.NotNull(service.ReadDetailRow(sheetId, "S001", ["SampleID"]));
+        Assert.NotNull(service.ReadDetailRow(other, "S001", ["SampleID"]));
+
+        // 曲线也随行删掉了
+        Assert.Empty(service.ReadCurve(sheetId, "S002"));
+
+        // 删不存在的件回 false（界面据此提示"没找到"）
+        Assert.False(await service.DeleteSampleAsync(sheetId, "S999"));
+    }
+
     private static Dictionary<string, double> Sample(double strength, double strain) =>
         new(StringComparer.Ordinal)
         {

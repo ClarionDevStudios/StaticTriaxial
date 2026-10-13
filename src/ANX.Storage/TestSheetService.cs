@@ -179,6 +179,28 @@ public sealed class TestSheetService : ITestSheetService
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// 删除一件试样的明细行（按 <c>(SheetID, SampleID)</c> 定位，与现役
+    /// <c>DeleteRecord(ASheetID, ASampleID)</c> 同口径）。曲线、判定值、试样信息都随行一起没了。
+    /// </summary>
+    /// <returns>删到了行回 true；该件本来就不存在回 false（界面据此提示）。</returns>
+    public Task<bool> DeleteSampleAsync(
+        string sheetId,
+        string sampleId,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var method = ResolveMethodForSheet(sheetId);
+
+        using var connection = _initializer.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            $"DELETE FROM {method.DetailTable.TableName} WHERE {SampleKeyPredicate(method.DetailTable)};";
+        AddSampleKeyParameters(command, sheetId, sampleId);
+
+        return Task.FromResult(command.ExecuteNonQuery() > 0);
+    }
+
     /// <summary>读某件试样的明细行（不存在返回 null）。</summary>
     public IReadOnlyDictionary<string, object?>? ReadDetailRow(
         string sheetId,

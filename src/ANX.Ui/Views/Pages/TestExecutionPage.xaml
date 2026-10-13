@@ -180,10 +180,9 @@
               />
               <ui:Button
                 Appearance="Primary"
+                Command="{Binding ViewModel.DeleteSampleCommand}"
                 Content="{DynamicResource Exec.DeleteSample}"
                 Icon="{ui:SymbolIcon Delete24}"
-                IsEnabled="False"
-                ToolTip="{DynamicResource Exec.ToDo}"
               />
             </UniformGrid>
 

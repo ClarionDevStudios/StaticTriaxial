@@ -225,22 +225,33 @@ public partial class TestExecutionViewModel : ViewModelBase
     private SampleListRow? _selectedSample;
 
     /// <summary>
-    /// 能不能点「新建试样 / 编辑试样」（用户 2026-10-13 三条规则）：
-    /// ① 有试验单号；② 列表里有数据；③ 选中的那件**没做完**（做完的不让改）。
+    /// 能不能点「新建试样」：有试验单号 + 列表里有数据（用户 2026-10-13 前两条规则）。
+    /// **与"选中的那件做完没做完"无关** —— 做完的件照样能新建下一件。
     /// </summary>
-    public bool CanEditSamples =>
-        SheetText.Length > 0
-        && SampleRows.Count > 0
-        && SelectedSample is not { IsCompleted: true };
+    public bool CanAddSample => SheetText.Length > 0 && SampleRows.Count > 0;
+
+    /// <summary>
+    /// 能不能点「编辑试样」：在 <see cref="CanAddSample"/> 之上再加一条 ——
+    /// 选中的那件**没做完**（用户 2026-10-13：做完的只灰"编辑"）。
+    /// </summary>
+    public bool CanEditSample => CanAddSample && SelectedSample is not { IsCompleted: true };
+
+    /// <summary>
+    /// 能不能点「删除试样」：要**选中了一件**才谈得上删（做完的也能删，用户 2026-10-13 明确）。
+    /// </summary>
+    public bool CanDeleteSample => CanAddSample && SelectedSample is not null;
 
     partial void OnSelectedSampleChanged(SampleListRow? value) => NotifySampleCommands();
 
-    /// <summary>两个按钮的可用性一起刷新（规则相同）。</summary>
+    /// <summary>两个按钮的可用性一起刷新（规则不同，但状态变化点相同）。</summary>
     private void NotifySampleCommands()
     {
-        OnPropertyChanged(nameof(CanEditSamples));
+        OnPropertyChanged(nameof(CanAddSample));
+        OnPropertyChanged(nameof(CanEditSample));
+        OnPropertyChanged(nameof(CanDeleteSample));
         NewSampleCommand.NotifyCanExecuteChanged();
         EditSampleCommand.NotifyCanExecuteChanged();
+        DeleteSampleCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>重新读当前试验单的试样信息列表（打开页面 / 换单 / 存过试样信息 / 跑完一件都调）。</summary>
@@ -689,13 +700,61 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// 打开「试样信息填录」弹窗（新建试样 / 编辑试样两个按钮都走这里；用户 2026-10-13 改成弹出窗体）。
     /// 改动只有点了弹窗里的「保存」才落地，关闭只是关掉。
     /// </summary>
-    /// <summary>新建试样信息：弹窗里默认带**下一个**试件号（用户 2026-10-13 起可用性受三条规则约束）。</summary>
-    [RelayCommand(CanExecute = nameof(CanEditSamples))]
+    /// <summary>新建试样信息：弹窗里默认带**下一个**试件号。</summary>
+    [RelayCommand(CanExecute = nameof(CanAddSample))]
     private void NewSample() => ShowSampleEditorDialog(sampleId: null);
 
-    /// <summary>编辑选中那件试样的信息（选中哪件改哪件）。</summary>
-    [RelayCommand(CanExecute = nameof(CanEditSamples))]
+    /// <summary>编辑选中那件试样的信息（选中哪件改哪件）；选中的件已做完 → 置灰。</summary>
+    [RelayCommand(CanExecute = nameof(CanEditSample))]
     private void EditSample() => ShowSampleEditorDialog(SelectedSample?.SampleId);
+
+    /// <summary>
+    /// 删除选中那件试样（用户 2026-10-13）：先确认，再删明细行，最后刷新列表。
+    /// 曲线 / 判定值 / 试样信息都在这一行里，删了就没了 —— 所以必须问一句。
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanDeleteSample))]
+    private async Task DeleteSampleAsync()
+    {
+        if (SelectedSample is not { } sample || CurrentSheetId is not { Length: > 0 } sheetId)
+        {
+            return;
+        }
+
+        var confirm = new Wpf.Ui.Controls.MessageBox
+        {
+            Title = L("Exec.DeleteSample"),
+            Content = string.Format(
+                System.Globalization.CultureInfo.CurrentCulture,
+                L("Exec.DeleteSampleConfirm"),
+                sample.SampleId
+            ),
+            PrimaryButtonText = L("Common.Yes"),
+            SecondaryButtonText = L("Common.No"),
+            IsCloseButtonEnabled = false,
+            Owner = Application.Current?.MainWindow,
+        };
+
+        if (await confirm.ShowDialogAsync() != Wpf.Ui.Controls.MessageBoxResult.Primary)
+        {
+            return;
+        }
+
+        try
+        {
+            var deleted = await _execution.DeleteSampleAsync(sheetId, sample.SampleId);
+            Append(
+                deleted
+                    ? $"{L("Exec.SampleDeleted")} #{sample.SampleId}"
+                    : $"{L("Exec.SampleNotFound")} #{sample.SampleId}"
+            );
+        }
+        catch (Exception ex)
+        {
+            Append($"{L("Exec.DeleteSampleFailed")}: {ex.Message}");
+        }
+
+        await ReloadSampleRowsAsync();
+    }
 
     /// <summary>
     /// 开弹窗、关掉后把试样信息列表刷一遍（弹窗里可能刚存了一件）。

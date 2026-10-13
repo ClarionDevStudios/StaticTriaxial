@@ -135,6 +135,13 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
     }
 
     /// <inheritdoc />
+    public Task<bool> DeleteSampleAsync(
+        string sheetId,
+        string sampleId,
+        CancellationToken cancellationToken = default
+    ) => sheets.DeleteSampleAsync(sheetId, sampleId, cancellationToken);
+
+    /// <inheritdoc />
     public Task<IReadOnlyList<SampleRowInfo>> ReadSampleRowsAsync(
         string sheetId,
         CancellationToken cancellationToken = default
