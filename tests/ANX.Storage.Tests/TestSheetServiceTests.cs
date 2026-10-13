@@ -55,7 +55,7 @@ public sealed class TestSheetServiceTests : IDisposable
         Assert.Equal(2, sheets[0].SampleCount);
 
         // 曲线原样回放
-        var restored = service.ReadCurve($"{sheetId}-1");
+        var restored = service.ReadCurve(sheetId, "1");
         Assert.Equal(curve.Length, restored.Count);
         Assert.Equal(curve[5], restored[5]);
     }
@@ -127,6 +127,43 @@ public sealed class TestSheetServiceTests : IDisposable
 
         Assert.False(string.IsNullOrWhiteSpace(mainUuid));
         Assert.Equal(mainUuid, sample);
+    }
+
+    /// <summary>
+    /// 明细按 `(SheetID, SampleID)` 定位（用户 2026-10-13：删掉自造的 SampleKey、与现役一致）——
+    /// 两张单里的同号试件必须互不干扰；试件号里的序号要自动回填到 SheetIndex。
+    /// </summary>
+    [Fact]
+    public async Task 明细按单号加试件号定位_不同单里的同号试件互不干扰()
+    {
+        var service = CreateService();
+        var sheetA = await service.CreateAsync("T0715", "单A", "WT");
+        var sheetB = await service.CreateAsync("T0715", "单B", "WT");
+
+        var curveA = new CurvePoint[] { new(0, 0), new(1, 5), new(2, 3) };
+        var curveB = new CurvePoint[] { new(0, 0), new(1, 8), new(2, 6), new(3, 2) };
+
+        await service.AppendSampleAsync(sheetA, "S001", curveA, Sample(strength: 70, strain: 23000));
+        await service.AppendSampleAsync(sheetB, "S001", curveB, Sample(strength: 80, strain: 24000));
+
+        var rowA = service.ReadDetailRow(sheetA, "S001", ["FlexuralStrength", "SheetIndex"])!;
+        var rowB = service.ReadDetailRow(sheetB, "S001", ["FlexuralStrength", "SheetIndex"])!;
+
+        Assert.Equal(70d, Convert.ToDouble(rowA["FlexuralStrength"]), 3);
+        Assert.Equal(80d, Convert.ToDouble(rowB["FlexuralStrength"]), 3);
+
+        // 试件号里的序号 = SheetIndex（现役同口径），写入时自动回填
+        Assert.Equal(1, Convert.ToInt32(rowA["SheetIndex"]));
+        Assert.Equal(1, Convert.ToInt32(rowB["SheetIndex"]));
+
+        // 曲线也按两个条件取，各取各的
+        Assert.Equal(curveA.Length, service.ReadCurve(sheetA, "S001").Count);
+        Assert.Equal(curveB.Length, service.ReadCurve(sheetB, "S001").Count);
+        Assert.Equal(curveB[3], service.ReadCurve(sheetB, "S001")[3]);
+
+        // 不存在的试件号回 null / 空曲线（不是"取到别的单的那一件"）
+        Assert.Null(service.ReadDetailRow(sheetA, "S999", ["SampleID"]));
+        Assert.Empty(service.ReadCurve(sheetA, "S999"));
     }
 
     private static Dictionary<string, double> Sample(double strength, double strain) =>

@@ -22,8 +22,10 @@ public static class SchemaBuilder
     /// <summary>
     /// 建库时写入的架构版本；对不上就报错提示"备份后重建"，不做迁移。
     /// 2 → 3：T0715 三表按现役结构补齐（工程信息 / 体积指标 / 统计口径等），并给每列加含义注释。
+    /// 3 → 4：明细表去掉自造的 `SampleKey`，主键改为现役口径的 `(SheetID, SampleID)`；
+    ///        试件号改为现役格式 `S001`（序号落 `SheetIndex`）。
     /// </summary>
-    public const int CurrentSchemaVersion = 3;
+    public const int CurrentSchemaVersion = 4;
 
     /// <summary>框架自有表的建表 SQL（幂等）。</summary>
     public static IEnumerable<string> BuildFrameworkTables()
@@ -99,7 +101,10 @@ public static class SchemaBuilder
             builder.AppendLine();
         }
 
-        builder.Append("    PRIMARY KEY (").Append(table.PrimaryKeyColumn).AppendLine(")");
+        builder
+            .Append("    PRIMARY KEY (")
+            .Append(string.Join(", ", table.PrimaryKeyColumns))
+            .AppendLine(")");
         builder.Append(");");
 
         return builder.ToString();

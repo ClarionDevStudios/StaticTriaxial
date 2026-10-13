@@ -1,6 +1,6 @@
 -- ANX 建表 SQL：由 ANX.Tools.SchemaDump 从表定义生成，请勿手改
 -- 架构版本：3（库版本对不上时程序报错并要求备份后重建）
--- 生成时间：2026-10-11 10:07:53
+-- 生成时间：2026-10-13 15:34:26
 
 -- ==================== 框架表 ====================
 -- 表 DbVersion：架构版本（本项目不做迁移，版本对不上直接报错提示备份后重建）
@@ -76,9 +76,8 @@ CREATE TABLE IF NOT EXISTS BendingTestMain (
 
 -- 表 BendingTestDetail：T 0715 试件明细表 —— 一试件一行（尺寸 / 单件判定值 / 曲线序列化 / 有效性）
 CREATE TABLE IF NOT EXISTS BendingTestDetail (
-    SampleKey TEXT NOT NULL,       -- 试件行主键 = 单号 + 试件号（SheetID-SampleID），框架按它定位曲线
-    SheetID TEXT NOT NULL,         -- 所属试验单号
-    SampleID TEXT,                 -- 试件编号（单内顺序号）
+    SheetID TEXT NOT NULL,         -- 所属试验单号；与 SampleID 一起构成明细主键
+    SampleID TEXT NOT NULL,        -- 试件编号，形如 S001（现役同格式，单内顺序号）；与 SheetID 一起构成明细主键
     UUID TEXT,                     -- 记录唯一标识（GUID）；现役 UUID
     SampleDesc TEXT,               -- 试件描述；现役 SampleDesc
     SheetIndex INTEGER,            -- 试件排序索引；现役 SheetIndex
@@ -103,7 +102,7 @@ CREATE TABLE IF NOT EXISTS BendingTestDetail (
     ChartData TEXT,                -- 荷载-跨中挠度曲线序列化（紧凑 JSON，保留 3 位小数）
     CreateDate TEXT,               -- 创建时间（yyyy-MM-dd HH:mm:ss）
     Remark TEXT,                   -- 备注
-    PRIMARY KEY (SampleKey)
+    PRIMARY KEY (SheetID, SampleID)
 );
 
 -- 表 BendingTestMainTemplate：T 0715 参数模板表 —— 主表去掉组统计列与运行结果列，用作参数预设、继承上次试验信息

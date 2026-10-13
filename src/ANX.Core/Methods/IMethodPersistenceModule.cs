@@ -27,13 +27,25 @@ public sealed record ColumnDefinition(
     string? Comment = null
 );
 
-/// <summary>一张表的定义。框架只认这些结构信息，不认任何具体方法字段的含义。</summary>
+/// <summary>
+/// 一张表的定义。框架只认这些结构信息，不认任何具体方法字段的含义。
+///
+/// 主键是**列名列表**：单列（主表/模板表）或复合键（明细表 = <c>(SheetID, SampleID)</c>，
+/// 与现役软件一致，用户 2026-10-13）。
+/// </summary>
 public sealed record TableDefinition(
     string TableName,
-    string PrimaryKeyColumn,
+    IReadOnlyList<string> PrimaryKeyColumns,
     IReadOnlyList<ColumnDefinition> Columns,
     string? Comment = null
-);
+)
+{
+    /// <summary>
+    /// 单列主键的列名（复合键时取第一列）。只给"按主键定位一行"的单列场景用，
+    /// 例如按单号读写主表；明细表请用两个条件定位。
+    /// </summary>
+    public string PrimaryKeyColumn => PrimaryKeyColumns[0];
+}
 
 /// <summary>
 /// 方法持久化模块：方法声明自己的三张表（Main / Detail / Template），框架据此建表。

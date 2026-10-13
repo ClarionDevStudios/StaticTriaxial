@@ -65,7 +65,7 @@ public sealed class BendingSheetBrowser(TestSheetService sheets, ITestParameters
         string sheetId,
         string sampleId,
         CancellationToken cancellationToken = default
-    ) => Task.FromResult(sheets.ReadCurve($"{sheetId}-{sampleId}"));
+    ) => Task.FromResult(sheets.ReadCurve(sheetId, sampleId));
 
     /// <summary>
     /// 读拟合结果列拼出曲线标注。斜率 ≤ 0（没拟合 / 关掉了原点修正 / 老记录没有这两列）

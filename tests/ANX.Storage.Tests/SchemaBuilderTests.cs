@@ -42,7 +42,7 @@ public sealed class SchemaBuilderTests
             Assert.Contains(table.Columns[i].Name, columnLines[i]);
         }
 
-        Assert.Contains($"PRIMARY KEY ({table.PrimaryKeyColumn})", sql);
+        Assert.Contains($"PRIMARY KEY ({string.Join(", ", table.PrimaryKeyColumns)})", sql);
     }
 
     [Fact]

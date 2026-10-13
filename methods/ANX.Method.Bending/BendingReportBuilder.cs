@@ -69,7 +69,7 @@ public sealed class BendingReportBuilder(
             var sampleId = Format(row["SampleID"]);
 
             // 曲线图：一个试件一张，与现役的 Bins\Report\<试验类型>\<单号>\<试样号>.png 一致
-            var curve = sheets.ReadCurve($"{sheetId}-{sampleId}");
+            var curve = sheets.ReadCurve(sheetId, sampleId);
             if (curve.Count > 0)
             {
                 var imagePath = Path.Combine(sheetDirectory, $"{sampleId}.png");

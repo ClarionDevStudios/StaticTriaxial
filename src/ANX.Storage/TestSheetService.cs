@@ -14,6 +14,9 @@ public sealed class TestSheetService : ITestSheetService
     /// <summary>记录唯一标识列名（主表与明细表同名）。云端按它去重，不能为空（用户 2026-10-13）。</summary>
     private const string UuidColumn = "UUID";
 
+    /// <summary>试件排序索引列名。试件号里的序号就是它（现役 SheetIndex）。</summary>
+    private const string SheetIndexColumn = "SheetIndex";
+
     private readonly DatabaseInitializer _initializer;
     private readonly SheetNumberGenerator _numbers;
     private readonly Dictionary<string, IMethodPersistenceModule> _methods;
@@ -79,12 +82,13 @@ public sealed class TestSheetService : ITestSheetService
 
         var values = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
-            ["SampleKey"] = $"{sheetId}-{sampleId}",
             ["SheetID"] = sheetId,
             ["SampleID"] = sampleId,
             ["ChartData"] = CurveJson.Encode(curve),
             ["CreateDate"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
         };
+
+        ApplySheetIndex(method.DetailTable, sampleId, values);
 
         foreach (var (name, value) in results)
         {
@@ -120,7 +124,7 @@ public sealed class TestSheetService : ITestSheetService
     }
 
     /// <summary>
-    /// 覆盖某个试件明细行上的**结果列**（按 SampleKey 定位；曲线与创建时间不动）。
+    /// 覆盖某个试件明细行上的**结果列**（按 (SheetID, SampleID) 定位；曲线与创建时间不动）。
     /// 供"按当前参数重算历史曲线"用。
     /// </summary>
     public Task UpdateDetailFieldsAsync(
@@ -167,8 +171,9 @@ public sealed class TestSheetService : ITestSheetService
         }
 
         command.CommandText =
-            $"UPDATE {method.DetailTable.TableName} SET {string.Join(", ", assignments)} WHERE SampleKey = $key;";
-        command.Parameters.AddWithValue("$key", $"{sheetId}-{sampleId}");
+            $"UPDATE {method.DetailTable.TableName} SET {string.Join(", ", assignments)}"
+            + $" WHERE {SampleKeyPredicate(method.DetailTable)};";
+        AddSampleKeyParameters(command, sheetId, sampleId);
         command.ExecuteNonQuery();
 
         return Task.CompletedTask;
@@ -188,8 +193,9 @@ public sealed class TestSheetService : ITestSheetService
         using var connection = _initializer.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText =
-            $"SELECT {string.Join(", ", columns)} FROM {method.DetailTable.TableName} WHERE SampleKey = $key;";
-        command.Parameters.AddWithValue("$key", $"{sheetId}-{sampleId}");
+            $"SELECT {string.Join(", ", columns)} FROM {method.DetailTable.TableName}"
+            + $" WHERE {SampleKeyPredicate(method.DetailTable)};";
+        AddSampleKeyParameters(command, sheetId, sampleId);
 
         using var reader = command.ExecuteReader();
         if (!reader.Read())
@@ -230,8 +236,6 @@ public sealed class TestSheetService : ITestSheetService
             }
         }
 
-        var key = $"{sheetId}-{sampleId}";
-
         using var connection = _initializer.OpenConnection();
         using var transaction = connection.BeginTransaction();
 
@@ -239,8 +243,9 @@ public sealed class TestSheetService : ITestSheetService
         {
             probe.Transaction = transaction;
             probe.CommandText =
-                $"SELECT COUNT(1) FROM {method.DetailTable.TableName} WHERE SampleKey = $key;";
-            probe.Parameters.AddWithValue("$key", key);
+                $"SELECT COUNT(1) FROM {method.DetailTable.TableName}"
+                + $" WHERE {SampleKeyPredicate(method.DetailTable)};";
+            AddSampleKeyParameters(probe, sheetId, sampleId);
 
             var exists =
                 Convert.ToInt64(probe.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture)
@@ -254,7 +259,8 @@ public sealed class TestSheetService : ITestSheetService
                     .Select((pair, index) => $"{pair.Key} = $p{index}")
                     .ToArray();
                 update.CommandText =
-                    $"UPDATE {method.DetailTable.TableName} SET {string.Join(", ", assignments)} WHERE SampleKey = $key;";
+                    $"UPDATE {method.DetailTable.TableName} SET {string.Join(", ", assignments)}"
+                    + $" WHERE {SampleKeyPredicate(method.DetailTable)};";
 
                 var i = 0;
                 foreach (var value in fields.Values)
@@ -262,18 +268,19 @@ public sealed class TestSheetService : ITestSheetService
                     update.Parameters.AddWithValue($"$p{i++}", value);
                 }
 
-                update.Parameters.AddWithValue("$key", key);
+                AddSampleKeyParameters(update, sheetId, sampleId);
                 update.ExecuteNonQuery();
             }
             else
             {
                 var values = new Dictionary<string, object?>(StringComparer.Ordinal)
                 {
-                    ["SampleKey"] = key,
                     ["SheetID"] = sheetId,
                     ["SampleID"] = sampleId,
                     ["CreateDate"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                 };
+
+                ApplySheetIndex(method.DetailTable, sampleId, values);
 
                 foreach (var (name, value) in fields)
                 {
@@ -402,17 +409,17 @@ public sealed class TestSheetService : ITestSheetService
         return Task.FromResult<IReadOnlyList<TestSheetSummary>>(result);
     }
 
-    /// <summary>读回一条明细的曲线（回放用）。</summary>
-    public IReadOnlyList<CurvePoint> ReadCurve(string sampleKey)
+    /// <summary>读回一条明细的曲线（回放用）。定位口径与现役一致：单号 + 试件号。</summary>
+    public IReadOnlyList<CurvePoint> ReadCurve(string sheetId, string sampleId)
     {
-        var sheetId = sampleKey[..Math.Max(0, sampleKey.LastIndexOf('-'))];
         var method = ResolveMethodForSheet(sheetId);
 
         using var connection = _initializer.OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText =
-            $"SELECT ChartData FROM {method.DetailTable.TableName} WHERE SampleKey = $key;";
-        command.Parameters.AddWithValue("$key", sampleKey);
+            $"SELECT ChartData FROM {method.DetailTable.TableName}"
+            + $" WHERE {SampleKeyPredicate(method.DetailTable)};";
+        AddSampleKeyParameters(command, sheetId, sampleId);
 
         return CurveJson.Decode(command.ExecuteScalar() as string);
     }
@@ -515,6 +522,48 @@ public sealed class TestSheetService : ITestSheetService
 
     private static bool IsDeclared(TableDefinition table, string columnName) =>
         table.Columns.Any(c => string.Equals(c.Name, columnName, StringComparison.Ordinal));
+
+    /// <summary>
+    /// 明细行的定位条件：<c>SheetID + SampleID</c>（现役同口径 —— 现役的
+    /// <c>GetRecord/DeleteRecord/GetChartData/UpdateChartData</c> 全是这两个参数）。
+    /// 以前用自己发明的单列 `SampleKey`，用户 2026-10-13 要求去掉、与现役对齐。
+    /// </summary>
+    private static string SampleKeyPredicate(TableDefinition detailTable) =>
+        $"SheetID = $sheet AND SampleID = $sample";
+
+    /// <summary>给上面那条定位条件补参数（两个条件、两个参数）。</summary>
+    private static void AddSampleKeyParameters(
+        SqliteCommand command,
+        string sheetId,
+        string sampleId
+    )
+    {
+        command.Parameters.AddWithValue("$sheet", sheetId);
+        command.Parameters.AddWithValue("$sample", sampleId);
+    }
+
+    /// <summary>
+    /// 明细行写入时按试件号回填 <c>SheetIndex</c>：试件号形如 `S001`，其中的序号就是 SheetIndex
+    /// （现役同口径：`SampleID := 'S' + FormatFloat('000', SheetIndex)`）。
+    /// 这样"下一个试件号"可以照现役那样取 `MAX(SheetIndex) + 1`，老记录（纯数字试件号）也认得。
+    /// 试件号是人手填的怪值（取不出序号）就不写这一列，不猜。
+    /// </summary>
+    private static void ApplySheetIndex(
+        TableDefinition detailTable,
+        string sampleId,
+        IDictionary<string, object?> values
+    )
+    {
+        if (!IsDeclared(detailTable, SheetIndexColumn))
+        {
+            return;
+        }
+
+        if (SampleNumbering.ParseIndex(sampleId) is { } index)
+        {
+            values[SheetIndexColumn] = index;
+        }
+    }
 
     /// <summary>
     /// 取这张试验单的 UUID。**自愈**：老记录（本功能之前建的库）主表 UUID 是空的，

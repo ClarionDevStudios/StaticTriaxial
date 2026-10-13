@@ -11,8 +11,7 @@ using ANX.Core.Methods;
 /// <list type="bullet">
 ///   <item>表名沿用 C# 侧命名（不与现役库兼容是既定红线），不叫 `AsphaltBendingTest*`；</item>
 ///   <item>数值列一律真实类型，不用 `VARCHAR(10)` 冒充数字（现役靠 `NumField` 兜空串，这条路不走）；</item>
-///   <item>`SpanLength` 提到主表（现役放在明细里）、明细主键是单列 `SampleKey`（现役是
-///         `(SheetID, SampleID)` 复合键）、模板主键叫 `TemplateID`（现役沿用一个 `SheetID`）；</item>
+///   <item>`SpanLength` 提到主表（现役放在明细里）、模板主键叫 `TemplateID`（现役沿用一个 `SheetID`）；</item>
 ///   <item>现役明细的 `HasStraightLine` / `IsObvious` **故意不搬**：它们服务于已抛弃的
 ///         "修正直线平移 1.5mm 求交点"路径；</item>
 ///   <item>新增 `EffectiveCount` / `ExcludedCount` / `NeedsSupplement` / `InvalidReason`，
@@ -33,7 +32,7 @@ public sealed class BendingPersistenceModule : IMethodPersistenceModule
 
     public TableDefinition MainTable { get; } = new(
         MainTableName,
-        "SheetID",
+        ["SheetID"],
         [
             // ── 标识与排序 ──
             new ColumnDefinition("SheetID", ColumnType.Text, true, "试验单号（主键，形如 WT20261011001）"),
@@ -96,12 +95,11 @@ public sealed class BendingPersistenceModule : IMethodPersistenceModule
 
     public TableDefinition DetailTable { get; } = new(
         DetailTableName,
-        "SampleKey",
+        ["SheetID", "SampleID"],
         [
             // ── 标识 ──
-            new ColumnDefinition("SampleKey", ColumnType.Text, true, "试件行主键 = 单号 + 试件号（SheetID-SampleID），框架按它定位曲线"),
-            new ColumnDefinition("SheetID", ColumnType.Text, true, "所属试验单号"),
-            new ColumnDefinition("SampleID", ColumnType.Text, Comment: "试件编号（单内顺序号）"),
+            new ColumnDefinition("SheetID", ColumnType.Text, true, "所属试验单号；与 SampleID 一起构成明细主键"),
+            new ColumnDefinition("SampleID", ColumnType.Text, true, "试件编号，形如 S001（现役同格式，单内顺序号）；与 SheetID 一起构成明细主键"),
             new ColumnDefinition("UUID", ColumnType.Text, Comment: "记录唯一标识（GUID）；现役 UUID"),
             new ColumnDefinition("SampleDesc", ColumnType.Text, Comment: "试件描述；现役 SampleDesc"),
             new ColumnDefinition("SheetIndex", ColumnType.Integer, Comment: "试件排序索引；现役 SheetIndex"),
@@ -138,7 +136,7 @@ public sealed class BendingPersistenceModule : IMethodPersistenceModule
 
     public TableDefinition TemplateTable { get; } = new(
         TemplateTableName,
-        "TemplateID",
+        ["TemplateID"],
         [
             // ── 标识 ──
             new ColumnDefinition("TemplateID", ColumnType.Text, true, "模板标识（主键）；现役沿用一个 SheetID 作主键"),

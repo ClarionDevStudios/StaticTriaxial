@@ -167,18 +167,31 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
     /// <summary>下一个试件号 = 现有明细里最大的数字号 + 1（没有则 1）。</summary>
     public Task<string> NextSampleIdAsync(string sheetId, CancellationToken cancellationToken = default)
     {
-        var rows = sheets.ReadDetailRows(sheetId, ["SampleID"]);
+        // 试件号 = "S" + 三位序号（S001…），序号取该单已有的最大值 + 1；单里还没试件就是 S001。
+        // 现役同口径：`GetMaxSampleIndex`（MAX(SheetIndex)+1）+ `'S' + FormatFloat('000', …)`
+        // （用户 2026-10-13 要求照现役自动生成）。
+        var rows = sheets.ReadDetailRows(sheetId, ["SampleID", "SheetIndex"]);
+
         var max = 0;
         foreach (var row in rows)
         {
-            var text = Convert.ToString(row["SampleID"], System.Globalization.CultureInfo.InvariantCulture);
-            if (int.TryParse(text, out var value) && value > max)
+            // 首选 SheetIndex；老记录这一列是空的（或干脆没有），退回从试件号里解析序号
+            var index =
+                TryReadIndex(row["SheetIndex"])
+                ?? SampleNumbering.ParseIndex(
+                    Convert.ToString(
+                        row["SampleID"],
+                        System.Globalization.CultureInfo.InvariantCulture
+                    )
+                );
+
+            if (index > max)
             {
-                max = value;
+                max = index.Value;
             }
         }
 
-        return Task.FromResult((max + 1).ToString(System.Globalization.CultureInfo.InvariantCulture));
+        return Task.FromResult(SampleNumbering.Format(max + 1));
     }
 
     public async Task<IReadOnlyDictionary<string, double>?> CompleteSampleAsync(
@@ -213,7 +226,7 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
         var columns = BuildResultColumns(width, height, result);
 
         // 试样记录可能已经在"试样编辑页填录"时建好了：有就更新（补曲线与结果），没有才追加
-        if (sheets.ReadDetailRow(sheetId, sampleId, ["SampleKey"]) is null)
+        if (sheets.ReadDetailRow(sheetId, sampleId, ["SampleID"]) is null)
         {
             await sheets.AppendSampleAsync(sheetId, sampleId, curve, columns, cancellationToken)
                 .ConfigureAwait(false);
@@ -296,7 +309,7 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
                 continue;
             }
 
-            var curve = sheets.ReadCurve($"{sheetId}-{sampleId}");
+            var curve = sheets.ReadCurve(sheetId, sampleId);
             if (curve.Count < 3)
             {
                 skipped++; // 曲线不足以判定（点太少）
@@ -526,6 +539,24 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
     }
 
     /// <summary>把明细行里的数值读成 double（NULL / 空值返回 false）。</summary>
+    /// <summary>读 SheetIndex 列；空值/取不出来回 null（老记录这一列是空的）。</summary>
+    private static int? TryReadIndex(object? raw)
+    {
+        if (raw is null || raw is DBNull)
+        {
+            return null;
+        }
+
+        return int.TryParse(
+            Convert.ToString(raw, System.Globalization.CultureInfo.InvariantCulture),
+            System.Globalization.NumberStyles.Integer,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out var index
+        )
+            ? index
+            : null;
+    }
+
     private static bool TryReadDouble(
         IReadOnlyDictionary<string, object?> row,
         string column,

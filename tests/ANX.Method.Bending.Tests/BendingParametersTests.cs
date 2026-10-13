@@ -250,7 +250,7 @@ public sealed class BendingParametersTests : IDisposable
         Assert.Equal(1, Convert.ToDouble(main["EffectiveCount"]));
 
         // 曲线本身没被动过
-        Assert.Equal(curve.Length, sheets.ReadCurve($"{sheetId}-1").Count);
+        Assert.Equal(curve.Length, sheets.ReadCurve(sheetId, "1").Count);
     }
 
     /// <summary>
