@@ -167,14 +167,14 @@
               <ui:Button
                 Margin="0,0,4,0"
                 Appearance="Primary"
-                Command="{Binding ViewModel.OpenSampleEditorCommand}"
+                Command="{Binding ViewModel.NewSampleCommand}"
                 Content="{DynamicResource Exec.NewSample}"
                 Icon="{ui:SymbolIcon Add24}"
               />
               <ui:Button
                 Margin="0,0,4,0"
                 Appearance="Primary"
-                Command="{Binding ViewModel.OpenSampleEditorCommand}"
+                Command="{Binding ViewModel.EditSampleCommand}"
                 Content="{DynamicResource Exec.EditSample}"
                 Icon="{ui:SymbolIcon Edit24}"
               />
@@ -258,6 +258,8 @@
             HeadersVisibility="Column"
             IsReadOnly="True"
             ItemsSource="{Binding ViewModel.SampleRows}"
+            SelectedItem="{Binding ViewModel.SelectedSample, Mode=TwoWay}"
+            SelectionMode="Single"
           />
         </DockPanel>
       </ui:Card>

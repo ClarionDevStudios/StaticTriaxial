@@ -89,6 +89,14 @@ public partial class MetricCard : ObservableObject
 /// </summary>
 public partial class TestExecutionViewModel : ViewModelBase
 {
+    /// <summary>
+    /// 试样信息列表的一行：试件号 + 是否做完 + 单元格文本（列序与 <see cref="SampleColumnHeaders"/> 一致）。
+    /// </summary>
+    /// <param name="SampleId">试件号（形如 S001）。</param>
+    /// <param name="IsCompleted">这件是否已做完试验（做完的不让再改信息）。</param>
+    /// <param name="Cells">单元格文本（DataGrid 按下标绑定）。</param>
+    public sealed record SampleListRow(string SampleId, bool IsCompleted, string[] Cells);
+
     /// <summary>控制周期：与现役线程一致（20ms / 50Hz）。</summary>
     private static readonly TimeSpan ControlPeriod = TimeSpan.FromMilliseconds(20);
 
@@ -101,6 +109,7 @@ public partial class TestExecutionViewModel : ViewModelBase
     private readonly INavigationService? _navigation;
     private readonly IModalPageService? _modalPages;
     private readonly IReportExportService? _exporter;
+    private readonly SampleInfoViewModel? _sampleInfo;
 
     /// <summary>「试验单」弹窗尺寸（单号编辑区 460 宽 + 已有单列表 + 底部按钮）。</summary>
     private const double SheetDialogWidth = 780;
@@ -144,7 +153,8 @@ public partial class TestExecutionViewModel : ViewModelBase
         ICurrentSheetContext? currentSheet = null,
         INavigationService? navigation = null,
         IReportExportService? exporter = null,
-        IModalPageService? modalPages = null
+        IModalPageService? modalPages = null,
+        SampleInfoViewModel? sampleInfo = null
     )
         : base(localization)
     {
@@ -154,6 +164,7 @@ public partial class TestExecutionViewModel : ViewModelBase
         _navigation = navigation;
         _exporter = exporter;
         _modalPages = modalPages;
+        _sampleInfo = sampleInfo;
 
         // 试样信息列表的表头：试件号 + 方法声明的各试样信息字段（带单位），列序与 BuildSampleCells 一致
         _sampleFieldKeys = [.. execution.SampleFields.Select(field => field.Key)];
@@ -205,9 +216,32 @@ public partial class TestExecutionViewModel : ViewModelBase
 
     /// <summary>
     /// 当前试验单里的试样信息（只显示**本单**的，用户 2026-10-13）。
-    /// 每行是一串单元格文本，列序与 <see cref="SampleColumnHeaders"/> 一致。
+    /// 每行的 <see cref="SampleListRow.Cells"/> 列序与 <see cref="SampleColumnHeaders"/> 一致。
     /// </summary>
-    public ObservableCollection<string[]> SampleRows { get; } = [];
+    public ObservableCollection<SampleListRow> SampleRows { get; } = [];
+
+    /// <summary>列表里选中的那件试样（没选为 null）。</summary>
+    [ObservableProperty]
+    private SampleListRow? _selectedSample;
+
+    /// <summary>
+    /// 能不能点「新建试样 / 编辑试样」（用户 2026-10-13 三条规则）：
+    /// ① 有试验单号；② 列表里有数据；③ 选中的那件**没做完**（做完的不让改）。
+    /// </summary>
+    public bool CanEditSamples =>
+        SheetText.Length > 0
+        && SampleRows.Count > 0
+        && SelectedSample is not { IsCompleted: true };
+
+    partial void OnSelectedSampleChanged(SampleListRow? value) => NotifySampleCommands();
+
+    /// <summary>两个按钮的可用性一起刷新（规则相同）。</summary>
+    private void NotifySampleCommands()
+    {
+        OnPropertyChanged(nameof(CanEditSamples));
+        NewSampleCommand.NotifyCanExecuteChanged();
+        EditSampleCommand.NotifyCanExecuteChanged();
+    }
 
     /// <summary>重新读当前试验单的试样信息列表（打开页面 / 换单 / 存过试样信息 / 跑完一件都调）。</summary>
     public async Task ReloadSampleRowsAsync()
@@ -224,6 +258,10 @@ public partial class TestExecutionViewModel : ViewModelBase
         {
             SampleRows.Add(BuildSampleCells(row));
         }
+
+        // 换单/换数据后先清掉选中（免得选中的是上一张单的那件），再刷新按钮可用性
+        SelectedSample = null;
+        NotifySampleCommands();
     }
 
     /// <summary>
@@ -238,17 +276,17 @@ public partial class TestExecutionViewModel : ViewModelBase
     public override void OnOpened() => _ = ReloadSampleRowsAsync();
 
     /// <summary>把一行"字段 → 文本"按表头顺序摊成单元格（字段缺了给空串，不抛）。</summary>
-    private string[] BuildSampleCells(IReadOnlyDictionary<string, string> row)
+    private SampleListRow BuildSampleCells(SampleRowInfo row)
     {
         var cells = new string[SampleColumnHeaders.Count];
         for (var i = 0; i < cells.Length; i++)
         {
             cells[i] = i == 0
-                ? row.GetValueOrDefault("SampleID") ?? string.Empty
-                : row.GetValueOrDefault(_sampleFieldKeys[i - 1]) ?? string.Empty;
+                ? row.SampleId
+                : row.Fields.GetValueOrDefault(_sampleFieldKeys[i - 1]) ?? string.Empty;
         }
 
-        return cells;
+        return new SampleListRow(row.SampleId, row.IsCompleted, cells);
     }
 
     /// <summary>当前试验单变了（试验单弹窗里新建或选中）：刷新单号显示并记一行日志。</summary>
@@ -651,13 +689,23 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// 打开「试样信息填录」弹窗（新建试样 / 编辑试样两个按钮都走这里；用户 2026-10-13 改成弹出窗体）。
     /// 改动只有点了弹窗里的「保存」才落地，关闭只是关掉。
     /// </summary>
-    [RelayCommand]
-    private void OpenSampleEditor() =>
-        ShowSampleEditorDialog();
+    /// <summary>新建试样信息：弹窗里默认带**下一个**试件号（用户 2026-10-13 起可用性受三条规则约束）。</summary>
+    [RelayCommand(CanExecute = nameof(CanEditSamples))]
+    private void NewSample() => ShowSampleEditorDialog(sampleId: null);
 
-    /// <summary>开弹窗、关掉后把试样信息列表刷一遍（弹窗里可能刚存了一件）。</summary>
-    private void ShowSampleEditorDialog()
+    /// <summary>编辑选中那件试样的信息（选中哪件改哪件）。</summary>
+    [RelayCommand(CanExecute = nameof(CanEditSamples))]
+    private void EditSample() => ShowSampleEditorDialog(SelectedSample?.SampleId);
+
+    /// <summary>
+    /// 开弹窗、关掉后把试样信息列表刷一遍（弹窗里可能刚存了一件）。
+    /// <paramref name="sampleId"/> 为空 = 新建（弹窗自己取下一个试件号），否则编辑指定那件。
+    /// </summary>
+    private void ShowSampleEditorDialog(string? sampleId)
     {
+        // 弹窗的 ViewModel 是单例：进弹窗前先把"要编辑哪一件"定死，免得留下上一次的号
+        _sampleInfo?.PrepareFor(sampleId);
+
         _modalPages?.Show(
             typeof(Views.Pages.SampleEditorPage),
             SampleDialogWidth,

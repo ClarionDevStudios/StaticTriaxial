@@ -20,6 +20,21 @@ public sealed record MetricDefinition(
 );
 
 /// <summary>
+/// 试验执行页"试样信息列表"的一行：试件号 + 各试样信息字段 + 是否已做完试验。
+/// </summary>
+/// <param name="SampleId">试件号（形如 S001）。</param>
+/// <param name="IsCompleted">
+/// 这件试样是否**已完成试验**（明细行 <c>TestStatus</c> = 完成）。界面据此决定能不能再改它的信息
+/// （用户 2026-10-13：选中的试样已完成 → 新建/编辑试样按钮置灰）。
+/// </param>
+/// <param name="Fields">各试样信息字段的值（键 = <see cref="ITestExecution.SampleFields"/> 的 Key）。</param>
+public sealed record SampleRowInfo(
+    string SampleId,
+    bool IsCompleted,
+    IReadOnlyDictionary<string, string> Fields
+);
+
+/// <summary>
 /// 试验执行契约：界面靠它跑一轮试验，**不认识任何具体方法的算法与字段**
 /// （T0715 的判定公式、库表、报表装配都留在方法工程里）。
 /// </summary>
@@ -61,10 +76,10 @@ public interface ITestExecution : ICurveAxisSource
     );
 
     /// <summary>
-    /// 读**这张试验单里已有的试样信息**（每个试件一行：试件号 + <see cref="SampleFields"/> 各字段），
+    /// 读**这张试验单里已有的试样信息**（每个试件一行：试件号 + <see cref="SampleFields"/> 各字段 + 是否已完成），
     /// 供试验执行页的试样信息列表显示（用户 2026-10-13）。只读，不改库；按试件号顺序返回。
     /// </summary>
-    Task<IReadOnlyList<IReadOnlyDictionary<string, string>>> ReadSampleRowsAsync(
+    Task<IReadOnlyList<SampleRowInfo>> ReadSampleRowsAsync(
         string sheetId,
         CancellationToken cancellationToken = default
     );

@@ -55,6 +55,12 @@ public sealed partial class SampleInfoViewModel : EditableRowsViewModel, IModalD
     [RelayCommand]
     private void Close() => CloseRequested?.Invoke(this, false);
 
+    /// <summary>
+    /// 进弹窗前定死"编辑哪一件"：给了试件号就载回那一件的信息，给 null/空 = 新建
+    /// （打开时自己取下一个试件号）。调用方是试验执行页 —— 它知道用户在列表里选了哪行。
+    /// </summary>
+    public void PrepareFor(string? sampleId) => SampleId = sampleId ?? string.Empty;
+
     [RelayCommand]
     private async Task InitializeAsync()
     {

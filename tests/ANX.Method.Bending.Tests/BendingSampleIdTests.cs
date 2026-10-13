@@ -69,6 +69,38 @@ public sealed class BendingSampleIdTests : IDisposable
         Assert.Equal("S004", await execution.NextSampleIdAsync(sheetId));
     }
 
+    /// <summary>
+    /// 跑完一件要留下"已完成"状态（现役 `tsCompleted = 2`）——
+    /// 用户 2026-10-13 的置灰规则要按它判断"这件做完没做完"。
+    /// </summary>
+    [Fact]
+    public async Task 跑完一件后明细的试验状态是完成()
+    {
+        var (sheets, execution) = Create();
+        var sheetId = await sheets.CreateAsync("T0715", "状态验证", "WT");
+
+        var curve = Enumerable
+            .Range(0, 40)
+            .Select(i => new CurvePoint(i * 0.1, i * 0.2))
+            .ToArray();
+
+        // 只填了信息、还没跑：不算完成
+        await sheets.UpsertSampleInfoAsync(
+            sheetId,
+            "S001",
+            new Dictionary<string, double>(StringComparer.Ordinal) { ["SampleHeight"] = 35 }
+        );
+        Assert.False(Assert.Single(await execution.ReadSampleRowsAsync(sheetId)).IsCompleted);
+
+        await execution.CompleteSampleAsync(sheetId, "S001", curve);
+
+        var row = sheets.ReadDetailRow(sheetId, "S001", ["TestStatus"])!;
+        Assert.Equal(2, Convert.ToInt32(row["TestStatus"])); // 现役 tsCompleted = 2
+
+        // 列表接口也报"已完成"（界面据此置灰新建/编辑试样）
+        Assert.True(Assert.Single(await execution.ReadSampleRowsAsync(sheetId)).IsCompleted);
+    }
+
     private (TestSheetService Sheets, BendingExecution Execution) Create()
     {
         var module = new BendingPersistenceModule();

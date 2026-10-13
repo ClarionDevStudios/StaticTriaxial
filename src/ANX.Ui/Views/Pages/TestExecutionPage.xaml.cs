@@ -107,7 +107,7 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
                 new DataGridTextColumn
                 {
                     Header = headers[i],
-                    Binding = new System.Windows.Data.Binding($"[{i}]"),
+                    Binding = new System.Windows.Data.Binding($"Cells[{i}]"),
                     Width = i == 0
                         ? new DataGridLength(1, DataGridLengthUnitType.Auto)
                         : new DataGridLength(1, DataGridLengthUnitType.Star),

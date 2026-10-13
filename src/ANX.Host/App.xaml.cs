@@ -150,7 +150,9 @@ public partial class App
                     sp.GetRequiredService<ICurrentSheetContext>(),
                     sp.GetRequiredService<INavigationService>(),
                     sp.GetRequiredService<IReportExportService>(),
-                    sp.GetRequiredService<IModalPageService>()
+                    sp.GetRequiredService<IModalPageService>(),
+                    // 执行页要能先把"编辑哪一件"告诉弹窗的 ViewModel（它是单例，会留着上次的号）
+                    sp.GetRequiredService<SampleInfoViewModel>()
                 ));
                 _ = services.AddSingleton<TestExecutionPage>();
 

@@ -12,6 +12,12 @@ using ANX.Storage;
 public sealed class BendingExecution(TestSheetService sheets, BendingParameters? parameters = null)
     : ITestExecution
 {
+    /// <summary>
+    /// 明细行的试验状态：**完成**。现役枚举 `(tsNotTested = 0, tsTesting = 1, tsCompleted = 2, tsFailed = 3)`，
+    /// 试件跑完判定落库时写它（用户 2026-10-13 的置灰规则要用"这件做完了没有"）。
+    /// </summary>
+    private const int TestStatusCompleted = 2;
+
     private readonly Dictionary<string, List<BendingSampleResult>> _resultsBySheet = new(StringComparer.Ordinal);
 
     public string MethodCode => "T0715";
@@ -129,12 +135,12 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
     }
 
     /// <inheritdoc />
-    public Task<IReadOnlyList<IReadOnlyDictionary<string, string>>> ReadSampleRowsAsync(
+    public Task<IReadOnlyList<SampleRowInfo>> ReadSampleRowsAsync(
         string sheetId,
         CancellationToken cancellationToken = default
     )
     {
-        var columns = new[] { "SampleID", "SheetIndex" }
+        var columns = new[] { "SampleID", "SheetIndex", "TestStatus" }
             .Concat(BendingSampleFields.Definitions.Select(definition => definition.Key))
             .ToArray();
 
@@ -158,28 +164,30 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
             )
             .ToArray();
 
-        var result = new List<IReadOnlyDictionary<string, string>>(rows.Length);
+        var result = new List<SampleRowInfo>(rows.Length);
 
         foreach (var row in rows)
         {
-            var values = new Dictionary<string, string>(StringComparer.Ordinal)
+            var fields = new Dictionary<string, string>(StringComparer.Ordinal);
+
+            foreach (var definition in BendingSampleFields.Definitions)
             {
-                ["SampleID"] =
+                fields[definition.Key] = FormatSampleField(row, definition);
+            }
+
+            result.Add(
+                new SampleRowInfo(
                     Convert.ToString(
                         row["SampleID"],
                         System.Globalization.CultureInfo.InvariantCulture
                     ) ?? string.Empty,
-            };
-
-            foreach (var definition in BendingSampleFields.Definitions)
-            {
-                values[definition.Key] = FormatSampleField(row, definition);
-            }
-
-            result.Add(values);
+                    TryReadIndex(row["TestStatus"]) == TestStatusCompleted,
+                    fields
+                )
+            );
         }
 
-        return Task.FromResult<IReadOnlyList<IReadOnlyDictionary<string, string>>>(result);
+        return Task.FromResult<IReadOnlyList<SampleRowInfo>>(result);
     }
 
     /// <summary>明细行上的一个试样信息字段取成显示文本（数值按 0.### 显示；空值回落到字段默认值）。</summary>
@@ -492,6 +500,8 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
             ["FlexuralStrength"] = result.FlexuralStrengthMPa,
             ["MaxBendingTensileStrain"] = result.MaxBendingTensileStrainMicro,
             ["IsEffective"] = 1,
+            // 这一件做完了（现役 TestStatus = 2 完成）：界面据此不再让改它的试样信息
+            ["TestStatus"] = TestStatusCompleted,
         };
 
     /// <summary>主表上的组统计列。</summary>
