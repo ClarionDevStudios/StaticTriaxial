@@ -147,7 +147,15 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
         CancellationToken cancellationToken = default
     )
     {
-        var columns = new[] { "SampleID", "SheetIndex", "TestStatus" }
+        var columns = new[]
+        {
+            "SampleID",
+            "SheetIndex",
+            "TestStatus",
+            // 「有效性计算」按钮要看"这件有没有判定值"——按判定值判断，不只看状态列
+            "FlexuralStrength",
+            "MaxBendingTensileStrain",
+        }
             .Concat(BendingSampleFields.Definitions.Select(definition => definition.Key))
             .ToArray();
 
@@ -189,6 +197,9 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
                         System.Globalization.CultureInfo.InvariantCulture
                     ) ?? string.Empty,
                     TryReadIndex(row["TestStatus"]) == TestStatusCompleted,
+                    // 判定值齐 = 弯拉强度与最大弯拉应变都能读出来（与 EvaluateValidityAsync 的判定口径一致）
+                    TryReadDouble(row, "FlexuralStrength", out _)
+                        && TryReadDouble(row, "MaxBendingTensileStrain", out _),
                     fields
                 )
             );

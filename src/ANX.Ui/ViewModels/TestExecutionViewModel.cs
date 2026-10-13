@@ -94,8 +94,20 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// </summary>
     /// <param name="SampleId">试件号（形如 S001）。</param>
     /// <param name="IsCompleted">这件是否已做完试验（做完的不让再改信息）。</param>
+    /// <param name="HasResult">这件有没有判定值（「有效性计算」要至少三件这样的）。</param>
     /// <param name="Cells">单元格文本（DataGrid 按下标绑定）。</param>
-    public sealed record SampleListRow(string SampleId, bool IsCompleted, string[] Cells);
+    public sealed record SampleListRow(
+        string SampleId,
+        bool IsCompleted,
+        bool HasResult,
+        string[] Cells
+    );
+
+    /// <summary>
+    /// 「有效性计算」至少需要几件有判定值的试样：**T 0715-2025 5.6 的"一组不少于 3 个试件"**
+    /// （用户 2026-10-13 明确）。
+    /// </summary>
+    private const int MinimumJudgedSamples = 3;
 
     /// <summary>控制周期：与现役线程一致（20ms / 50Hz）。</summary>
     private static readonly TimeSpan ControlPeriod = TimeSpan.FromMilliseconds(20);
@@ -248,6 +260,17 @@ public partial class TestExecutionViewModel : ViewModelBase
     public bool CanStartTest => SelectedSample is { IsCompleted: false };
 
     /// <summary>
+    /// 能不能点「有效性计算」（用户 2026-10-13 三条口径）：
+    /// ① 有"当前单"；② **至少三件有判定值**的试样（T 0715-2025 5.6：一组不少于 3 个试件）；
+    /// ③ **没在跑试验**（计算要读写该单明细，别跟正在落库的控制循环抢）。
+    /// 与"选中哪一行"无关 —— 这是**整单**操作（现役 `btnCalcResult.Enabled := not DataSet.IsEmpty` 也是整单口径）。
+    /// </summary>
+    public bool CanEvaluateValidity =>
+        !IsRunning
+        && CurrentSheetId is { Length: > 0 }
+        && SampleRows.Count(row => row.HasResult) >= MinimumJudgedSamples;
+
+    /// <summary>
     /// 启动/停止按钮的可用性：**试验中永远可用**（不然停不下来 —— 用户 2026-10-12 真机踩过），
     /// 待机时按 <see cref="CanStartTest"/>。
     /// </summary>
@@ -281,10 +304,12 @@ public partial class TestExecutionViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanDeleteSample));
         OnPropertyChanged(nameof(CanStartTest));
         OnPropertyChanged(nameof(CanStartOrStop));
+        OnPropertyChanged(nameof(CanEvaluateValidity));
         NewSampleCommand.NotifyCanExecuteChanged();
         EditSampleCommand.NotifyCanExecuteChanged();
         DeleteSampleCommand.NotifyCanExecuteChanged();
         StartOrStopCommand.NotifyCanExecuteChanged();
+        EvaluateValidityCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>重新读当前试验单的试样信息列表（打开页面 / 换单 / 存过试样信息 / 跑完一件都调）。</summary>
@@ -330,7 +355,7 @@ public partial class TestExecutionViewModel : ViewModelBase
                 : row.Fields.GetValueOrDefault(_sampleFieldKeys[i - 1]) ?? string.Empty;
         }
 
-        return new SampleListRow(row.SampleId, row.IsCompleted, cells);
+        return new SampleListRow(row.SampleId, row.IsCompleted, row.HasResult, cells);
     }
 
     /// <summary>当前试验单变了（试验单弹窗里新建或选中）：刷新单号显示并记一行日志。</summary>
@@ -539,6 +564,9 @@ public partial class TestExecutionViewModel : ViewModelBase
         OnPropertyChanged(nameof(RunningBrush));
         OnPropertyChanged(nameof(RunningHintText));
         OnPropertyChanged(nameof(CanStartOrStop));
+        // 跑起来/停下来都影响"有效性计算"能不能点
+        OnPropertyChanged(nameof(CanEvaluateValidity));
+        EvaluateValidityCommand.NotifyCanExecuteChanged();
         StartOrStopCommand.NotifyCanExecuteChanged();
     }
 
@@ -665,7 +693,7 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// （与平均值偏差超过允许误差者剔除）并写回主表/明细；**不**标记试验单完成。
     /// 与现役一致：试验进行中不允许计算。
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanEvaluateValidity))]
     private async Task EvaluateValidityAsync()
     {
         if (IsRunning)
@@ -674,7 +702,8 @@ public partial class TestExecutionViewModel : ViewModelBase
             return;
         }
 
-        if (_sheetId is null)
+        // 单号统一走"当前单"口径（优先试验单弹窗里选定的单、其次自动建的那张）
+        if (CurrentSheetId is not { Length: > 0 } sheetId)
         {
             Append(L("Exec.ValidityNoSheet"));
             return;
@@ -682,7 +711,7 @@ public partial class TestExecutionViewModel : ViewModelBase
 
         try
         {
-            var report = await _execution.EvaluateValidityAsync(_sheetId);
+            var report = await _execution.EvaluateValidityAsync(sheetId);
 
             if (report.Evaluated == 0)
             {

@@ -101,6 +101,37 @@ public sealed class BendingSampleIdTests : IDisposable
         Assert.True(Assert.Single(await execution.ReadSampleRowsAsync(sheetId)).IsCompleted);
     }
 
+    /// <summary>
+    /// 「有效性计算」按"有没有判定值"判（不是只看状态列）：只填了试样信息的件没有判定值，
+    /// 跑完判定的才有 —— 用户 2026-10-13 要求"至少三件有判定值"才让点。
+    /// </summary>
+    [Fact]
+    public async Task 只填信息的件没有判定值_跑完的才有()
+    {
+        var (sheets, execution) = Create();
+        var sheetId = await sheets.CreateAsync("T0715", "判定值", "WT");
+
+        await sheets.UpsertSampleInfoAsync(
+            sheetId,
+            "S001",
+            new Dictionary<string, double>(StringComparer.Ordinal) { ["SampleHeight"] = 35 }
+        );
+
+        var onlyInfo = Assert.Single(await execution.ReadSampleRowsAsync(sheetId));
+        Assert.False(onlyInfo.HasResult);
+        Assert.False(onlyInfo.IsCompleted);
+
+        var curve = Enumerable
+            .Range(0, 40)
+            .Select(i => new CurvePoint(i * 0.1, i * 0.2))
+            .ToArray();
+        await execution.CompleteSampleAsync(sheetId, "S001", curve);
+
+        var done = Assert.Single(await execution.ReadSampleRowsAsync(sheetId));
+        Assert.True(done.HasResult);
+        Assert.True(done.IsCompleted);
+    }
+
     private (TestSheetService Sheets, BendingExecution Execution) Create()
     {
         var module = new BendingPersistenceModule();

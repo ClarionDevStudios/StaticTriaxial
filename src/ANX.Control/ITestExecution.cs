@@ -28,9 +28,14 @@ public sealed record MetricDefinition(
 /// （用户 2026-10-13：选中的试样已完成 → 新建/编辑试样按钮置灰）。
 /// </param>
 /// <param name="Fields">各试样信息字段的值（键 = <see cref="ITestExecution.SampleFields"/> 的 Key）。</param>
+/// <param name="HasResult">
+/// 这件**判定值齐不齐**（弯拉强度与最大弯拉应变都有值）——「有效性计算」要看的是这个，
+/// 不是状态列：状态列可能是"没写"，而判定值是"真算出来了"（用户 2026-10-13）。
+/// </param>
 public sealed record SampleRowInfo(
     string SampleId,
     bool IsCompleted,
+    bool HasResult,
     IReadOnlyDictionary<string, string> Fields
 );
 
