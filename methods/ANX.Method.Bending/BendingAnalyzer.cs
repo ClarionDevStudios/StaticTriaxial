@@ -190,8 +190,12 @@ public static class BendingAnalyzer
 
     /// <summary>
     /// 规范 5.5 / 5.6 与 6：一组试件的算术平均值，以及"最大弯拉应变超差则剔除偏差最大者后重算"。
-    /// 剔除到有效试件少于 <see cref="MinimumEffectiveSamples"/> 个时不再剔除，并置
-    /// <see cref="BendingGroupResult.NeedsSupplement"/> 提示补充试验。
+    ///
+    /// **剔除不设"3 件下限"**（用户 2026-10-13 按规范 5.6 与现役对齐）：
+    /// 只要"偏差最大的那件 > 允许误差"就一直剔，剔到只剩 1 件为止；剔完若有效件
+    /// 少于 <see cref="MinimumEffectiveSamples"/> 个，置 <see cref="BendingGroupResult.NeedsSupplement"/>，
+    /// 由调用方**不写组结果**并提示补充试验 —— 现役同口径（`uBendingTestForm.pas:565-623`：
+    /// `if LWorstDev > LAllowed then LKeep[LWorst] := False` 循环剔，`< 3` 时弹框 + "本次不写组结果"）。
     /// </summary>
     public static BendingGroupResult AnalyzeGroup(IReadOnlyList<BendingSampleResult> samples)
     {
@@ -212,11 +216,6 @@ public static class BendingAnalyzer
                 .First();
 
             if (Math.Abs(worst.Sample.MaxBendingTensileStrainMicro - meanStrain) <= RepeatabilityAllowanceMicro)
-            {
-                break;
-            }
-
-            if (working.Count - 1 < MinimumEffectiveSamples)
             {
                 break;
             }

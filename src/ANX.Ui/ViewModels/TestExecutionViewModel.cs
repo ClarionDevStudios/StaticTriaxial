@@ -739,6 +739,24 @@ public partial class TestExecutionViewModel : ViewModelBase
             if (report.NeedsSupplement)
             {
                 Append(L("Exec.NeedsSupplement"));
+
+                // 规范 5.6：**剔除后有效试件少于 3 个**要提示补充试验。
+                // 现役这里既写日志又弹一个信息框（`uBendingTestForm.pas:620-623` 的 UWPInfoMessage），
+                // 我们照做 —— 只写日志容易被埋没在操控信息里。
+                var notice = new Wpf.Ui.Controls.MessageBox
+                {
+                    Title = L("Common.Hint"),
+                    Content = string.Format(
+                        CultureInfo.CurrentCulture,
+                        L("Exec.NeedsSupplementPrompt"),
+                        report.EffectiveCount
+                    ),
+                    PrimaryButtonText = L("Common.Yes"),
+                    IsCloseButtonEnabled = false,
+                    Owner = Application.Current?.MainWindow,
+                };
+
+                await notice.ShowDialogAsync();
             }
         }
         catch (Exception ex)

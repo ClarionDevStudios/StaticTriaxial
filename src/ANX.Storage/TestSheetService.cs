@@ -352,10 +352,11 @@ public sealed class TestSheetService : ITestSheetService
 
     /// <summary>
     /// 把一组统计写进主表。字段名由调用方（方法层）给出，框架只做"声明过的列才写"的校验。
+    /// **值为 null = 清空该列** —— 用于"有效件不足 3 件时不写组结果、把旧均值抹掉"（用户 2026-10-13）。
     /// </summary>
     public Task UpdateMainFieldsAsync(
         string sheetId,
-        IReadOnlyDictionary<string, double> fields,
+        IReadOnlyDictionary<string, object?> fields,
         CancellationToken cancellationToken = default
     )
     {
@@ -376,7 +377,7 @@ public sealed class TestSheetService : ITestSheetService
             command.Transaction = transaction;
             command.CommandText =
                 $"UPDATE {method.MainTable.TableName} SET {name} = $value WHERE SheetID = $sheetId;";
-            command.Parameters.AddWithValue("$value", value);
+            command.Parameters.AddWithValue("$value", value ?? DBNull.Value);
             command.Parameters.AddWithValue("$sheetId", sheetId);
             command.ExecuteNonQuery();
         }
@@ -384,6 +385,22 @@ public sealed class TestSheetService : ITestSheetService
         transaction.Commit();
         return Task.CompletedTask;
     }
+
+    /// <summary>数值版重载：调用方直接给 <see cref="double"/> 时用（内部转成"可空值"那条路）。</summary>
+    public Task UpdateMainFieldsAsync(
+        string sheetId,
+        IReadOnlyDictionary<string, double> fields,
+        CancellationToken cancellationToken = default
+    ) =>
+        UpdateMainFieldsAsync(
+            sheetId,
+            fields.ToDictionary(
+                pair => pair.Key,
+                pair => (object?)pair.Value,
+                StringComparer.Ordinal
+            ),
+            cancellationToken
+        );
 
     /// <inheritdoc />
     public Task<IReadOnlyList<TestSheetSummary>> QueryAsync(

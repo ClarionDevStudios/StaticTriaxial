@@ -227,7 +227,7 @@ public sealed class BendingParametersTests : IDisposable
         var before = await execution.CompleteSampleAsync(sheetId, "1", curve);
         Assert.Equal(63.67, before!["flexuralStrength"], 0.01);
 
-        // 把这一件的试样信息改 h=40 后重算：同一条曲线应算成 48.75，明细与组统计都更新
+        // 把这一件的试样信息改 h=40 后重算：同一条曲线应算成 48.75（明细更新）
         await execution.SaveSampleInfoAsync(
             sheetId,
             "1",
@@ -245,9 +245,15 @@ public sealed class BendingParametersTests : IDisposable
         Assert.Equal(48.75, Convert.ToDouble(rows[0]["FlexuralStrength"]), 0.01);
         Assert.Equal(40, Convert.ToDouble(rows[0]["SampleHeight"]));
 
-        var main = sheets.ReadMainRow(sheetId, ["FlexuralStrengthAvg", "EffectiveCount"]);
-        Assert.Equal(48.75, Convert.ToDouble(main["FlexuralStrengthAvg"]), 0.01);
+        // 单里只有 1 件 → **不足 3 件不写组结果**（用户 2026-10-13 按规范 5.6 定的口径）：
+        // 均值列清空、件数与"需补做"标志照写
+        var main = sheets.ReadMainRow(
+            sheetId,
+            ["FlexuralStrengthAvg", "EffectiveCount", "NeedsSupplement"]
+        );
+        Assert.Null(main["FlexuralStrengthAvg"]);
         Assert.Equal(1, Convert.ToDouble(main["EffectiveCount"]));
+        Assert.Equal(1, Convert.ToDouble(main["NeedsSupplement"]));
 
         // 曲线本身没被动过
         Assert.Equal(curve.Length, sheets.ReadCurve(sheetId, "1").Count);

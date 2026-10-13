@@ -164,7 +164,7 @@ public sealed class BendingAnalyzerTests
     }
 
     [Fact]
-    public void 剔除会跌破三个有效试件时不应剔除()
+    public void 剔除后不足三个有效试件时置需补做()
     {
         var group = BendingAnalyzer.AnalyzeGroup(
         [
@@ -173,10 +173,11 @@ public sealed class BendingAnalyzerTests
             MakeSample(strength: 9.00, strain: 9000),
         ]);
 
-        // 剔掉最差的那个就会只剩 2 个（< 3），所以规范要求"补充试验"而不是继续剔
-        Assert.Empty(group.ExcludedIndexes);
-        Assert.Equal(3, group.EffectiveCount);
-        Assert.False(group.NeedsSupplement);
+        // 剔除**不设 3 件下限**（用户 2026-10-13 按规范 5.6 与现役对齐）：
+        // 超差就剔，剔完只剩 2 件 → 按规范"应补充试验"（由调用方不写组结果 + 弹提示）
+        Assert.Equal([2], group.ExcludedIndexes);
+        Assert.Equal(2, group.EffectiveCount);
+        Assert.True(group.NeedsSupplement);
     }
 
     [Fact]

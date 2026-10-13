@@ -522,12 +522,22 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
             ["TestStatus"] = TestStatusCompleted,
         };
 
-    /// <summary>主表上的组统计列。</summary>
-    private static Dictionary<string, double> BuildGroupColumns(BendingGroupResult group) =>
+    /// <summary>
+    /// 主表上的组统计列。
+    ///
+    /// **有效件不足 3 件时不写组结果**（用户 2026-10-13，规范 5.6 + 现役"本次不写组结果"）：
+    /// 均值列写 <c>null</c> —— 既不下结论、也**清掉上一次算出来的陈旧均值**（否则报表会拿旧数当真）；
+    /// 件数与"需补做"标志照写，界面与报表据此显示"有效 N 件、需补做"。
+    /// </summary>
+    private static Dictionary<string, object?> BuildGroupColumns(BendingGroupResult group) =>
         new(StringComparer.Ordinal)
         {
-            ["FlexuralStrengthAvg"] = group.MeanFlexuralStrengthMPa,
-            ["MaxBendingStrainAvg"] = group.MeanMaxBendingTensileStrainMicro,
+            ["FlexuralStrengthAvg"] = group.NeedsSupplement
+                ? null
+                : group.MeanFlexuralStrengthMPa,
+            ["MaxBendingStrainAvg"] = group.NeedsSupplement
+                ? null
+                : group.MeanMaxBendingTensileStrainMicro,
             ["EffectiveCount"] = group.EffectiveCount,
             ["ExcludedCount"] = group.ExcludedIndexes.Count,
             ["NeedsSupplement"] = group.NeedsSupplement ? 1 : 0,

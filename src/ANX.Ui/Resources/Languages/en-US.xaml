@@ -83,6 +83,8 @@
   <sys:String x:Key="Exec.ValidityDone">Validity computed: {0} specimen(s) evaluated, {1} effective, excluded: {2}</sys:String>
   <sys:String x:Key="Exec.SampleLabel">Specimen </sys:String>
   <sys:String x:Key="Exec.NeedsSupplement">Fewer than 3 effective specimens — supplement the test</sys:String>
+  <sys:String x:Key="Exec.NeedsSupplementPrompt">Only {0} effective specimen(s) after exclusion (fewer than 3) — per clause 5.6 the test should be supplemented.</sys:String>
+  <sys:String x:Key="Common.Hint">Notice</sys:String>
   <sys:String x:Key="Exec.DefaultProject">Default project</sys:String>
   <sys:String x:Key="Exec.WorktableUp">Worktable up</sys:String>
   <sys:String x:Key="Exec.WorktableDown">Worktable down</sys:String>
