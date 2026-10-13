@@ -5,8 +5,18 @@ using ANX.Core;
 using ANX.Core.TestSheets;
 using ANX.Ui.Services;
 
-/// <summary>试件行：标题 + 字段表（都是"列名 → 文本"，界面不认识具体含义）。</summary>
-public sealed record SampleRow(string Title, IReadOnlyList<KeyValuePair<string, string>> Fields);
+/// <summary>
+/// 试件行：**试件号** + 显示标题 + 字段表（都是"列名 → 文本"，界面不认识具体含义）。
+///
+/// 试件号单独拿出来，是因为曲线是按 <c>单号-试件号</c> 存的（<c>BendingTestDetail.SampleKey</c>）。
+/// 之前从显示标题里 <c>Split(' ')[0]</c> 取，取到的是**列名**（"SampleID"）而不是值 ——
+/// 于是历史页的曲线一直读不到（回放图总是空的）。2026-10-13 核对回放标注时发现并修掉。
+/// </summary>
+public sealed record SampleRow(
+    string SampleId,
+    string Title,
+    IReadOnlyList<KeyValuePair<string, string>> Fields
+);
 
 /// <summary>
 /// 历史数据页 ViewModel：试验单列表（主）→ 试件列表（从）→ 曲线预览 → 导出报表。
@@ -52,6 +62,12 @@ public partial class HistoryViewModel : ViewModelBase
 
     /// <summary>曲线加载完成（页面据此重绘）。</summary>
     public event EventHandler<IReadOnlyList<CurvePoint>>? CurveLoaded;
+
+    /// <summary>
+    /// 当前选中试件的**曲线标注**（修正直线 / 修正原点 / 拟合区间两端）。没有拟合时为 null。
+    /// 页面在 <see cref="CurveLoaded"/> 处理里取它 —— 本属性**先于**事件赋值，页面读到的一定是本条曲线的。
+    /// </summary>
+    public CurveAnnotation? SelectedAnnotation { get; private set; }
 
     /// <summary>曲线横轴标题（按当前语言；语言切换后由页面重新取一次）。</summary>
     public string CurveXAxisTitle => L(_browser.CurveXAxisKey);
@@ -170,6 +186,7 @@ public partial class HistoryViewModel : ViewModelBase
     {
         Samples.Clear();
         SelectedSample = null;
+        SelectedAnnotation = null;
         CurveLoaded?.Invoke(this, []);
 
         if (sheet is null)
@@ -183,7 +200,8 @@ public partial class HistoryViewModel : ViewModelBase
             // 第一列当标题，其余列做字段表；界面不认识任何具体字段名
             var fields = row.ToArray();
             var title = fields.Length > 0 ? $"{fields[0].Key} {fields[0].Value}" : sheet.SheetId;
-            Samples.Add(new SampleRow(title, [.. fields.Skip(1)]));
+            var sampleId = fields.Length > 0 ? fields[0].Value : string.Empty;
+            Samples.Add(new SampleRow(sampleId, title, [.. fields.Skip(1)]));
         }
 
         SelectedSample = Samples.FirstOrDefault();
@@ -193,12 +211,30 @@ public partial class HistoryViewModel : ViewModelBase
     {
         if (sample is null || SelectedSheet is null)
         {
+            SelectedAnnotation = null;
             CurveLoaded?.Invoke(this, []);
             return;
         }
 
-        var sampleId = sample.Title.Split(' ', 2)[0];
-        var curve = await _browser.ReadCurveAsync(SelectedSheet.SheetId, sampleId);
+        var sampleId = sample.SampleId;
+        if (string.IsNullOrWhiteSpace(sampleId))
+        {
+            SelectedAnnotation = null;
+            CurveLoaded?.Invoke(this, []);
+            return;
+        }
+
+        var sheetId = SelectedSheet.SheetId;
+
+        // 老记录的首点是"启动试验时那个位置"（bug 期间的库），回放时按定义抹平到位移零点。
+        // 只影响画面：库里与报表用的是原始序列。
+        var curve = CurveDisplay.ZeroFirstPointX(
+            await _browser.ReadCurveAsync(sheetId, sampleId)
+        );
+
+        // **先**记标注再发事件：页面在事件处理里读 SelectedAnnotation，取的必须是本条曲线的
+        SelectedAnnotation = await _browser.ReadAnnotationAsync(sheetId, sampleId);
+
         CurveLoaded?.Invoke(this, curve);
     }
 }

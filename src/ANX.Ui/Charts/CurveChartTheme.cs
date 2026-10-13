@@ -34,6 +34,16 @@ public static class CurveChartTheme
     /// </summary>
     public static void EnsureChineseFont() => Fonts.Default = ChineseFontName();
 
+    /// <summary>
+    /// 曲线**标注**（峰值文字 / 修正直线 / 修正原点…）用的墨色：取主题主文字色。
+    /// 不能图省事用 ScottPlot 的默认字色 —— 那是黑的，深色主题下整条标注看不见。
+    /// 主题资源取不到时回落白色（深色主题下的兜底，与 <c>Apply</c> 的兜底口径一致）。
+    /// </summary>
+    public static Color AnnotationColor() =>
+        TryResolve("TextFillColorPrimaryBrush")
+        ?? TryResolve("TextFillColorSecondaryBrush")
+        ?? Color.FromHex("#FFFFFF");
+
     /// <summary>把当前主题的配色应用到图上，并把中文字体准备好。</summary>
     public static void Apply(WpfPlot plot, string themeName)
     {

@@ -126,7 +126,12 @@ public sealed class TestSequencer(TestRunProfile? profile = null)
                     // 位移被提前清零、挠度起算点错（用户 2026-10-12 真机发现）。
                     Phase = TestPhase.Loading;
                     _peak = sample;
-                    _curve.Add(new CurvePoint(sample.Displacement, sample.Load));
+                    // 曲线**第一点按定义记在位移零点**（X = 0）：接触这一帧就是位移零点。
+                    // 注意本帧的 sample.Displacement 还是**调零前**的值（带上一轮遗留的偏移或平台绝对位置）——
+                    // 上位机是在同一个 20ms 拍里才调零的（VM 的接触钩子调 ZeroDisplacementAsync），
+                    // 直接把它记下来，曲线就会从"启动试验时那个位置"画起（用户 2026-10-13 发现）。
+                    // 现役同口径：接触帧 `ActualDeformation := 0`。
+                    _curve.Add(new CurvePoint(0, sample.Load));
                 }
 
                 break;

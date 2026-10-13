@@ -59,7 +59,13 @@ public sealed class TestSequencerTests
         sequencer.OnSample(new TestSample(0.6, 0.5, 0.02));
         Assert.Equal(TestPhase.Loading, sequencer.Phase);
         Assert.Single(sequencer.Curve);
-        Assert.Equal(new CurvePoint(0.5, 0.6), sequencer.Curve[0]);
+        // 接触那一帧按定义是位移零点 → 第一点记 (0, 荷载)，不是调零前的 0.5
+        //（用户 2026-10-13：曲线起点不该是"启动试验时的位移"）
+        Assert.Equal(new CurvePoint(0, 0.6), sequencer.Curve[0]);
+
+        // 第二帧起照原样记实际净位移（只有第一点被钳到 0）
+        sequencer.OnSample(new TestSample(1.2, 0.7, 0.04));
+        Assert.Equal(new CurvePoint(0.7, 1.2), sequencer.Curve[1]);
     }
 
     /// <summary>

@@ -11,6 +11,9 @@ public partial class HistoryPage : INavigableView<HistoryViewModel>
 {
     private readonly IThemeService _theme;
 
+    /// <summary>当前画在图上的一条曲线（换主题 / 换语言时按它重画，含标注）。</summary>
+    private IReadOnlyList<CurvePoint> _curve = [];
+
     public HistoryPage(
         HistoryViewModel viewModel,
         IThemeService themeService,
@@ -46,21 +49,56 @@ public partial class HistoryPage : INavigableView<HistoryViewModel>
         CurvePlot.Plot.YLabel(ViewModel.CurveYAxisTitle);
 
         CurveChartTheme.Apply(CurvePlot, themeName);
+
+        // 标注的文字/标记色取自主题，换主题后必须**整幅重画**一次，否则留着旧墨色
+        // （深色主题下可能整条看不见）。曲线本身也跟着重画一次，代价可忽略。
+        Redraw();
     }
 
     private void OnCurveLoaded(object? sender, IReadOnlyList<CurvePoint> curve)
     {
+        _curve = curve;
+        Redraw();
+    }
+
+    /// <summary>把当前曲线与标注画出来（加载新曲线 / 换主题 / 换语言都走这里）。</summary>
+    private void Redraw()
+    {
         CurvePlot.Plot.Clear();
 
-        if (curve.Count > 0)
+        if (_curve.Count > 0)
         {
+            // 与试验执行页同一套显示口径：先抽稀（保住峰值/谷值/量程），再 AutoScale，
+            // 最后画标注（标注不参与量程，见 CurveAnnotator）。
+            var display = CurveDownsampler.Downsample(_curve, MaxDisplayPoints());
+
             CurvePlot.Plot.Add.ScatterLine(
-                curve.Select(p => p.X).ToArray(),
-                curve.Select(p => p.Y).ToArray()
+                display.Select(p => p.X).ToArray(),
+                display.Select(p => p.Y).ToArray()
             );
             CurvePlot.Plot.Axes.AutoScale();
         }
 
+        // 峰值点 + 修正直线 / 修正原点 / 拟合区间两端（与执行页共用同一个标注器，两处必然一致）
+        CurveAnnotator.Draw(CurvePlot.Plot, _curve, ViewModel.SelectedAnnotation);
+
         CurvePlot.Refresh();
     }
+
+    /// <summary>
+    /// 显示点数上限 = 绘图区像素宽 × 2（"每像素 1~2 点"），与执行页同一口径；
+    /// 宽度还没量出来时用兜底值。只影响画面，库里与报表都是全量点。
+    /// </summary>
+    private int MaxDisplayPoints()
+    {
+        var width = CurvePlot.ActualWidth;
+        var fromWidth = width > 0 ? (int)width * 2 : 0;
+        return Math.Max(
+            CurveDownsampler.MinimumPoints,
+            fromWidth > 0 ? fromWidth : FallbackMaxDisplayPoints
+        );
+    }
+
+    /// <summary>绘图区宽度量不出来时的兜底显示点数（与执行页同值）。</summary>
+    private const int FallbackMaxDisplayPoints = 2000;
 }

@@ -240,6 +240,13 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
             ["originCorrection"] = result.OriginCorrectionMM,
             ["maxStrain"] = result.MaxBendingTensileStrainMicro,
             ["correctedDeflection"] = result.CorrectedDeflectionMM,
+            // 下面四个键**不是指标卡**（界面按 key 找卡片，多出来的键会被忽略），
+            // 是给曲线图"修正直线 / 修正原点 / 拟合区间两端"标注用的（用户 2026-10-13）：
+            // 直线 y = k·x + b；关掉原点修正时判定器不拟合，k = b = 0。
+            ["tangentK"] = result.TangentK,
+            ["tangentB"] = result.TangentB,
+            ["originCorrectionStart"] = analysis.StartPercent,
+            ["originCorrectionEnd"] = analysis.EndPercent,
         };
     }
 

@@ -188,6 +188,13 @@ public partial class TestExecutionViewModel : ViewModelBase
     public event EventHandler? CurveCleared;
 
     /// <summary>
+    /// **试样完成后**给出曲线要标注的拟合信息（峰值点由页面自己从曲线取）。
+    /// 用户 2026-10-13 定的口径：只在完成时标注，不放过程中；参数表关掉原点修正时 <c>TangentK</c> = 0
+    /// （页面据此不画直线与交点）。
+    /// </summary>
+    public event EventHandler<CurveAnnotation>? CurveAnnotated;
+
+    /// <summary>
     /// **是否已接触试样**。点"启动试验"时置 false —— **接触成立**才置 true（用户 2026-10-12）：
     /// 它同时管三件事：① 峰值只在接触后累计；② 「试验持续时间」只在接触后显示；
     /// ③ 点启动时峰值/计时清零。一轮结束（finally）置回 false：显示值保留，但不再被空闲实时读数改写。
@@ -796,6 +803,24 @@ public partial class TestExecutionViewModel : ViewModelBase
                     card.Value = Format(value);
                 }
             }
+
+            // 拟合信息（不是卡片，界面上按 key 找不到卡片，只是被上面那轮循环忽略）→ 单独挑出来发给页面
+            CurveAnnotated?.Invoke(
+                this,
+                new CurveAnnotation(
+                    values.GetValueOrDefault("tangentK"),
+                    values.GetValueOrDefault("tangentB"),
+                    values.GetValueOrDefault("originCorrection"),
+                    values.GetValueOrDefault(
+                        "originCorrectionStart",
+                        CurveAnnotation.DefaultStartPercent
+                    ),
+                    values.GetValueOrDefault(
+                        "originCorrectionEnd",
+                        CurveAnnotation.DefaultEndPercent
+                    )
+                )
+            );
         }
 
         Append($"{L("Exec.SampleDone")} #{sampleId} · {sequencer.Curve.Count} {L("Exec.Points")}");

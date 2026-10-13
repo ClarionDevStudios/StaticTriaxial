@@ -1,5 +1,6 @@
 namespace ANX.Ui.Views.Pages;
 
+using ANX.Control;
 using ANX.Core;
 using ANX.Core.Control;
 using ANX.Ui.Charts;
@@ -23,6 +24,9 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
 
     /// <summary>有没有攒着还没画的新点（节流用：收点只置脏，到点才真画）。</summary>
     private bool _redrawPending;
+
+    /// <summary>试样完成后的标注内容（峰值点/修正直线/修正原点/拟合区间两端）；新一轮开始时清掉。</summary>
+    private CurveAnnotation? _annotation;
 
     /// <summary>
     /// 显示重画的最小间隔。**收点与画图解耦**：控制循环 50Hz 产点，界面每 100ms 至多画一次
@@ -56,6 +60,7 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
         // 先把 ViewModel 拿到手（不要依赖 DataContextChanged），再订阅曲线事件
         viewModel.CurvePointAdded += OnCurvePointAdded;
         viewModel.CurveCleared += OnCurveCleared;
+        viewModel.CurveAnnotated += OnCurveAnnotated;
 
         // 换主题 → 配色变；换语言 → 轴名变。两者都要重画一次。
         themeService.ThemeChanged += (_, themeName) => ApplyChartStyle(themeName);
@@ -133,6 +138,15 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
     private void OnCurveCleared(object? sender, EventArgs e)
     {
         _points.Clear();
+        _annotation = null; // 上一轮的峰值/修正直线跟着曲线一起清掉
+        _redrawPending = false;
+        Redraw();
+    }
+
+    /// <summary>试样完成：收下拟合信息并立刻重画一次（用户 2026-10-13：完成后才标注）。</summary>
+    private void OnCurveAnnotated(object? sender, CurveAnnotation annotation)
+    {
+        _annotation = annotation;
         _redrawPending = false;
         Redraw();
     }
@@ -166,6 +180,9 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
         RealtimePlot.Plot.YLabel(ViewModel.CurveYAxisTitle);
 
         CurveChartTheme.Apply(RealtimePlot, themeName);
+
+        // 标注的文字/标记色取自主题，换主题后必须整幅重画一次（否则留着旧墨色）
+        Redraw();
     }
 
     private void Redraw()
@@ -185,6 +202,10 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
             );
             RealtimePlot.Plot.Axes.AutoScale();
         }
+
+        // 标注用**全量**点找峰值（不是抽稀后的），并且放在 AutoScale 之后：
+        // 修正直线在尾部的延长值通常远高于峰值，让它参与量程会把曲线压扁（见 CurveAnnotator 的说明）。
+        CurveAnnotator.Draw(RealtimePlot.Plot, _points, _annotation);
 
         RealtimePlot.Refresh();
     }
