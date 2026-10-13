@@ -51,6 +51,14 @@
           Command="{Binding ViewModel.RestoreDefaultsCommand}"
           Content="{DynamicResource Param.RestoreDefaults}"
         />
+        <!-- 用户 2026-10-13 起本页是弹出窗体：靠导航栏离开的路没了，给一个明确的关闭 -->
+        <ui:Button
+          Width="110"
+          Margin="8,0,0,0"
+          Appearance="Secondary"
+          Command="{Binding ViewModel.CloseCommand}"
+          Content="{DynamicResource Param.Close}"
+        />
         <TextBlock
           Margin="14,0,0,0"
           VerticalAlignment="Center"

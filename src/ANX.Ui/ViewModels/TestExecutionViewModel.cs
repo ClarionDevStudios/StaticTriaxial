@@ -99,7 +99,21 @@ public partial class TestExecutionViewModel : ViewModelBase
     private readonly ITestDeviceController? _device;
     private readonly ICurrentSheetContext? _currentSheet;
     private readonly INavigationService? _navigation;
+    private readonly IModalPageService? _modalPages;
     private readonly IReportExportService? _exporter;
+
+    /// <summary>「试验单」弹窗尺寸（单号编辑区 460 宽 + 已有单列表 + 底部按钮）。</summary>
+    private const double SheetDialogWidth = 780;
+
+    private const double SheetDialogHeight = 640;
+
+    /// <summary>
+    /// 「试验参数」弹窗尺寸：内容要**并排**放运行期 / 计算期两张卡（各 620 宽 + 边距），
+    /// 窄了 WrapPanel 就换行（用户 2026-10-12 要求水平排列）。
+    /// </summary>
+    private const double ParameterDialogWidth = 1340;
+
+    private const double ParameterDialogHeight = 800;
     private readonly Dictionary<string, double> _peaks = new(StringComparer.Ordinal);
     private TestSequencer? _sequencer;
     private readonly MotorStallGuard _stallGuard = new();
@@ -124,7 +138,8 @@ public partial class TestExecutionViewModel : ViewModelBase
         ITestDeviceController? device = null,
         ICurrentSheetContext? currentSheet = null,
         INavigationService? navigation = null,
-        IReportExportService? exporter = null
+        IReportExportService? exporter = null,
+        IModalPageService? modalPages = null
     )
         : base(localization)
     {
@@ -133,6 +148,14 @@ public partial class TestExecutionViewModel : ViewModelBase
         _currentSheet = currentSheet;
         _navigation = navigation;
         _exporter = exporter;
+        _modalPages = modalPages;
+
+        // 试验单弹窗确定后当前试验单会变 —— 立即把单号显示刷过来（用户 2026-10-13：
+        // 试验单改成弹窗后不再有"确定即导航回来"的那次刷新）
+        if (_currentSheet is not null)
+        {
+            _currentSheet.Changed += OnCurrentSheetChanged;
+        }
 
         foreach (var definition in execution.Metrics)
         {
@@ -153,6 +176,18 @@ public partial class TestExecutionViewModel : ViewModelBase
 
     /// <summary>方法名（标题栏用）。</summary>
     public string HeaderText => $"{_execution.MethodName}（{_execution.MethodCode}）";
+
+    /// <summary>当前试验单变了（试验单弹窗里新建或选中）：刷新单号显示并记一行日志。</summary>
+    private void OnCurrentSheetChanged(object? sender, EventArgs e)
+    {
+        if (_currentSheet?.SheetId is not { Length: > 0 } sheetId)
+        {
+            return;
+        }
+
+        SheetText = sheetId;
+        Append($"{L("Exec.SheetSelected")} {sheetId}");
+    }
 
     /// <summary>规范依据。</summary>
     public string StandardText => _execution.StandardReference;
@@ -507,15 +542,30 @@ public partial class TestExecutionViewModel : ViewModelBase
     [RelayCommand]
     private void ClearLog() => Log.Clear();
 
-    /// <summary>去试验单页（新建 / 选择已有）。</summary>
+    /// <summary>
+    /// 打开「试验单」弹窗（新建 / 选择已有；用户 2026-10-13 改成**弹出窗体**）。
+    /// 确定后当前试验单会变，执行页靠 <see cref="ICurrentSheetContext.Changed"/> 刷新单号，不必再导航一次。
+    /// </summary>
     [RelayCommand]
     private void OpenSheetSelection() =>
-        _navigation?.Navigate(typeof(Views.Pages.SheetSelectionPage));
+        _modalPages?.Show(
+            typeof(Views.Pages.SheetSelectionPage),
+            SheetDialogWidth,
+            SheetDialogHeight
+        );
 
-    /// <summary>去参数配置页。</summary>
+    /// <summary>
+    /// 打开「试验参数」弹窗（用户 2026-10-13 改成**弹出窗体**）。
+    /// 宽度要够并排放两张卡片（运行期 / 计算期各 620 宽）—— 用户 2026-10-12 明确要求两者水平排列，
+    /// 窗口一窄 WrapPanel 就会换行。
+    /// </summary>
     [RelayCommand]
     private void OpenMachineSettings() =>
-        _navigation?.Navigate(typeof(Views.Pages.MachineSettingsPage));
+        _modalPages?.Show(
+            typeof(Views.Pages.MachineSettingsPage),
+            ParameterDialogWidth,
+            ParameterDialogHeight
+        );
 
     /// <summary>去试样编辑页。</summary>
     [RelayCommand]

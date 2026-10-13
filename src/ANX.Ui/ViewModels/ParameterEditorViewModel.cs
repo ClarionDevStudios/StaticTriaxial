@@ -29,8 +29,11 @@ public partial class ParameterTabView(string title, IReadOnlyList<ParameterGroup
 /// <summary>
 /// **方法参数**编辑页基类：按分组（机器 / 试件）分页、页内按作用时点分区，读写方法参数表。
 /// 试件尺寸**不属于这里** —— 它是试样信息（见 <see cref="SampleInfoViewModel"/>，用户 2026-10-12 明确）。
+///
+/// 用户 2026-10-13 起本页以**弹出窗体**打开（见 <see cref="IModalPageService"/>），
+/// 所以底部给了一个「关闭」—— 以前靠导航栏离开，现在得让窗体自己关得掉。
 /// </summary>
-public abstract partial class ParameterEditorViewModel : EditableRowsViewModel
+public abstract partial class ParameterEditorViewModel : EditableRowsViewModel, IModalDialogViewModel
 {
     private readonly ITestParameters _parameters;
 
@@ -71,6 +74,13 @@ public abstract partial class ParameterEditorViewModel : EditableRowsViewModel
 
     /// <summary>页签（比照现役配置窗体）：通道设置 + 试验参数。</summary>
     public ObservableCollection<ParameterTabView> Tabs { get; } = [];
+
+    /// <inheritdoc />
+    public event EventHandler<bool>? CloseRequested;
+
+    /// <summary>关闭弹窗（参数改动只有点了「保存」才落地，所以这里不给"确定"语义）。</summary>
+    [RelayCommand]
+    private void Close() => CloseRequested?.Invoke(this, false);
 
     [ObservableProperty]
     private ParameterTabView? _selectedTab;
@@ -144,8 +154,8 @@ public abstract partial class ParameterEditorViewModel : EditableRowsViewModel
         ];
     }
 
-    /// <summary>进页面时自动载入当前值。</summary>
-    public override void OnNavigatedTo() => _ = ReloadFromStoreAsync();
+    /// <summary>打开时自动载入当前值（导航页与弹窗都走这里，用户 2026-10-13）。</summary>
+    public override void OnOpened() => _ = ReloadFromStoreAsync();
 
     private async Task ReloadFromStoreAsync()
     {

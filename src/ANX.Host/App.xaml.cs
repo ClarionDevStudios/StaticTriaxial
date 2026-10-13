@@ -149,18 +149,21 @@ public partial class App
                     sp.GetService<ITestDeviceController>(),
                     sp.GetRequiredService<ICurrentSheetContext>(),
                     sp.GetRequiredService<INavigationService>(),
-                    sp.GetRequiredService<IReportExportService>()
+                    sp.GetRequiredService<IReportExportService>(),
+                    sp.GetRequiredService<IModalPageService>()
                 ));
                 _ = services.AddSingleton<TestExecutionPage>();
 
                 // 当前试验单上下文 + 试验单页
                 _ = services.AddSingleton<ICurrentSheetContext, CurrentSheetContext>();
+
+                // 把页面当**弹出窗体**打开（用户 2026-10-13：试验参数页、试验单页改弹窗）
+                _ = services.AddSingleton<IModalPageService, ModalPageService>();
                 _ = services.AddSingleton(sp => new SheetSelectionViewModel(
                     sp.GetRequiredService<ILocalizationService>(),
                     sp.GetRequiredService<ITestExecution>(),
                     sp.GetRequiredService<ITestSheetBrowser>(),
-                    sp.GetRequiredService<ICurrentSheetContext>(),
-                    sp.GetRequiredService<INavigationService>()
+                    sp.GetRequiredService<ICurrentSheetContext>()
                 ));
                 _ = services.AddSingleton<SheetSelectionPage>();
 

@@ -6,31 +6,32 @@ using ANX.Ui.Services;
 using Wpf.Ui;
 
 /// <summary>
-/// 试验单页：顶部 RadioButton 切"新建试验单 / 选择已有试验单"，中部随模式切换，下部确定 / 取消。
-/// 确定后把选定的单交给 <see cref="ICurrentSheetContext"/>，再导航到试验执行页。
+/// 试验单页（用户 2026-10-13 起改为**弹出窗体**）：顶部 RadioButton 切"新建试验单 / 选择已有试验单"，
+/// 中部随模式切换，下部确定 / 取消。确定后把选定的单交给 <see cref="ICurrentSheetContext"/>，
+/// 再通知宿主窗口关闭（试验执行页监听上下文变化刷新单号，不需要再导航一次）。
 /// </summary>
-public partial class SheetSelectionViewModel : ViewModelBase
+public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewModel
 {
     private readonly ITestExecution _execution;
     private readonly ITestSheetBrowser _browser;
     private readonly ICurrentSheetContext _current;
-    private readonly INavigationService _navigation;
 
     public SheetSelectionViewModel(
         ILocalizationService localization,
         ITestExecution execution,
         ITestSheetBrowser browser,
-        ICurrentSheetContext current,
-        INavigationService navigation
+        ICurrentSheetContext current
     )
         : base(localization)
     {
         _execution = execution;
         _browser = browser;
         _current = current;
-        _navigation = navigation;
         Status = L("Sheet.Ready");
     }
+
+    /// <inheritdoc />
+    public event EventHandler<bool>? CloseRequested;
 
     /// <summary>true = 新建试验单；false = 选择已有试验单。</summary>
     [ObservableProperty]
@@ -69,8 +70,8 @@ public partial class SheetSelectionViewModel : ViewModelBase
         }
     }
 
-    /// <summary>进页面时若停在「选择已有试验单」模式，重新查一次（列表可能是上次留下的旧数据）。</summary>
-    public override void OnNavigatedTo()
+    /// <summary>打开时若停在「选择已有试验单」模式，重新查一次（列表可能是上次留下的旧数据）。</summary>
+    public override void OnOpened()
     {
         if (IsExistingSheet)
         {
@@ -116,10 +117,11 @@ public partial class SheetSelectionViewModel : ViewModelBase
             Status = $"{L("Sheet.Selected")} {SelectedExisting.SheetId}";
         }
 
-        _navigation.Navigate(typeof(Views.Pages.TestExecutionPage));
+        // 结果交给弹窗宿主（不再导航：调用方本来就是试验执行页，回来即可）
+        CloseRequested?.Invoke(this, true);
     }
 
-    /// <summary>取消：回到首页。</summary>
+    /// <summary>取消：什么都不做，关掉弹窗。</summary>
     [RelayCommand]
-    private void Cancel() => _navigation.Navigate(typeof(Views.Pages.HomePage));
+    private void Cancel() => CloseRequested?.Invoke(this, false);
 }

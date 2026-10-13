@@ -1,11 +1,15 @@
 namespace ANX.Ui.Views.Pages;
 
+using ANX.Ui.Services;
 using ANX.Ui.Views;
 using ANX.Ui.ViewModels;
 using Wpf.Ui.Abstractions.Controls;
 
-/// <summary>试验单页：新建或选择已有试验单，然后进执行页。</summary>
-public partial class SheetSelectionPage : INavigableView<SheetSelectionViewModel>
+/// <summary>
+/// 试验单页：新建或选择已有试验单（用户 2026-10-13 起以**弹出窗体**方式打开，
+/// 见 <see cref="IModalPageService"/>）。
+/// </summary>
+public partial class SheetSelectionPage : INavigableView<SheetSelectionViewModel>, IModalPage
 {
     public SheetSelectionPage(SheetSelectionViewModel viewModel)
     {
@@ -19,4 +23,16 @@ public partial class SheetSelectionPage : INavigableView<SheetSelectionViewModel
     }
 
     public SheetSelectionViewModel ViewModel { get; }
+
+    /// <summary>
+    /// 把 ViewModel 的关窗请求转发给弹窗宿主（页面 DataContext 是自己，宿主拿不到 ViewModel）。
+    /// </summary>
+    public event EventHandler<bool>? CloseRequested
+    {
+        add => ViewModel.CloseRequested += value;
+        remove => ViewModel.CloseRequested -= value;
+    }
+
+    /// <inheritdoc />
+    public void OnDialogOpened() => ViewModel.OnOpened();
 }

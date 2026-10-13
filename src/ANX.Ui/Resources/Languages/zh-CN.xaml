@@ -137,6 +137,7 @@
   <sys:String x:Key="Param.ConfirmTitle">确认</sys:String>
   <sys:String x:Key="Param.ReloadConfirm">「{0}」有未保存的修改，重新载入会丢弃它们。继续？</sys:String>
   <sys:String x:Key="Param.RestoreDefaults">恢复默认</sys:String>
+  <sys:String x:Key="Param.Close">关闭</sys:String>
   <sys:String x:Key="Param.RestoreDefaultsConfirm">把「{0}」的参数恢复为默认值？当前编辑内容会被丢弃（恢复后仍需点保存）。</sys:String>
   <sys:String x:Key="Param.RestoreDefaultsDone">已恢复默认值（尚未保存）</sys:String>
   <sys:String x:Key="Param.Invalid">有 {0} 项不合法，未保存</sys:String>

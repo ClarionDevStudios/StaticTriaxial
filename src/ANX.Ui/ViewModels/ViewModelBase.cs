@@ -19,6 +19,7 @@ public abstract class ViewModelBase : ObservableObject, INavigationAware
     public Task OnNavigatedToAsync()
     {
         OnNavigatedTo();
+        OnOpened();
         return Task.CompletedTask;
     }
 
@@ -30,6 +31,13 @@ public abstract class ViewModelBase : ObservableObject, INavigationAware
 
     /// <summary>进入本页后调用。</summary>
     public virtual void OnNavigatedTo() { }
+
+    /// <summary>
+    /// 页面**被显示出来**时调用。导航进入走 <see cref="OnNavigatedTo"/>、
+    /// 作为**弹出窗体**弹出走 <see cref="OnOpened"/>（两条路都会调到这里，用户 2026-10-13）。
+    /// 页面只实现 <see cref="OnOpened"/> 就能"当页用"与"当弹窗用"都自动刷新数据。
+    /// </summary>
+    public virtual void OnOpened() { }
 
     /// <summary>离开本页前调用。</summary>
     public virtual void OnNavigatedFrom() { }
