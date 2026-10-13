@@ -853,6 +853,11 @@ public partial class TestExecutionViewModel : ViewModelBase
 
     private async Task RunOneSampleAsync()
     {
+        // 列表里选中哪件就跑哪件 —— **必须在任何列表刷新之前**取下来：
+        // 下面刷新试样信息列表时会把 SelectedSample 清空（换单/换数据本来就该清），
+        // 取晚了就会退化成"新建下一件"（2026-10-13 第一版就踩了这个）。
+        var pickedSampleId = SelectedSample?.SampleId;
+
         // 试验单页选过单就用它；否则自己建一张
         if (_currentSheet?.SheetId is { Length: > 0 } selected
             && !string.Equals(selected, _sheetId, StringComparison.Ordinal))
@@ -870,8 +875,12 @@ public partial class TestExecutionViewModel : ViewModelBase
         // 自动建的单也要让"试样信息列表"跟着（列的是本单的试样）
         await ReloadSampleRowsAsync();
 
-        // 试件号由方法侧按库里已有明细算，避免覆盖同号试件
-        var sampleId = await _execution.NextSampleIdAsync(_sheetId);
+        // 试件号：**列表里选中哪一件就跑哪一件**（用户 2026-10-13 反馈：选了 3 却新增了 S027）——
+        // 判定落库是"有则更新、无则追加"，所以重跑未完成的件会覆盖它自己的曲线与结果，不会多出一行。
+        // 没选中任何条目时才新建下一件（号码由方法侧按库里已有明细算）。
+        var sampleId = pickedSampleId is { Length: > 0 }
+            ? pickedSampleId
+            : await _execution.NextSampleIdAsync(_sheetId);
         _sampleCounter++;
 
         // 运行参数从**参数表**来（接触阈值 / 破坏判据 / 确认帧数 / 加载速率），不再用写死的默认值
