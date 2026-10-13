@@ -114,6 +114,11 @@ public partial class TestExecutionViewModel : ViewModelBase
     private const double ParameterDialogWidth = 1340;
 
     private const double ParameterDialogHeight = 800;
+
+    /// <summary>「试样信息填录」弹窗尺寸（一张 980 宽的卡 + 顶部工具条）。</summary>
+    private const double SampleDialogWidth = 1060;
+
+    private const double SampleDialogHeight = 620;
     private readonly Dictionary<string, double> _peaks = new(StringComparer.Ordinal);
     private TestSequencer? _sequencer;
     private readonly MotorStallGuard _stallGuard = new();
@@ -567,10 +572,17 @@ public partial class TestExecutionViewModel : ViewModelBase
             ParameterDialogHeight
         );
 
-    /// <summary>去试样编辑页。</summary>
+    /// <summary>
+    /// 打开「试样信息填录」弹窗（新建试样 / 编辑试样两个按钮都走这里；用户 2026-10-13 改成弹出窗体）。
+    /// 改动只有点了弹窗里的「保存」才落地，关闭只是关掉。
+    /// </summary>
     [RelayCommand]
     private void OpenSampleEditor() =>
-        _navigation?.Navigate(typeof(Views.Pages.SampleEditorPage));
+        _modalPages?.Show(
+            typeof(Views.Pages.SampleEditorPage),
+            SampleDialogWidth,
+            SampleDialogHeight
+        );
 
     /// <summary>去历史数据页（报表导出的入口在那里）。</summary>
     [RelayCommand]

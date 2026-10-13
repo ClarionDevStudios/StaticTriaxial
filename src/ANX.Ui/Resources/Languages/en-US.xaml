@@ -137,7 +137,7 @@
   <sys:String x:Key="Param.ConfirmTitle">Confirm</sys:String>
   <sys:String x:Key="Param.ReloadConfirm">"{0}" has unsaved changes; reloading discards them. Continue?</sys:String>
   <sys:String x:Key="Param.RestoreDefaults">Restore defaults</sys:String>
-  <sys:String x:Key="Param.Close">Close</sys:String>
+  <sys:String x:Key="Common.Close">Close</sys:String>
   <sys:String x:Key="Param.RestoreDefaultsConfirm">Restore defaults for "{0}"? Current edits will be discarded (you still need to save).</sys:String>
   <sys:String x:Key="Param.RestoreDefaultsDone">Defaults restored (not saved yet)</sys:String>
   <sys:String x:Key="Param.Invalid">{0} value(s) invalid; not saved</sys:String>
