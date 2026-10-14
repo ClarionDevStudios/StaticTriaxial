@@ -120,6 +120,8 @@
   <sys:String x:Key="Sheet.SheetId">Sheet no.</sys:String>
   <sys:String x:Key="Sheet.SheetIdAuto">Sheet no. is generated automatically and read-only; it is issued when you click OK</sys:String>
   <sys:String x:Key="Sheet.SheetIdPicked">Keeps the selected sheet's number (read-only)</sys:String>
+  <sys:String x:Key="Sheet.SheetIdEdit">Sheet no. is read-only; changes here are written back to that sheet</sys:String>
+  <sys:String x:Key="Sheet.Updated">Updated</sys:String>
   <sys:String x:Key="Sheet.SectionInfo">Test sheet</sys:String>
   <sys:String x:Key="Sheet.OptionalHint">Fields marked * are required; these may be left empty:</sys:String>
   <sys:String x:Key="Sheet.ReadTemplate">Load template</sys:String>

@@ -190,7 +190,7 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
     /// 清单照现役 `TEditBendingTestForm.ValidatingInput`（且照现役只在**新建**时校验：
     /// `if grpSheetMode.ItemIndex &gt; 0 then Exit(True)`）：项目名称、试验规范、试验目的、试件尺寸、
     /// 混合料类型、试验温度、加载速率；体积指标 6 项**不校验**（用户 2026-10-14：允许留空）。
-    /// 界面侧同一口径：`SheetEditMode` 只有新建模式可编辑，采用已有单时整页只读（用户 2026-10-14）。
+    /// **改已有单也走同一套校验**（用户 2026-10-14：保存前要做输入值验证）—— 比现役严，是用户要的。
     /// </summary>
     private static void ValidateSheetFields(IReadOnlyDictionary<string, string> fields)
     {
@@ -213,23 +213,179 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
             }
         }
 
-        // 现役对试验温度与加载速率还要求"能解析成数字"（TryStrToFloat / TryStrToInt）
-        foreach (var key in new[] { BendingSheetFields.TemperatureKey, BendingSheetFields.LoadRateKey })
+        foreach (var definition in BendingSheetFields.Definitions)
         {
-            if (
-                !double.TryParse(
-                    fields[key].Trim(),
-                    System.Globalization.NumberStyles.Float,
-                    System.Globalization.CultureInfo.InvariantCulture,
-                    out _
-                )
-            )
+            var text = fields.GetValueOrDefault(definition.Key)?.Trim() ?? string.Empty;
+            if (text.Length == 0)
             {
-                throw new InvalidOperationException(
-                    key == BendingSheetFields.TemperatureKey ? "试验温度格式不对" : "加载速率格式不对"
-                );
+                continue; // 留空只有"必填"那条管得着，上面已经查过
+            }
+
+            switch (definition.Kind)
+            {
+                case ParameterKind.Number:
+                    // 现役对温度/速率要求能转数字（TryStrToFloat / TryStrToInt）；体积指标也一样，
+                    // 免得"填了 abc 却悄悄不落库"（那是最难查的假旋钮）
+                    if (
+                        !double.TryParse(
+                            text,
+                            System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            out var number
+                        )
+                    )
+                    {
+                        throw new InvalidOperationException($"{definition.DisplayName.TrimEnd(' ', '*')}格式不对");
+                    }
+
+                    if (
+                        (definition.Minimum is { } min && number < min)
+                        || (definition.Maximum is { } max && number > max)
+                    )
+                    {
+                        throw new InvalidOperationException(
+                            $"{definition.DisplayName.TrimEnd(' ', '*')}必须在 "
+                                + $"{definition.Minimum?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "−∞"}~"
+                                + $"{definition.Maximum?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "+∞"}"
+                                + $" 之间"
+                        );
+                    }
+
+                    break;
+
+                case ParameterKind.Choice:
+                    if (
+                        !int.TryParse(
+                            text,
+                            System.Globalization.NumberStyles.Integer,
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            out var choice
+                        )
+                        || definition.Options is not { } options
+                        || choice < 0
+                        || choice >= options.Count
+                    )
+                    {
+                        throw new InvalidOperationException($"请选择{definition.DisplayName.TrimEnd(' ', '*')}");
+                    }
+
+                    break;
             }
         }
+    }
+
+    /// <inheritdoc />
+    public async Task UpdateSheetAsync(
+        string sheetId,
+        IReadOnlyDictionary<string, string> fields,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ValidateSheetFields(fields);
+
+        // 单号与试验时间不归这一步管：单号是主键（也是 WHERE 条件），试验时间是该单的原始记录
+        var payload = fields
+            .Where(pair => pair.Key is not ("SheetID" or "CreatedOn"))
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+
+        // 留空的列要**真的变 NULL**（体积指标允许留空），所以带上空值
+        await sheets
+            .UpdateMainFieldsAsync(
+                sheetId,
+                BuildMainColumns(payload, includeBlank: true),
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+
+        // 与新建对称：改完单，把这一单的加载速率也写回参数表（实际控制按它走）
+        await PushTestConditionsAsync(sheetId, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// 把界面填的一组字段翻译成主表列：数值列按 double、选项列按代号（0/1/2），
+    /// 并补齐现役那种 `XxxId + XxxDesc` 成对写法（`TestSpecificationsDesc` / `TestObjective` / `SampleSizeDesc`）。
+    /// 空值默认跳过（留给数据库 NULL，体积指标允许留空）；<paramref name="includeBlank"/> = true 时
+    /// 把空值也写进列（值 = null），用于"改已有单时把原来填过的值清掉"。
+    /// </summary>
+    private static Dictionary<string, object?> BuildMainColumns(
+        IReadOnlyDictionary<string, string> fields,
+        bool includeBlank = false
+    )
+    {
+        var columns = new Dictionary<string, object?>(StringComparer.Ordinal);
+
+        foreach (var definition in BendingSheetFields.Definitions)
+        {
+            if (!fields.TryGetValue(definition.Key, out var text))
+            {
+                continue;
+            }
+
+            text = text?.Trim() ?? string.Empty;
+            if (text.Length == 0)
+            {
+                if (includeBlank)
+                {
+                    columns[definition.Key] = null;
+
+                    if (DescriptionColumn(definition.Key) is { } blankDesc)
+                    {
+                        columns[blankDesc] = null;
+                    }
+                }
+
+                continue;
+            }
+
+            switch (definition.Kind)
+            {
+                case ParameterKind.Number:
+                    if (
+                        double.TryParse(
+                            text,
+                            System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            out var number
+                        )
+                    )
+                    {
+                        columns[definition.Key] = number;
+                    }
+
+                    break;
+
+                case ParameterKind.Choice:
+                    if (
+                        int.TryParse(
+                            text,
+                            System.Globalization.NumberStyles.Integer,
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            out var choice
+                        )
+                    )
+                    {
+                        columns[definition.Key] = choice;
+
+                        var label = definition.Options?.FirstOrDefault(
+                            option =>
+                                string.Equals(option.Value, text, StringComparison.Ordinal)
+                        )?.Label;
+
+                        if (label is { Length: > 0 } && DescriptionColumn(definition.Key) is { } desc)
+                        {
+                            columns[desc] = label;
+                        }
+                    }
+
+                    break;
+
+                default:
+                    columns[definition.Key] = text;
+                    break;
+            }
+        }
+
+        return columns;
     }
 
     /// <inheritdoc />
@@ -339,81 +495,6 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
 
     /// <summary>模板表里没有的字段（单号自动生成、试验时间每次现取）。</summary>
     private static readonly string[] TemplateExcludedKeys = ["SheetID", "CreatedOn"];
-
-    /// <summary>
-    /// 把界面填的一组字段翻译成主表列：数值列按 double、选项列按代号（0/1/2），
-    /// 并补齐现役那种 `XxxId + XxxDesc` 成对写法（`TestSpecificationsDesc` / `TestObjective` / `SampleSizeDesc`）。
-    /// 空值不写（留给数据库 NULL，体积指标允许留空）。
-    /// </summary>
-    private static Dictionary<string, object?> BuildMainColumns(
-        IReadOnlyDictionary<string, string> fields
-    )
-    {
-        var columns = new Dictionary<string, object?>(StringComparer.Ordinal);
-
-        foreach (var definition in BendingSheetFields.Definitions)
-        {
-            if (!fields.TryGetValue(definition.Key, out var text))
-            {
-                continue;
-            }
-
-            text = text?.Trim() ?? string.Empty;
-            if (text.Length == 0)
-            {
-                continue;
-            }
-
-            switch (definition.Kind)
-            {
-                case ParameterKind.Number:
-                    if (
-                        double.TryParse(
-                            text,
-                            System.Globalization.NumberStyles.Float,
-                            System.Globalization.CultureInfo.InvariantCulture,
-                            out var number
-                        )
-                    )
-                    {
-                        columns[definition.Key] = number;
-                    }
-
-                    break;
-
-                case ParameterKind.Choice:
-                    if (
-                        int.TryParse(
-                            text,
-                            System.Globalization.NumberStyles.Integer,
-                            System.Globalization.CultureInfo.InvariantCulture,
-                            out var choice
-                        )
-                    )
-                    {
-                        columns[definition.Key] = choice;
-
-                        var label = definition.Options?.FirstOrDefault(
-                            option =>
-                                string.Equals(option.Value, text, StringComparison.Ordinal)
-                        )?.Label;
-
-                        if (label is { Length: > 0 } && DescriptionColumn(definition.Key) is { } desc)
-                        {
-                            columns[desc] = label;
-                        }
-                    }
-
-                    break;
-
-                default:
-                    columns[definition.Key] = text;
-                    break;
-            }
-        }
-
-        return columns;
-    }
 
     /// <summary>选项列对应的"描述列"（现役 `XxxId + XxxDesc` 成对；试验目的的 Desc 列叫 `TestObjective`）。</summary>
     private static string? DescriptionColumn(string key) =>

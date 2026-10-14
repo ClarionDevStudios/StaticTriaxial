@@ -32,7 +32,10 @@ public static class BendingSheetFields
     /// <summary>混合料类型（现役 AsphaltMixtureType）。</summary>
     public const string MixtureTypeKey = "MixtureType";
 
-    /// <summary>该单的试验温度（℃）——只有记录用途，参数表里没有对应项。</summary>
+    /// <summary>
+    /// 该单的试验温度（℃）——记录在单上、进报表，**控制环节不读它**。
+    /// 参数表里没有对应项：新建时按**规范要求的 15℃**（低温弯拉 −10℃）做缺省（用户 2026-10-14）。
+    /// </summary>
     public const string TemperatureKey = "TestTemperature";
 
     /// <summary>该单的加载速率（mm/min）——保存时写回参数表，实际控制按它走。</summary>
@@ -117,7 +120,9 @@ public static class BendingSheetFields
         Text("Operator", "试验员"),
 
         // r10
-        Number(LoadRateKey, "加载速率 *", "mm/min", "50"),
+        // 加载速率这一项**会写回参数表、实际控制按它走**，所以范围与参数表声明一致（0.1~50）：
+        // 电机上限 50mm/min，超了伺服宕机（用户 2026-10-11 明确）
+        Number(LoadRateKey, "加载速率 *", "mm/min", "50", minimum: 0.1, maximum: 50),
     ];
 
     private static ParameterDefinition Text(
@@ -142,7 +147,9 @@ public static class BendingSheetFields
         string displayName,
         string unit,
         string defaultValue = "",
-        ParameterGroup group = ParameterGroup.Sheet
+        ParameterGroup group = ParameterGroup.Sheet,
+        double? minimum = null,
+        double? maximum = null
     ) =>
         new(
             key,
@@ -151,6 +158,8 @@ public static class BendingSheetFields
             defaultValue,
             group,
             ParameterKind.Number,
+            Minimum: minimum,
+            Maximum: maximum,
             Scope: ParameterScope.Computation
         );
 

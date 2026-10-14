@@ -120,6 +120,8 @@
   <sys:String x:Key="Sheet.SheetId">试验单号</sys:String>
   <sys:String x:Key="Sheet.SheetIdAuto">试验单号自动生成、只读；点「确定」时才真正发号</sys:String>
   <sys:String x:Key="Sheet.SheetIdPicked">沿用所选试验单的单号（只读）</sys:String>
+  <sys:String x:Key="Sheet.SheetIdEdit">单号只读；这里改动的内容会写回该试验单</sys:String>
+  <sys:String x:Key="Sheet.Updated">已更新</sys:String>
   <sys:String x:Key="Sheet.SectionInfo">试验单信息</sys:String>
   <sys:String x:Key="Sheet.OptionalHint">带 * 为必填项；以下各项允许留空：</sys:String>
   <sys:String x:Key="Sheet.ReadTemplate">读取模板</sys:String>

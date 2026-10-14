@@ -186,6 +186,74 @@ public sealed class BendingSheetEditorTests : IDisposable
             );
 
     [Fact]
+    public async Task 改已有试验单写回主表_含清空列与验证()
+    {
+        var (sheets, execution, parameters) = Create();
+
+        var created = FullFields();
+        created["LoadRate"] = "50";
+        created["SampleDensity"] = "2.45";
+        created["VoidRatio"] = "4.2";
+
+        var sheetId = await execution.CreateSheetAsync(created);
+
+        // 改：换项目名称 / 换试验目的（成对描述列要跟着变）/ 加载速率改成现场值 / 把空隙率清空
+        var edited = FullFields();
+        edited["ProjectName"] = "改过的项目名称";
+        edited["TestObjectiveId"] = "1";
+        edited["TestTemperature"] = "-10";
+        edited["LoadRate"] = "2";
+        edited["SampleDensity"] = "2.45";
+        edited["VoidRatio"] = string.Empty;
+
+        await execution.UpdateSheetAsync(sheetId, edited);
+
+        var loaded = await execution.ReadSheetInfoAsync(sheetId);
+        Assert.Equal("改过的项目名称", loaded["ProjectName"]);
+        Assert.Equal("1", loaded["TestObjectiveId"]);
+        Assert.Equal("-10", loaded["TestTemperature"]);
+        Assert.Equal("2", loaded["LoadRate"]);
+        Assert.Equal("2.45", loaded["SampleDensity"]);
+        Assert.Equal(string.Empty, loaded["VoidRatio"]); // 清空 = 列变 NULL
+
+        // Id + Desc 成对列跟着改（现役写法）
+        var row = sheets.ReadMainRow(sheetId, ["TestObjective", "SheetID", "CreatedOn"]);
+        Assert.Equal("低温弯拉性能", Convert.ToString(row["TestObjective"]));
+        Assert.Equal(sheetId, Convert.ToString(row["SheetID"])); // 单号不变
+
+        // 加载速率照样写回参数表（改单也是"这一单实际要用的速率"）
+        Assert.Equal("2", (await parameters.LoadAsync())["LoadRate"]);
+
+        // 验证同样拦得住：必填项被清掉、数字填成文字、速率超过电机上限
+        var missingName = new Dictionary<string, string>(edited, StringComparer.Ordinal)
+        {
+            ["ProjectName"] = string.Empty,
+        };
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => execution.UpdateSheetAsync(sheetId, missingName)
+        );
+
+        var badNumber = new Dictionary<string, string>(edited, StringComparer.Ordinal)
+        {
+            ["VoidRatio"] = "不是数字",
+        };
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => execution.UpdateSheetAsync(sheetId, badNumber)
+        );
+
+        var tooFast = new Dictionary<string, string>(edited, StringComparer.Ordinal)
+        {
+            ["LoadRate"] = "60",
+        };
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => execution.UpdateSheetAsync(sheetId, tooFast)
+        );
+
+        // 拦下之后库里没被改坏
+        Assert.Equal("改过的项目名称", (await execution.ReadSheetInfoAsync(sheetId))["ProjectName"]);
+    }
+
+    [Fact]
     public async Task 模板可以存也可以读()
     {
         var (_, execution, _) = Create();

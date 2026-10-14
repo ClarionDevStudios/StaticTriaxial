@@ -41,6 +41,17 @@ public interface ITestSheetEditor
     );
 
     /// <summary>
+    /// 把表单内容**写回一张已有的试验单**（用户 2026-10-14：这是"改已有单信息"的入口）。
+    /// 保存前同样做输入值验证（必填 / 数字格式 / 取值范围），不通过就抛消息让界面显示；
+    /// 单号与试验时间不在可改范围（界面也不让改）。字段留空 = 把该列清成 NULL（体积指标允许留空）。
+    /// </summary>
+    Task UpdateSheetAsync(
+        string sheetId,
+        IReadOnlyDictionary<string, string> fields,
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>
     /// 把**该单的试验条件**写回参数表（用户 2026-10-14：实际控制按单上填的加载速率走）。
     /// 新建后与"采用已有单"后各调一次；试验温度参数表里没有对应项，只留在单上做记录。
     /// </summary>

@@ -71,9 +71,10 @@ public partial class SheetFieldRow(ParameterDefinition definition) : ObservableO
 /// 口径（用户 2026-10-14）：
 /// <list type="bullet">
 ///   <item>单号**自动生成、只读**（界面显示的是预览值，真正发号在确定时）；</item>
-///   <item>「上次试验项目」= 上一次新建的那张单；试验信息表为空时**不可选**；整页只读；</item>
-///   <item>「其他试验项目」= 直接采用所选单（后续试样归它）；**整页只读**；</item>
-///   <item>只有「新建试验项目」可编辑，且照现役只在新建时做必填校验；</item>
+///   <item>「上次试验项目」= 上一次新建的那张单（不新建）；试验信息表为空时**不可选**；整页只读；</item>
+///   <item>「其他试验项目」= 直接采用所选单（后续试样归它）；**可编辑并写回该单**
+///         —— 这是"改已有单信息"的入口（用户 2026-10-14 更正）；</item>
+///   <item>保存（新建 / 改单）前都做输入值验证；「上次试验项目」整页只读、不动库；</item>
 ///   <item>「读取模板」**只在"新建试验项目"模式下可用**；「存为模板」把当前表单内容存成模板；</item>
 ///   <item>保存时把单上的加载速率写回参数表（实际控制按单上填的走）；新建时用参数表当前值预填；</item>
 ///   <item>必填清单由**方法层**判定并抛消息（项目名称 / 试验规范 / 试验目的 / 试件尺寸 / 混合料类型 /
@@ -233,7 +234,7 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
 
         if (Mode == SheetEditMode.Existing)
         {
-            _ = ApplySheetAsync(value?.SheetId);
+            _ = ApplySheetAsync(value?.SheetId, editable: true);
         }
     }
 
@@ -289,11 +290,12 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
                 break;
 
             case SheetEditMode.Last:
-                await ApplySheetAsync(Sheets.FirstOrDefault()?.SheetId).ConfigureAwait(true);
+                await ApplySheetAsync(Sheets.FirstOrDefault()?.SheetId, editable: false)
+                    .ConfigureAwait(true);
                 break;
 
             default:
-                await ApplySheetAsync(SelectedSheet?.SheetId).ConfigureAwait(true);
+                await ApplySheetAsync(SelectedSheet?.SheetId, editable: true).ConfigureAwait(true);
                 break;
         }
     }
@@ -356,9 +358,11 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
 
     /// <summary>
     /// 采用某张已有单（"上次试验项目" / "其他试验项目"）：把它的信息填进表单。
-    /// **整页只读**（用户 2026-10-14）—— 这两种方式只是"拿这张单接着做"，不在这一步改单上的信息。
+    /// **上次** = 整页只读（照现役 `SetControlsReadonly(ItemIndex = 1)`：只是"拿这张单接着做"）；
+    /// **其他** = 可编辑（用户 2026-10-14 更正：这是"改已有单信息"的入口，确定时写回该单）。
+    /// 两种方式下**单号与试验时间都只读**（单号是主键、试验时间是该单的原始记录）。
     /// </summary>
-    private async Task ApplySheetAsync(string? sheetId)
+    private async Task ApplySheetAsync(string? sheetId, bool editable)
     {
         if (string.IsNullOrWhiteSpace(sheetId))
         {
@@ -373,10 +377,17 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
             foreach (var row in Rows)
             {
                 row.Value = values.GetValueOrDefault(row.Key) ?? string.Empty;
-                row.IsReadOnly = true;
+                row.IsReadOnly = !editable;
             }
 
-            SheetIdHint = L("Sheet.SheetIdPicked");
+            // 可编辑时把"改这里会写回该单"讲明白，免得当成新建
+            SheetIdHint = L(editable ? "Sheet.SheetIdEdit" : "Sheet.SheetIdPicked");
+
+            if (editable)
+            {
+                SetReadOnly("SheetID");
+                SetReadOnly("CreatedOn");
+            }
         }
         finally
         {
@@ -466,18 +477,40 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
         Status = L("Sheet.TemplateSaved");
     }
 
-    /// <summary>确定：新建一张单 / 采用选中的那张单，然后把单上的加载速率写回参数表。</summary>
+    /// <summary>
+    /// 确定：新建一张单 / 把改过的内容写回选中的单 / 采用上次那张单，然后把该单的加载速率写回参数表。
+    /// 新建与改单都要过方法层的输入值验证（不通过就抛消息，弹窗不关）；「上次试验项目」不动库。
+    /// </summary>
     [RelayCommand(CanExecute = nameof(CanConfirm))]
     private async Task ConfirmAsync()
     {
         try
         {
-            var sheetId = Mode switch
+            string? sheetId = null;
+            var updated = false;
+
+            switch (Mode)
             {
-                SheetEditMode.New => await _editor.CreateSheetAsync(Values()).ConfigureAwait(true),
-                SheetEditMode.Last => Sheets.FirstOrDefault()?.SheetId,
-                _ => SelectedSheet?.SheetId,
-            };
+                case SheetEditMode.New:
+                    sheetId = await _editor.CreateSheetAsync(Values()).ConfigureAwait(true);
+                    break;
+
+                case SheetEditMode.Existing:
+                    // 改已有单信息（用户 2026-10-14 更正）：写回该单，单号不变
+                    sheetId = SelectedSheet?.SheetId;
+
+                    if (!string.IsNullOrWhiteSpace(sheetId))
+                    {
+                        await _editor.UpdateSheetAsync(sheetId, Values()).ConfigureAwait(true);
+                        updated = true;
+                    }
+
+                    break;
+
+                default:
+                    sheetId = Sheets.FirstOrDefault()?.SheetId;
+                    break;
+            }
 
             if (string.IsNullOrWhiteSpace(sheetId))
             {
@@ -490,7 +523,7 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
             // 实际控制按单上填的加载速率走（用户 2026-10-14）
             await _editor.PushTestConditionsAsync(sheetId).ConfigureAwait(true);
 
-            Status = $"{L("Sheet.Selected")} {sheetId}";
+            Status = $"{(updated ? L("Sheet.Updated") : L("Sheet.Selected"))} {sheetId}";
             CloseRequested?.Invoke(this, true);
         }
         catch (Exception ex)
