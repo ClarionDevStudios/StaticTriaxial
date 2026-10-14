@@ -52,6 +52,8 @@
     <Style.Triggers>
       <DataTrigger Binding="{Binding ViewModel.StatusIsError}" Value="True">
         <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+        <!-- 错误文案比正常状态行略大一号：红 + 闪之外，字号也帮一把（用户 2026-10-14） -->
+        <Setter Property="FontSize" Value="15" />
         <DataTrigger.EnterActions>
           <BeginStoryboard x:Name="StatusBlinkStoryboard">
             <Storyboard>

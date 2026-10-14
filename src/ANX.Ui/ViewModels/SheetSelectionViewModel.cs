@@ -219,8 +219,15 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
         SaveTemplateCommand.NotifyCanExecuteChanged();
         ConfirmCommand.NotifyCanExecuteChanged();
 
-        _ = LoadForModeAsync();
+        // 弹窗打开时会统一重置成"新建试验项目"，那一次不要在这里并发再载一遍（见 InitializeAsync）
+        if (!_resettingMode)
+        {
+            _ = LoadForModeAsync();
+        }
     }
+
+    /// <summary>正在把试验方式复位到"新建"（打开弹窗时）—— 期间不触发按模式载入。</summary>
+    private bool _resettingMode;
 
     partial void OnSelectedSheetChanged(TestSheetSummary? value)
     {
@@ -241,11 +248,24 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
         ReadTemplateCommand.NotifyCanExecuteChanged();
     }
 
-    /// <summary>打开窗体：先取单列表（"上次"要用、也决定它可不可选），再按当前模式载入。</summary>
+    /// <summary>打开窗体：先复位成"新建试验项目"，再取单列表（"上次"要用、也决定它可不可选），最后按模式载入。</summary>
     public override void OnOpened() => _ = InitializeAsync();
 
     private async Task InitializeAsync()
     {
+        // **每次打开都从「新建试验项目」起步**（用户 2026-10-14）：ViewModel 是单例，
+        // 不复位的话下次打开会停在用户上次选的"其他试验项目"上，还会带着上次那张单的信息。
+        _resettingMode = true;
+        try
+        {
+            Mode = SheetEditMode.New;
+            SelectedSheet = null; // 上次会话选中的那条记录对象也一并丢掉（下面重新查一遍列表）
+        }
+        finally
+        {
+            _resettingMode = false;
+        }
+
         // 文案在这里现取：ViewModel 是单例，语言切换后（弹窗重开时）要跟着变
         OptionalHint =
             L("Sheet.OptionalHint")
