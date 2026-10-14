@@ -66,6 +66,8 @@
   <sys:String x:Key="Exec.NoDevice">No device configured (Debug builds use the simulator)</sys:String>
   <sys:String x:Key="Exec.NotConnected">Not connected</sys:String>
   <sys:String x:Key="Exec.Connected">Connected</sys:String>
+  <sys:String x:Key="Exec.LinkDown">Link down</sys:String>
+  <sys:String x:Key="Exec.LinkUp">Network link is up</sys:String>
   <sys:String x:Key="Exec.ConnectFailed">Connect failed</sys:String>
   <sys:String x:Key="Exec.Stopping">Stopping…</sys:String>
   <sys:String x:Key="Exec.Failed">Run failed</sys:String>

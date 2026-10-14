@@ -66,6 +66,8 @@
   <sys:String x:Key="Exec.NoDevice">未配置设备（Debug 构建使用模拟器）</sys:String>
   <sys:String x:Key="Exec.NotConnected">未连接</sys:String>
   <sys:String x:Key="Exec.Connected">已连接</sys:String>
+  <sys:String x:Key="Exec.LinkDown">链路断开</sys:String>
+  <sys:String x:Key="Exec.LinkUp">网口链路正常</sys:String>
   <sys:String x:Key="Exec.ConnectFailed">联机失败</sys:String>
   <sys:String x:Key="Exec.Stopping">正在停止…</sys:String>
   <sys:String x:Key="Exec.Failed">运行失败</sys:String>

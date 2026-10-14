@@ -10,6 +10,7 @@ using ANX.Ui.Views;
 using ANX.Ui.Views.Pages;
 using ANX.Communication.Channels;
 using ANX.Communication;
+using ANX.Communication.NetworkLink;
 using ANX.Control;
 using ANX.Core.Control;
 using ANX.Core.Methods;
@@ -37,7 +38,25 @@ public partial class App
     private const int MaxThrottleSignatures = 16;
 
     /// <summary>现场 GR-3 控制器的 UDP 地址（现役同款默认值；将来挪进设置页）。</summary>
-    private const string DeviceHost = "192.168.0.122";
+    private const string DefaultDeviceHost = "192.168.0.122";
+
+    /// <summary>控制器地址：默认用现场值，可用环境变量 <c>ANX_DEVICE_HOST</c> 顶掉（联机调试 / 自检用）。</summary>
+    private static string DeviceHost =>
+        Environment.GetEnvironmentVariable("ANX_DEVICE_HOST") is { Length: > 0 } fromEnvironment
+            ? fromEnvironment
+            : DefaultDeviceHost;
+
+    /// <summary>是不是"用模拟器跑"（没有真硬件时的自检开关；模拟器只在 Debug 构建里存在）。</summary>
+    private static bool UseSimulator =>
+#if SIMULATOR
+        string.Equals(
+            Environment.GetEnvironmentVariable("ANX_USE_SIMULATOR"),
+            "1",
+            StringComparison.Ordinal
+        );
+#else
+        false;
+#endif
 
     private const int DevicePort = 5001;
 
@@ -124,6 +143,28 @@ public partial class App
                     sp.GetRequiredService<BendingExecution>()
                 );
 
+                // 网口链路监视（用户 2026-10-14）：UDP 无连接，拔网线不报错，只能从系统层读网卡链路状态。
+                // 设备地址可被环境变量 ANX_DEVICE_HOST 顶掉 —— 联机调试 / 自检时指到别处用。
+                // **模拟器模式不注册**：那时根本没有真设备，报"真网线断了"只会是噪音（VM 取到 null 就不管链路）。
+                if (!UseSimulator)
+                {
+                    _ = services.AddSingleton<INetworkLinkMonitor>(_ =>
+                    {
+                        var monitor = new NetworkLinkMonitor(DeviceHost);
+
+                        // 链路变化落日志（网线插拔这类现场问题，事后要能查）
+                        monitor.StateChanged += (_, state) =>
+                            Log.Information(
+                                "网口链路 {Kind}：{Detail}（网卡：{Adapter}）",
+                                state.Kind,
+                                state.Detail,
+                                state.AdapterName
+                            );
+
+                        return monitor;
+                    });
+                }
+
                 // 设备：默认连**现场真机**（GR-3 控制器走 UDP，地址沿用现役）。
                 // 想在没有硬件时试跑，设环境变量 ANX_USE_SIMULATOR=1（模拟器只在 Debug 构建里存在）。
                 _ = services.AddSingleton<ITestDeviceController>(_ =>
@@ -165,7 +206,9 @@ public partial class App
                     // 执行页要能先把"编辑哪一件"告诉弹窗的 ViewModel（它是单例，会留着上次的号）
                     sp.GetRequiredService<SampleInfoViewModel>(),
                     // 进执行页要收起导航栏（用户 2026-10-14）
-                    sp.GetRequiredService<INavigationPaneService>()
+                    sp.GetRequiredService<INavigationPaneService>(),
+                    // 网口链路（拔网线要在状态栏看得见；模拟器模式下没有这个服务 → null）
+                    sp.GetService<INetworkLinkMonitor>()
                 ));
                 _ = services.AddSingleton<TestExecutionPage>();
 
@@ -231,6 +274,10 @@ public partial class App
 
             // 建库 / 校验架构版本（版本不匹配会直接抛错，提示备份后重建）
             Services.GetRequiredService<DatabaseInitializer>().Initialize();
+
+            // 启动就盯住网口链路（用户 2026-10-14）：拔网线要在界面上看得见，
+            // 不能等到"跑试验才发现数据不来"；这里刻意在联机之前起，联机前拔线也认得出。
+            Services.GetRequiredService<INetworkLinkMonitor>().Start();
 
             await AppHost.StartAsync();
 

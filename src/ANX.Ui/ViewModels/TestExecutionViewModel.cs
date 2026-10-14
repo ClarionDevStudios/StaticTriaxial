@@ -117,6 +117,7 @@ public partial class TestExecutionViewModel : ViewModelBase
 
     private readonly ITestExecution _execution;
     private readonly ITestDeviceController? _device;
+    private readonly INetworkLinkMonitor? _linkMonitor;
     private readonly ICurrentSheetContext? _currentSheet;
     private readonly INavigationService? _navigation;
     private readonly IModalPageService? _modalPages;
@@ -162,6 +163,12 @@ public partial class TestExecutionViewModel : ViewModelBase
     private TestSample? _latestSample;
     private DateTime _lastLiveReadout = DateTime.MinValue;
 
+    /// <summary>最近一次联机结果（true 已连接 / false 联机失败 / null 没联过）。</summary>
+    private bool? _connected;
+
+    /// <summary>最近一次网口链路结果（没有监视器时为 null）。</summary>
+    private NetworkLinkState? _linkState;
+
     public TestExecutionViewModel(
         ILocalizationService localization,
         ITestExecution execution,
@@ -171,12 +178,14 @@ public partial class TestExecutionViewModel : ViewModelBase
         IReportExportService? exporter = null,
         IModalPageService? modalPages = null,
         SampleInfoViewModel? sampleInfo = null,
-        INavigationPaneService? pane = null
+        INavigationPaneService? pane = null,
+        INetworkLinkMonitor? linkMonitor = null
     )
         : base(localization)
     {
         _execution = execution;
         _device = device;
+        _linkMonitor = linkMonitor;
         _currentSheet = currentSheet;
         _navigation = navigation;
         _exporter = exporter;
@@ -215,6 +224,14 @@ public partial class TestExecutionViewModel : ViewModelBase
         else
         {
             SetConnectionState(null); // 还没联机：中性色
+        }
+
+        // 网口链路（用户 2026-10-14）：单例 ViewModel 只订一次，之后不管在哪个页面都跟着刷新。
+        // 当前值先取一次：监视器是启动时就开始跑的，这里可能已经有结论了。
+        if (_linkMonitor is not null)
+        {
+            _linkMonitor.StateChanged += OnNetworkLinkChanged;
+            ApplyNetworkLinkState(_linkMonitor.State);
         }
 
         PhaseText = L("Exec.PhaseIdle");
@@ -477,25 +494,74 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// <summary>
     /// 连接状态文字与颜色一起更新：<c>true</c> 已连接（绿）、<c>false</c> 联机失败（红）、
     /// <c>null</c> 未连接（中性）。颜色取工程主题里的语义色（WPF-UI 的 Success / Critical）。
+    /// **网口链路断了优先报链路**（用户 2026-10-14）：UDP 无连接，拔网线不报任何错误，
+    /// 那时还显示"已连接"是假象 —— 操作员会以为链路好好的。
     /// </summary>
     private void SetConnectionState(bool? connected)
     {
-        ConnectionText = connected switch
+        _connected = connected;
+        RefreshConnectionText();
+    }
+
+    private void RefreshConnectionText()
+    {
+        if (_linkState is { IsUp: false } link)
+        {
+            ConnectionText = string.IsNullOrWhiteSpace(link.AdapterName)
+                ? L("Exec.LinkDown")
+                : $"{L("Exec.LinkDown")} · {link.AdapterName}";
+            ConnectionBrush = ResolveBrush("SystemFillColorCriticalBrush");
+            return;
+        }
+
+        ConnectionText = _connected switch
         {
             true => L("Exec.Connected"),
             false => L("Exec.ConnectFailed"),
             _ => L("Exec.NotConnected"),
         };
 
-        ConnectionBrush =
-            System.Windows.Application.Current?.TryFindResource(
-                connected switch
-                {
-                    true => "SystemFillColorSuccessBrush",
-                    false => "SystemFillColorCriticalBrush",
-                    _ => "TextFillColorSecondaryBrush",
-                }
-            ) as Brush;
+        ConnectionBrush = ResolveBrush(
+            _connected switch
+            {
+                true => "SystemFillColorSuccessBrush",
+                false => "SystemFillColorCriticalBrush",
+                _ => "TextFillColorSecondaryBrush",
+            }
+        );
+    }
+
+    private static Brush? ResolveBrush(string key) =>
+        System.Windows.Application.Current?.TryFindResource(key) as Brush;
+
+    /// <summary>网口链路变了（监视器在后台线程抛事件，这里切回 UI 线程再动界面）。</summary>
+    private void OnNetworkLinkChanged(object? sender, NetworkLinkState state) =>
+        Dispatch(() => ApplyNetworkLinkState(state));
+
+    private static void Dispatch(Action action)
+    {
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+
+        if (dispatcher is null || dispatcher.CheckAccess())
+        {
+            action();
+            return;
+        }
+
+        _ = dispatcher.BeginInvoke(action);
+    }
+
+    /// <summary>把链路状态铺到界面与操控信息上。监视器只在**变化**时抛事件，所以这里每次都记一条。</summary>
+    private void ApplyNetworkLinkState(NetworkLinkState state)
+    {
+        _linkState = state;
+        RefreshConnectionText();
+
+        Append(
+            state.IsUp
+                ? $"{L("Exec.LinkUp")} · {state.AdapterName}（{state.Detail}）"
+                : $"{L("Exec.LinkDown")} · {state.Detail}"
+        );
     }
 
     /// <summary>
