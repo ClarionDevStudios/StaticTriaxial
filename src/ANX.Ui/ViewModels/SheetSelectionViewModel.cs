@@ -310,22 +310,17 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
         try
         {
             var stored = await _parameters.LoadAsync().ConfigureAwait(true);
-            var peeked = await _editor.PeekNextSheetIdAsync().ConfigureAwait(true);
 
             foreach (var row in Rows)
             {
                 row.IsReadOnly = false;
 
-                if (row.Key == "SheetID")
+                if (AutoKeys.Contains(row.Key))
                 {
-                    // 单号自动生成、只读（显示的是**预览号**，真正发号在「确定」时）
-                    row.Value = peeked;
+                    continue; // 单号与试验时间由 ApplyAutoValuesAsync 给（模板里也没有这两项）
                 }
-                else if (row.Key == "CreatedOn")
-                {
-                    row.Value = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
-                }
-                else if (row.IsDate)
+
+                if (row.IsDate)
                 {
                     row.Value = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
                 }
@@ -342,10 +337,7 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
                 }
             }
 
-            // 单号与试验时间只读：单号自动生成，试验时间取当前时刻
-            SetReadOnly("SheetID");
-            SetReadOnly("CreatedOn");
-            SheetIdHint = L("Sheet.SheetIdAuto");
+            await ApplyAutoValuesAsync().ConfigureAwait(true);
 
             // 注意：这里**不**调 ApplyDependentDefaults —— 那是"用户改了试验目的"时的联动
             //（现役在此硬写 15℃/50），初始化时调会把参数表预填好的加载速率冲成 50。
@@ -355,6 +347,26 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
             _loading = false;
         }
     }
+
+    /// <summary>
+    /// **自动值**（新建模式专属）：单号显示"下一个号"的**预览值**、试验时间取当前时刻，两项都只读。
+    /// 单独抽出来是因为"新建初值"与"读取模板"两条路都要回到这个状态 —— 模板表里没有这两项，
+    /// 读模板时不能用空串把它们冲掉（用户 2026-10-14）。
+    /// </summary>
+    private async Task ApplyAutoValuesAsync()
+    {
+        var peeked = await _editor.PeekNextSheetIdAsync().ConfigureAwait(true);
+
+        SetValue("SheetID", peeked);
+        SetValue("CreatedOn", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture));
+        SetReadOnly("SheetID");
+        SetReadOnly("CreatedOn");
+
+        SheetIdHint = L("Sheet.SheetIdAuto");
+    }
+
+    /// <summary>方法自动填的字段（不是模板内容）：单号、试验时间。</summary>
+    private static readonly string[] AutoKeys = ["SheetID", "CreatedOn"];
 
     /// <summary>
     /// 采用某张已有单（"上次试验项目" / "其他试验项目"）：把它的信息填进表单。
@@ -446,7 +458,11 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
         }
     }
 
-    /// <summary>「读取模板」（仅新建模式）：把模板内容填进表单，之后照样可以改。</summary>
+    /// <summary>
+    /// 「读取模板」（仅新建模式）：把模板内容填进表单（缺省值），之后照样可以改。
+    /// **单号与试验时间不归模板管** —— 读完仍是"预览号 + 当前时刻"（用户 2026-10-14：
+    /// 读模板后试验时间不要清空，按当前时间填写）。
+    /// </summary>
     [RelayCommand(CanExecute = nameof(CanReadTemplate))]
     private async Task ReadTemplateAsync()
     {
@@ -457,6 +473,11 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
         {
             foreach (var row in Rows)
             {
+                if (AutoKeys.Contains(row.Key))
+                {
+                    continue; // 模板里没有这两项，别用空串冲掉
+                }
+
                 row.Value = values.GetValueOrDefault(row.Key) ?? string.Empty;
             }
         }
@@ -464,6 +485,9 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
         {
             _loading = false;
         }
+
+        // 顺手把"当前时间"重新盖一次：模板内容放一会儿再读也不该看到陈旧的时间
+        await ApplyAutoValuesAsync().ConfigureAwait(true);
 
         Status = L("Sheet.TemplateLoaded");
     }
