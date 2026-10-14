@@ -122,6 +122,7 @@ public partial class TestExecutionViewModel : ViewModelBase
     private readonly IModalPageService? _modalPages;
     private readonly IReportExportService? _exporter;
     private readonly SampleInfoViewModel? _sampleInfo;
+    private readonly INavigationPaneService? _pane;
 
     /// <summary>「试验单」弹窗尺寸（单号编辑区 460 宽 + 已有单列表 + 底部按钮）。</summary>
     private const double SheetDialogWidth = 780;
@@ -166,7 +167,8 @@ public partial class TestExecutionViewModel : ViewModelBase
         INavigationService? navigation = null,
         IReportExportService? exporter = null,
         IModalPageService? modalPages = null,
-        SampleInfoViewModel? sampleInfo = null
+        SampleInfoViewModel? sampleInfo = null,
+        INavigationPaneService? pane = null
     )
         : base(localization)
     {
@@ -177,6 +179,7 @@ public partial class TestExecutionViewModel : ViewModelBase
         _exporter = exporter;
         _modalPages = modalPages;
         _sampleInfo = sampleInfo;
+        _pane = pane;
 
         // 试样信息列表的表头：试件号 + 方法声明的各试样信息字段（带单位），列序与 BuildSampleCells 一致
         _sampleFieldKeys = [.. execution.SampleFields.Select(field => field.Key)];
@@ -340,6 +343,16 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// </summary>
     private string? CurrentSheetId =>
         _currentSheet?.SheetId is { Length: > 0 } selected ? selected : _sheetId;
+
+    /// <summary>
+    /// 进试验主界面（用户 2026-10-14）：**自动收起左侧导航栏**（这页控件多、要宽度），
+    /// 并把试样信息列表读一遍。收起是"请求外壳收起"，页面不直接摸外壳控件。
+    /// </summary>
+    public override void OnNavigatedTo()
+    {
+        _pane?.Collapse();
+        _ = ReloadSampleRowsAsync();
+    }
 
     /// <summary>进页面（导航进来或重新显示）时把列表读一遍。</summary>
     public override void OnOpened() => _ = ReloadSampleRowsAsync();

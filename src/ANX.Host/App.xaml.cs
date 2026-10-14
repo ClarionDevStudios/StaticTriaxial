@@ -94,6 +94,10 @@ public partial class App
 
                 // 视图与 ViewModel
                 _ = services.AddSingleton<ShellViewModel>();
+                // 导航栏开合：外壳持有该状态，页面通过这个服务请求收起（见 INavigationPaneService）
+                _ = services.AddSingleton<INavigationPaneService>(sp =>
+                    sp.GetRequiredService<ShellViewModel>()
+                );
                 _ = services.AddSingleton<HomeViewModel>();
                 _ = services.AddSingleton<SettingsViewModel>();
                 _ = services.AddSingleton<HomePage>();
@@ -152,7 +156,9 @@ public partial class App
                     sp.GetRequiredService<IReportExportService>(),
                     sp.GetRequiredService<IModalPageService>(),
                     // 执行页要能先把"编辑哪一件"告诉弹窗的 ViewModel（它是单例，会留着上次的号）
-                    sp.GetRequiredService<SampleInfoViewModel>()
+                    sp.GetRequiredService<SampleInfoViewModel>(),
+                    // 进执行页要收起导航栏（用户 2026-10-14）
+                    sp.GetRequiredService<INavigationPaneService>()
                 ));
                 _ = services.AddSingleton<TestExecutionPage>();
 

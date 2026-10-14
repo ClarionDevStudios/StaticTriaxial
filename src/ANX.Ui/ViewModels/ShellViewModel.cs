@@ -4,8 +4,12 @@ using ANX.Ui.Services;
 using Wpf.Ui;
 using Wpf.Ui.Controls;
 
-/// <summary>外壳 ViewModel：重建导航项与标题。</summary>
-public partial class ShellViewModel : ViewModelBase
+/// <summary>
+/// 外壳 ViewModel：重建导航项与标题。
+/// 也是 <see cref="INavigationPaneService"/> 的实现者 —— 导航栏开合状态由这里持有
+/// （`ShellWindow` 的 `NavigationView.IsPaneOpen` 双向绑到 <see cref="IsPaneOpen"/>）。
+/// </summary>
+public partial class ShellViewModel : ViewModelBase, INavigationPaneService
 {
     private readonly INavigationService _navigationService;
 
@@ -80,6 +84,13 @@ public partial class ShellViewModel : ViewModelBase
     }
 
     partial void OnIsPaneOpenChanged(bool value) => UpdateNavigationToolTips();
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// 进试验主界面就收起导航栏（用户 2026-10-14）—— 那一页控件多、要宽度；
+    /// 收起后项上只剩图标，悬停提示由 <see cref="UpdateNavigationToolTips"/> 自动挂上。
+    /// </remarks>
+    public void Collapse() => IsPaneOpen = false;
 
     /// <summary>
     /// **折叠时**给每个导航项挂上文字提示（用户 2026-10-13：折叠后鼠标悬停要能看到该项是什么）。
