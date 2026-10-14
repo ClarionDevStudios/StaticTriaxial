@@ -757,9 +757,13 @@ public partial class TestExecutionViewModel : ViewModelBase
             });
         }
 
-        // 报警弹窗：显示一次，节流窗口内不再弹（用户 2026-10-14）。
-        // 另外**只在"曾经在位"的情况下报警**：开机时线就没插是常态，不该一开机就弹（用户 2026-10-14）。
-        if (!_linkWasEverUp)
+        // 报警弹窗的三条规矩（用户 2026-10-14）：
+        //  ① **只在"试验正在跑"时弹** —— 待机断链没有设备动作被打断，弹窗只会打断操作；
+        //     而现场网线会抖（实测每二三十秒一次），待机也弹就成了骚扰。待机的情况留
+        //     状态栏红字 + 操控信息 + 日志，够追溯了。
+        //  ② **只在"曾经在位"的情况下弹** —— 开机时线就没插是常态，不该一开机就弹。
+        //  ③ 同一断链只弹一次（下面按 1 分钟节流）。
+        if (!wasRunning || !_linkWasEverUp)
         {
             return;
         }
@@ -771,22 +775,22 @@ public partial class TestExecutionViewModel : ViewModelBase
         }
 
         _lastLinkAlarmAt = now;
-        Dispatch(() => _ = ShowLinkAlarmAsync(state, testWasRunning: wasRunning));
+        Dispatch(() => _ = ShowLinkAlarmAsync(state));
     }
 
     /// <summary>
-    /// 链路报警（模态信息框，照执行页既有做法）。**待机与试验中说法不一样**（用户 2026-10-14）：
-    /// 待机断链只是"暂时不能下发命令"，试验中断链是"那一轮被打断、设备停没停还不知道"——
-    /// 后果不同，现场要采取的动作也不同，用同一句会误导。
+    /// 链路报警（模态信息框，照执行页既有做法）。**只在试验运行中断链才弹**（见
+    /// <see cref="HandleLinkLost"/> 的三条规矩），所以文案就按"试验被打断"写：
+    /// 那一轮已中止、已尽力发停止但**无法确认设备是否已停** —— 现场必须有人去看。
     /// </summary>
-    private async Task ShowLinkAlarmAsync(NetworkLinkState state, bool testWasRunning)
+    private async Task ShowLinkAlarmAsync(NetworkLinkState state)
     {
         var box = new Wpf.Ui.Controls.MessageBox
         {
             Title = L("Exec.LinkAlarmTitle"),
             Content = string.Format(
                 CultureInfo.CurrentCulture,
-                L(testWasRunning ? "Exec.LinkAlarmBodyRunning" : "Exec.LinkAlarmBodyIdle"),
+                L("Exec.LinkAlarmBodyRunning"),
                 string.IsNullOrWhiteSpace(state.AdapterName) ? L("Exec.LinkUnknownAdapter") : state.AdapterName,
                 state.Detail
             ),
@@ -1544,14 +1548,15 @@ public partial class TestExecutionViewModel : ViewModelBase
             // 界面永远停在"运行中"：按钮一直显示「停止试验」、再点只打日志、点动按钮一直灰着。
             // 顺序保持"先发停止、再复位状态"（复位太早会让用户在收尾那几秒里又点启动，两条流程抢同一个 CTS），
             // 但每一步都包住异常 —— 没有任何一条路径能跳过状态复位。
+            // 发停止：发不出去 / 没应答就记下原因，**绝不因此卡住界面**（见上面那条铁律）
+            string? stopError = null;
             try
             {
                 await device.StopAsync(CancellationToken.None);
             }
             catch (Exception ex)
             {
-                // 发不出去 / 没应答：如实报"停止命令未确认"，但绝不因此卡住界面
-                Dispatch(() => Append($"{L("Exec.StopNotConfirmed")}（{ex.Message}）"));
+                stopError = ex.Message;
             }
 
             IsRunning = false;
@@ -1559,29 +1564,42 @@ public partial class TestExecutionViewModel : ViewModelBase
             _cts?.Dispose();
             _cts = null;
 
-            // 停机闭环确认（用户 2026-10-14）：命令有没有到设备、电机到底停没停，只能看状态回帧
-            try
+            // 停机闭环确认（用户 2026-10-14）：命令有没有到设备、电机到底停没停，只能看状态回帧。
+            // 停止命令本身就发失败时**不再等确认**（结论已经明确），也**只报一条** ——
+            // 之前这里会连出 3 条近似消息（尽力停止失败 / 停止命令失败 / 确认超时），现场看着像重话。
+            var stopped = true;
+            if (stopError is null)
             {
-                var stopped = await MotorStopConfirmation
-                    .WaitStoppedAsync(device, StopConfirmTimeout, CancellationToken.None);
-
-                if (!stopped)
+                try
                 {
-                    Dispatch(() =>
-                    {
-                        Append(L("Exec.StopNotConfirmed"));
-
-                        // 链路已断的情况下不重复弹窗（断链报警已经说过这件事了）
-                        if (LinkAllowsCommand)
-                        {
-                            _ = ShowStopAlarmAsync();
-                        }
-                    });
+                    stopped = await MotorStopConfirmation.WaitStoppedAsync(
+                        device,
+                        StopConfirmTimeout,
+                        CancellationToken.None
+                    );
+                }
+                catch (Exception)
+                {
+                    stopped = false; // 确认环节本身出错也算"没确认"
                 }
             }
-            catch (Exception)
+
+            if (!stopped)
             {
-                // 确认环节也不能把收尾搞砸
+                Dispatch(() =>
+                {
+                    Append(
+                        stopError is null
+                            ? L("Exec.StopNotConfirmed")
+                            : $"{L("Exec.StopNotConfirmed")}（{stopError}）"
+                    );
+
+                    // 链路已断的情况下不重复弹窗（断链报警已经说过这件事了）
+                    if (LinkAllowsCommand)
+                    {
+                        _ = ShowStopAlarmAsync();
+                    }
+                });
             }
         }
 

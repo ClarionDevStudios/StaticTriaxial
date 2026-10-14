@@ -72,7 +72,6 @@
   <sys:String x:Key="Exec.LinkStopBestEffort">Stop command sent on a best-effort basis (link is down, not confirmed)</sys:String>
   <sys:String x:Key="Exec.LinkAlarmTitle">Communication alarm</sys:String>
   <sys:String x:Key="Exec.LinkAlarmBodyRunning">Network link lost (**a test was running**): {0}&#10;{1}&#10;&#10;That run was aborted. A stop command was sent on a best-effort basis, but **the device state cannot be confirmed** — the link to the controller is UDP (connectionless): the frame may never have left this PC, and a "successful" send proves nothing.&#10;&#10;Check the machine and specimen on site NOW; after the link recovers the run will NOT resume automatically.</sys:String>
-  <sys:String x:Key="Exec.LinkAlarmBodyIdle">Network link lost (**idle right now — no test running**): {0}&#10;{1}&#10;&#10;No run was interrupted, but commands cannot reach the device while the link is down, so "start test" and worktable jog are temporarily unavailable.&#10;&#10;Check the cable and the controller's power (logs are available too); when the link recovers the software will **reconnect automatically** (new handshake, re-read device config) but will **NOT resume** any test.</sys:String>
   <sys:String x:Key="Exec.LinkUnknownAdapter">(adapter not identified)</sys:String>
   <sys:String x:Key="Exec.Reconnected">Link restored — reconnected automatically (device config re-read)</sys:String>
   <sys:String x:Key="Exec.ReconnectFailed">Automatic reconnect after link restore failed; click "Connect" to retry</sys:String>

@@ -72,7 +72,6 @@
   <sys:String x:Key="Exec.LinkStopBestEffort">已尽力发送停止命令（链路不通，未确认）</sys:String>
   <sys:String x:Key="Exec.LinkAlarmTitle">通讯报警</sys:String>
   <sys:String x:Key="Exec.LinkAlarmBodyRunning">网口链路断开（**试验进行中**）：{0}&#10;{1}&#10;&#10;正在跑的那一轮已被中止。软件已尽力发送停止命令，但**链路不通，无法确认设备是否已停**——上位机与控制器走 UDP，无连接：命令可能根本没发出去，发送"成功"也说明不了送达。&#10;&#10;请立即到设备现场确认工作台与试件状态；链路恢复后**不会自动续跑**，需人工确认后再启动。</sys:String>
-  <sys:String x:Key="Exec.LinkAlarmBodyIdle">网口链路断开（**当前待机，没有正在跑的试验**）：{0}&#10;{1}&#10;&#10;没有试验动作被打断，但链路不通时下发的命令到不了设备，所以「启动试验」与工作台升降暂时不可用。&#10;&#10;请检查网线与控制器电源（也可查日志）；链路恢复后软件会**自动重新联机**（重新握手、重取设备配置），但**不会自动续跑**试验。</sys:String>
   <sys:String x:Key="Exec.LinkUnknownAdapter">（未定位到网卡）</sys:String>
   <sys:String x:Key="Exec.Reconnected">链路恢复，已自动重新联机（重取设备配置）</sys:String>
   <sys:String x:Key="Exec.ReconnectFailed">链路恢复后自动联机失败，请点「联机」重试</sys:String>
