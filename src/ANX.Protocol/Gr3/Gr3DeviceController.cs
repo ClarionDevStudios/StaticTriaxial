@@ -227,10 +227,12 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
     {
         Subscribe();
 
-        if (!_channel.IsOpen)
-        {
-            await _channel.OpenAsync(cancellationToken).ConfigureAwait(false);
-        }
+        // 联机前**重建一次通道**（关了再开）：接收循环若因任何原因退出过，只有重开才能自愈。
+        // 2026-10-14 实测的坑：开机时网线没插 → 发 C0 收到 ICMP 不可达 → 接收循环当"已关闭"退出 →
+        // 之后插上线也永远等不到 A0（联机一直超时）；而**新进程**握手一次就成功，证明设备与网络没问题。
+        // 接收循环本身也已改成不因这类暂时性错误退出（见 UdpChannel），这里是第二道保险。
+        await _channel.CloseAsync().ConfigureAwait(false);
+        await _channel.OpenAsync(cancellationToken).ConfigureAwait(false);
 
         // C0 联机：设备接受后会**自动推 A0**（真机实测），所以这里等 A0 而不是等 A1。
         _systemInfoWaiter = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);

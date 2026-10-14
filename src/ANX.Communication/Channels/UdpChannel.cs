@@ -117,38 +117,74 @@ public sealed class UdpChannel(UdpChannelOptions options) : ICommChannel
     {
         var buffer = new byte[8192];
 
-        try
+        while (!token.IsCancellationRequested)
         {
-            while (!token.IsCancellationRequested)
+            int received;
+            try
             {
-                var received = await socket
+                received = await socket
                     .ReceiveAsync(buffer, SocketFlags.None, token)
                     .ConfigureAwait(false);
-
-                if (received <= 0)
+            }
+            catch (OperationCanceledException)
+            {
+                break; // 正常关闭
+            }
+            catch (ObjectDisposedException)
+            {
+                break; // socket 已释放：正常关闭
+            }
+            catch (SocketException ex) when (!IsFatal(ex))
+            {
+                // **连接型 UDP 会把 ICMP 错误在下一次接收上抛出来**：对端不可达(10051/10065)、
+                // 端口不可达/连接重置(10054)。这是"对端暂时不通"，**不是"通道坏了"** ——
+                // 2026-10-14 真机踩到：开机时网线没插 → 发 C0 收到 ICMP → 老代码把整个接收循环
+                // 当"已关闭"退出 → 之后**插回网线也永远收不到 A0**（联机一直超时，
+                // 而另起一个进程握手一次就成功 —— 设备与网络都没问题）。
+                // 处理：忽略这次错误，歇一下继续收。
+                if (token.IsCancellationRequested)
                 {
-                    continue;
+                    break;
                 }
 
-                var chunk = new byte[received];
-                buffer.AsSpan(0, received).CopyTo(chunk);
+                try
+                {
+                    await Task.Delay(TransientErrorRetryDelay, token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
 
-                Publish(new ReceivedChunk(chunk));
+                continue;
             }
-        }
-        catch (OperationCanceledException)
-        {
-            // 正常关闭
-        }
-        catch (SocketException)
-        {
-            // socket 已被关闭
-        }
-        catch (ObjectDisposedException)
-        {
-            // 正常关闭
+            catch (SocketException)
+            {
+                break; // 致命错误（OperationAborted / Interrupted / NotSocket）：通道确实不能用了
+            }
+
+            if (received <= 0)
+            {
+                continue;
+            }
+
+            var chunk = new byte[received];
+            buffer.AsSpan(0, received).CopyTo(chunk);
+
+            Publish(new ReceivedChunk(chunk));
         }
     }
+
+    /// <summary>暂时性接收错误的退避（免得对端一直不可达时空转打满 CPU）。</summary>
+    private static readonly TimeSpan TransientErrorRetryDelay = TimeSpan.FromMilliseconds(200);
+
+    /// <summary>致命错误：出现这些才说明 socket 真的不能再用了。</summary>
+    private static bool IsFatal(SocketException ex) =>
+        ex.SocketErrorCode
+            is SocketError.OperationAborted
+                or SocketError.Interrupted
+                or SocketError.NotSocket
+                or SocketError.Shutdown;
 
     /// <summary>
     /// 逐个订阅者隔离异常：一个订阅者抛异常不能打死整个数据发布循环

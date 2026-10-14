@@ -190,6 +190,9 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// <summary>本轮试验任务（"停止"按钮据此判断收尾到底有没有跑完）。</summary>
     private Task? _runTask;
 
+    /// <summary>联机闸门：同时只允许一次握手（命令行与自动联机可能撞上）。</summary>
+    private readonly SemaphoreSlim _connectGate = new(1, 1);
+
     public TestExecutionViewModel(
         ILocalizationService localization,
         ITestExecution execution,
@@ -494,28 +497,103 @@ public partial class TestExecutionViewModel : ViewModelBase
 
     /// <summary>联机。</summary>
     [RelayCommand]
-    private async Task ConnectAsync()
+    private Task ConnectAsync() => ConnectDeviceAsync(automatic: false);
+
+    /// <summary>
+    /// **联机的唯一入口**（用户 2026-10-14）：命令行与"链路恢复后自动联机"都走这里。
+    /// 用闸门保证**同时只有一次握手** —— 启动时的自动联机与链路恢复触发的自动联机可能正好撞上，
+    /// 两次 C0 并发会互相抢应答（协议是"一条命令一个应答"）。
+    /// </summary>
+    /// <param name="automatic">true = 链路恢复触发的自动联机（文案不同）。</param>
+    /// <param name="announceFailure">
+    /// 失败要不要报给界面。自动联机是**重试**着来的，中间几次失败不报（否则刷屏），只在最后一次报。
+    /// </param>
+    /// <returns>true = 联机成功。</returns>
+    private async Task<bool> ConnectDeviceAsync(bool automatic, bool announceFailure = true)
     {
-        if (_device is null)
+        var device = _device;
+        if (device is null)
         {
-            return;
+            return false;
+        }
+
+        if (!await _connectGate.WaitAsync(0).ConfigureAwait(true))
+        {
+            return false; // 已经有一次联机在跑
         }
 
         try
         {
-            await _device.ConnectAsync();
+            await device.ConnectAsync().ConfigureAwait(true);
             SetConnectionState(true);
-            Append($"{L("Exec.Connected")} · {_device.DeviceName}");
+            Append(
+                automatic
+                    ? $"{L("Exec.Reconnected")} · {device.DeviceName}"
+                    : $"{L("Exec.Connected")} · {device.DeviceName}"
+            );
             UpdateCanJog();
 
             // 联机成功后立刻按参数表把采集口径推给设备：否则实时读数用的是适配器写死的默认通道，
             // 与参数表里选的"位移1+2通道平均值"不一致（用户 2026-10-12 真机发现）。
-            await ApplyAcquisitionSettingsFromStoreAsync();
+            await ApplyAcquisitionSettingsFromStoreAsync().ConfigureAwait(true);
+            return true;
         }
         catch (Exception ex)
         {
             SetConnectionState(false);
-            Append($"{L("Exec.ConnectFailed")}: {ex.Message}");
+
+            if (announceFailure)
+            {
+                Append(
+                    automatic
+                        ? $"{L("Exec.ReconnectFailed")}: {ex.Message}"
+                        : $"{L("Exec.ConnectFailed")}: {ex.Message}"
+                );
+            }
+
+            return false;
+        }
+        finally
+        {
+            _connectGate.Release();
+        }
+    }
+
+    /// <summary>自动联机的重试次数（1s / 2s / 3s 间隔）。</summary>
+    private const int AutoReconnectAttempts = 3;
+
+    /// <summary>
+    /// 链路恢复后的**自动联机（带重试）**（用户 2026-10-14 实测：一次不成就卡在"联机失败"）：
+    /// 链路刚 Up 时网卡/ARP 还没就绪，第一帧 C0 常被丢，3 秒等不到 A0 就失败了。
+    /// 所以先等 1 秒再发，失败按 2s、3s 间隔重试，共 3 次；只有最后一次失败才报界面。
+    /// 每次重试前都再确认链还在位（中途又断了就别试了）。
+    /// </summary>
+    private async Task ReconnectAfterLinkRestoreAsync()
+    {
+        for (var attempt = 1; attempt <= AutoReconnectAttempts; attempt++)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(attempt)).ConfigureAwait(true);
+
+            if (_linkState is not { IsUp: true })
+            {
+                return; // 又断了
+            }
+
+            if (_device is not { IsConnected: false })
+            {
+                return; // 已经联上了（或没有设备）
+            }
+
+            if (
+                await ConnectDeviceAsync(
+                        automatic: true,
+                        announceFailure: attempt == AutoReconnectAttempts
+                    )
+                    .ConfigureAwait(true)
+            )
+            {
+                return;
+            }
         }
     }
 
@@ -592,6 +670,15 @@ public partial class TestExecutionViewModel : ViewModelBase
         {
             _linkWasEverUp = true;
             Append($"{L("Exec.LinkUp")} · {state.AdapterName}（{state.Detail}）");
+
+            // 链路回来了、但设备还没联机（例如开机时线没插 → 首次 C0 握手失败 → A0 配置没取到）
+            // → **自动重新联机**（用户 2026-10-14）：只握手、重取设备配置，不碰试验流程。
+            // 不这么做的话，之后收到的 A2 数据没有换算依据，界面会把**原始码值**当测量值显示。
+            if (_device is { IsConnected: false })
+            {
+                _ = ReconnectAfterLinkRestoreAsync();
+            }
+
             return;
         }
 
@@ -624,6 +711,25 @@ public partial class TestExecutionViewModel : ViewModelBase
 
     /// <summary>实时读数卡片（与 <see cref="UpdateCards"/> 写的那三张一致）。</summary>
     private static readonly string[] LiveCardKeys = ["load", "displacement", "elapsed"];
+
+    /// <summary>已经提示过"没联机、读数不可用"（实时刷新是 20Hz，别刷屏）。</summary>
+    private bool _warnedNoDeviceConfig;
+
+    /// <summary>
+    /// 没联机时不写实时值，只在**第一次**说明原因（用户 2026-10-14 报的坑：
+    /// 开机时线没插 → 握手失败 → A0 没取到 → 原始码值被当成测量值显示，且没有任何提示）。
+    /// </summary>
+    private void WarnNoDeviceConfigOnce()
+    {
+        if (_warnedNoDeviceConfig)
+        {
+            return;
+        }
+
+        _warnedNoDeviceConfig = true;
+        Append(L("Exec.NoDeviceConfig"));
+    }
+
 
     /// <summary>
     /// 断链处理（用户 2026-10-14）：**尽力**发一次停止（成本为零，万一只是抖动/对端还在就赚了），
@@ -1544,13 +1650,19 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// <summary>刷新数值卡（荷载 / 位移 / 时间）；点动与跑试验共用。</summary>
     private void UpdateCards(TestSample sample)
     {
-        // 链路断着就别再往卡上写实时值：标记成 "--" 之后，在途的那一帧还会把它覆盖回去
-        //（2026-10-14 实机：断链后 荷载/位移 被写回旧值，其余卡片保持 "--"，看着像"只标了一半"）
-        if (!LinkAllowsCommand)
+        // 两个"别写实时值"的理由（2026-10-14）：
+        // ① 链路断着 —— 在途那一帧会把刚标的 "--" 覆盖回旧值（实机：看着像"只标了一半"）；
+        // ② **没联机**（没握手、A0 配置没取到）—— 这时设备给的是**原始码值**，
+        //    适配器在没有 A0 时是 `info is null ? pressRaw : …` 直接透传原始值的，
+        //    当测量值显示会误导现场（用户实测报"显示的都是采集来的原始值，没有计算小数位"）。
+        if (_device?.IsConnected != true || !LinkAllowsCommand)
         {
+            MarkLiveValuesStale();
+            WarnNoDeviceConfigOnce();
             return;
         }
 
+        _warnedNoDeviceConfig = false;
         SetCard("load", sample.Load, sample.Load);
         SetCard("displacement", sample.Displacement, sample.Displacement);
 
