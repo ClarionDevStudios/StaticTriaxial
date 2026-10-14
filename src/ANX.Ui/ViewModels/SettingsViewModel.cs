@@ -2,6 +2,7 @@ namespace ANX.Ui.ViewModels;
 
 using System.Diagnostics;
 using System.Reflection;
+using ANX.Core.Settings;
 using ANX.Ui.Services;
 
 /// <summary>一个主题选项。</summary>
@@ -12,17 +13,20 @@ public partial class SettingsViewModel : ViewModelBase
 {
     private readonly IThemeService _theme;
     private readonly ILogDirectoryProvider _logDirectoryProvider;
+    private readonly IAppSettingsService? _settings;
     private bool _isInitialized;
 
     public SettingsViewModel(
         ILocalizationService localization,
         IThemeService theme,
-        ILogDirectoryProvider logDirectoryProvider
+        ILogDirectoryProvider logDirectoryProvider,
+        IAppSettingsService? settings = null
     )
         : base(localization)
     {
         _theme = theme;
         _logDirectoryProvider = logDirectoryProvider;
+        _settings = settings;
 
         localization.LanguageChanged += (_, _) => RebuildThemeOptions();
         RebuildThemeOptions();
@@ -58,6 +62,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         Localization.SetLanguage(value.Code);
+        Persist(AppSettingKeys.Language, value.Code);
     }
 
     partial void OnSelectedThemeChanged(ThemeOption? value)
@@ -68,6 +73,36 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         _theme.Apply(value.Key);
+        Persist(AppSettingKeys.Theme, value.Key);
+    }
+
+    /// <summary>
+    /// 界面一改就写进**外部配置文件**（用户 2026-10-14：改完下次启动要生效）。
+    ///
+    /// 这里是"立即生效 + 立即落盘"（没有确定/取消按钮），所以成功与否都要给一句话 ——
+    /// 用户报的正是"改了下次启动不生效"，看不到确认就无从判断。写失败按错误显示（红字闪烁）。
+    /// </summary>
+    private void Persist(string key, string value)
+    {
+        if (_settings is null)
+        {
+            return;
+        }
+
+        _ = PersistAsync(key, value);
+    }
+
+    private async Task PersistAsync(string key, string value)
+    {
+        try
+        {
+            await _settings!.SetAsync(key, value).ConfigureAwait(true);
+            SetStatus($"{L("Settings.Saved")}（{L("Settings.SavedNextStart")}）");
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"{L("Settings.SaveFailed")}: {ex.Message}", isError: true);
+        }
     }
 
     /// <summary>页面构造时调用一次，装载只读信息。</summary>

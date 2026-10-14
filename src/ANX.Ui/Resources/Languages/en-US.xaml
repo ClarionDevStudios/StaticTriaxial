@@ -24,7 +24,7 @@
   <sys:String x:Key="Home.StatusTodo">Not started</sys:String>
   <sys:String x:Key="Home.CurrentMilestone">Current milestone</sys:String>
   <sys:String x:Key="Home.BoundaryTitle">M1 known boundaries</sys:String>
-  <sys:String x:Key="Home.BoundaryText">M1-M3 have landed: GR-3 framing and the UDP channel (verified on the real controller), uplink parsing, the control engine and simulator, T0715 analysis and group statistics, the three-table schema and write layer, label-based reporting (zh/en factory templates), and five UI pages. Still open: on-machine check of the motor direction word and reset, settings persistence, and the second method (Marshall) in M4.</sys:String>
+  <sys:String x:Key="Home.BoundaryText">M1-M3 have landed: GR-3 framing and the UDP channel (verified on the real controller), uplink parsing, the control engine and simulator, T0715 analysis and group statistics, the three-table schema and write layer, label-based reporting (zh/en factory templates), five UI pages, network-link monitoring with link-loss safeguards, and settings persistence (external config file Config\settings.json). Still open: on-machine check of the motor direction word and reset, and the second method (Marshall) in M4.</sys:String>
 
   <sys:String x:Key="Settings.Title">Settings</sys:String>
   <sys:String x:Key="Settings.TabPreferences">Preferences</sys:String>
@@ -39,6 +39,9 @@
   <sys:String x:Key="Settings.AppVersion">Application version</sys:String>
   <sys:String x:Key="Settings.RuntimeVersion">Runtime version</sys:String>
   <sys:String x:Key="Settings.UiLibraryVersion">UI library version</sys:String>
+  <sys:String x:Key="Settings.Saved">Saved to the config file</sys:String>
+  <sys:String x:Key="Settings.SavedNextStart">it stays in effect next time you start</sys:String>
+  <sys:String x:Key="Settings.SaveFailed">Saving settings failed</sys:String>
 
   <sys:String x:Key="Nav.Execution">Test run</sys:String>
   <sys:String x:Key="Exec.NewSheet">New sheet</sys:String>

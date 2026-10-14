@@ -34,4 +34,25 @@ internal static class AppPaths
     /// <summary>报表与曲线图产物根：程序目录下的 Bins\Report（沿用现役约定）。</summary>
     public static string ResolveReportRoot() =>
         Path.Combine(AppContext.BaseDirectory, "Bins", "Report");
+
+    /// <summary>
+    /// **配置文件目录**：程序目录下的 `Config\` —— **所有配置文件都放这里**（用户 2026-10-14 定）。
+    /// 首次启动时创建；与产物目录 `Bins\`（库在 `Bins\Data`、报表与曲线图在 `Bins\Report`）分开：
+    /// 一个是"人可以改的配置"，一个是"程序产出的数据"。
+    /// </summary>
+    public static string ResolveConfigDirectory() => Path.Combine(AppContext.BaseDirectory, "Config");
+
+    /// <summary>
+    /// **系统设置文件**：`Config\settings.json`（用户 2026-10-14：写外部配置文件）。
+    ///
+    /// 为什么单独放文件、不塞进库（`Bins\Data\anx.db`）：
+    /// <list type="bullet">
+    ///   <item>语言与主题必须在**读库之前**就拿到 —— 连"库架构版本不匹配、请备份后重建"那个提示框
+    ///         都得用对的语言显示，用户才看得懂；</item>
+    ///   <item>塞进库会牵动架构版本校验：加了表/列就得走迁移，用户现有的库还要面对
+    ///         "版本不匹配"的拦截；设置这种"界面偏好"不该有这个代价。</item>
+    /// </list>
+    /// </summary>
+    public static string ResolveSettingsFile() =>
+        Path.Combine(ResolveConfigDirectory(), "settings.json");
 }

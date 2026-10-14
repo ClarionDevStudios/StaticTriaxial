@@ -14,6 +14,7 @@ using ANX.Communication.NetworkLink;
 using ANX.Control;
 using ANX.Core.Control;
 using ANX.Core.Methods;
+using ANX.Core.Settings;
 using ANX.Method.Bending;
 using ANX.Protocol.Gr3;
 using ANX.Storage;
@@ -73,6 +74,10 @@ public partial class App
         var logDirectory = AppPaths.ResolveLogDirectory();
         Directory.CreateDirectory(logDirectory);
 
+        // 配置文件目录（用户 2026-10-14：所有配置文件都放程序目录下的 Config\）：
+        // 首次启动就建出来，用户一眼能看到"配置放哪儿"。
+        Directory.CreateDirectory(AppPaths.ResolveConfigDirectory());
+
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Information()
             .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
@@ -106,6 +111,11 @@ public partial class App
                 // 框架服务
                 _ = services.AddSingleton<ILocalizationService, LocalizationService>();
                 _ = services.AddSingleton<IAppThemeService, AppThemeService>();
+
+                // 系统设置持久化：外部配置文件 Config\settings.json（用户 2026-10-14）
+                _ = services.AddSingleton<IAppSettingsService>(
+                    new FileAppSettingsService(AppPaths.ResolveSettingsFile())
+                );
 
                 // 导航
                 _ = services.AddSingleton<INavigationService, NavigationService>();
@@ -268,9 +278,10 @@ public partial class App
 
         try
         {
-            // M1 先按固定默认启动；设置持久化（IAppSettingsService 的实现）是后续步骤。
-            Services.GetRequiredService<ILocalizationService>().SetLanguage("zh-CN");
-            Services.GetRequiredService<IAppThemeService>().Apply("Dark");
+            // 语言与主题从**外部配置文件**读（用户 2026-10-14：改完下次启动要生效）。
+            // 注意顺序：这一读必须发生在**建库之前** —— 连"库架构版本不匹配、请备份后重建"
+            // 那个提示框都要用用户选的语言显示。
+            await ApplyPersistedAppearanceAsync();
 
             // 建库 / 校验架构版本（版本不匹配会直接抛错，提示备份后重建）
             Services.GetRequiredService<DatabaseInitializer>().Initialize();
@@ -314,6 +325,43 @@ public partial class App
             Shutdown(1);
             return;
         }
+    }
+
+    /// <summary>配置文件里没有（或值不认得）时用的默认外观。</summary>
+    private const string DefaultLanguage = "zh-CN";
+
+    private const string DefaultTheme = "Dark";
+
+    /// <summary>
+    /// 按**外部配置文件**应用语言与主题（用户 2026-10-14：改完下次启动要生效）。
+    ///
+    /// 容错口径：配置文件缺失、键缺失、值不认得（比如手工改错了）→ 一律**回默认值继续启动**；
+    /// 一个界面偏好不该让软件起不来。语言要按受支持列表校验（语言服务对不认得的代码是
+    /// "静默不切换"，不校验就会停在空语言上）；主题服务本身对不认得的名字会归一到 Dark。
+    /// </summary>
+    private static async Task ApplyPersistedAppearanceAsync()
+    {
+        var logger = Services.GetRequiredService<ILogger<App>>();
+        var settings = Services.GetRequiredService<IAppSettingsService>();
+        var localization = Services.GetRequiredService<ILocalizationService>();
+
+        var language = await settings.GetAsync(AppSettingKeys.Language).ConfigureAwait(true)
+            ?? DefaultLanguage;
+
+        if (!localization.Languages.Any(entry => entry.Code == language))
+        {
+            logger.LogWarning("配置文件里的语言 {Language} 不受支持，回落 {Default}", language, DefaultLanguage);
+            language = DefaultLanguage;
+        }
+
+        localization.SetLanguage(language);
+
+        var theme = await settings.GetAsync(AppSettingKeys.Theme).ConfigureAwait(true)
+            ?? DefaultTheme;
+
+        Services.GetRequiredService<IAppThemeService>().Apply(theme);
+
+        logger.LogInformation("按配置文件应用外观：语言 {Language}，主题 {Theme}", language, theme);
     }
 
     /// <summary>库版本对不上：库版本 / 程序要求 / 要备份的文件，逐条给出。</summary>

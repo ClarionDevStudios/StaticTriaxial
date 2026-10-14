@@ -11,8 +11,14 @@
   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
   mc:Ignorable="d"
 >
-  <ScrollViewer VerticalScrollBarVisibility="Auto">
-    <StackPanel Margin="36,28,36,24" HorizontalAlignment="Left" Width="620">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="36,28,36,24" HorizontalAlignment="Left" Width="620">
       <TextBlock Style="{StaticResource PageTitleStyle}" Text="{DynamicResource Settings.Title}" />
 
       <ui:Card Margin="0,20,0,0" Padding="20">
@@ -146,7 +152,21 @@
             />
           </Grid>
         </StackPanel>
-      </ui:Card>
-    </StackPanel>
-  </ScrollViewer>
+        </ui:Card>
+      </StackPanel>
+    </ScrollViewer>
+
+    <!--
+      底部状态行：界面偏好是"改了立即落盘"（没有确定/取消按钮），所以给一句话告诉用户
+      "已写进配置文件、下次启动仍生效"（用户 2026-10-14 报的坑就是改了下次不生效）。
+      写失败会走红字闪烁（StatusTextStyle 认 ViewModel.StatusIsError）。
+    -->
+    <TextBlock
+      Grid.Row="1"
+      Margin="36,0,36,16"
+      Style="{StaticResource StatusTextStyle}"
+      Text="{Binding ViewModel.Status, Mode=OneWay}"
+      TextWrapping="Wrap"
+    />
+  </Grid>
 </Page>

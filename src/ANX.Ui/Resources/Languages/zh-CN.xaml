@@ -24,7 +24,7 @@
   <sys:String x:Key="Home.StatusTodo">未开始</sys:String>
   <sys:String x:Key="Home.CurrentMilestone">当前里程碑</sys:String>
   <sys:String x:Key="Home.BoundaryTitle">M1 已知边界</sys:String>
-  <sys:String x:Key="Home.BoundaryText">M1~M3 已落地：GR-3 帧编解码与 UDP 通道（过真机）、上行解析、控制引擎与模拟器、T0715 判定与组统计、三表建库与写入层、标签制报表（中英两套出厂模板）、以及界面五个页面。仍未做的：真机空载试电机方向字与复位、系统设置持久化（IAppSettingsService 只有契约）、M4 的第二个方法（马歇尔）。</sys:String>
+  <sys:String x:Key="Home.BoundaryText">M1~M3 已落地：GR-3 帧编解码与 UDP 通道（过真机）、上行解析、控制引擎与模拟器、T0715 判定与组统计、三表建库与写入层、标签制报表（中英两套出厂模板）、界面五个页面、网口链路监视与断链兜底、系统设置持久化（外部配置文件 Config\settings.json）。仍未做的：真机空载试电机方向字与复位、M4 的第二个方法（马歇尔）。</sys:String>
 
   <sys:String x:Key="Settings.Title">系统设置</sys:String>
   <sys:String x:Key="Settings.TabPreferences">界面偏好</sys:String>
@@ -39,6 +39,9 @@
   <sys:String x:Key="Settings.AppVersion">程序版本</sys:String>
   <sys:String x:Key="Settings.RuntimeVersion">运行时版本</sys:String>
   <sys:String x:Key="Settings.UiLibraryVersion">控件库版本</sys:String>
+  <sys:String x:Key="Settings.Saved">已写入配置文件</sys:String>
+  <sys:String x:Key="Settings.SavedNextStart">下次启动仍然生效</sys:String>
+  <sys:String x:Key="Settings.SaveFailed">设置保存失败</sys:String>
 
   <sys:String x:Key="Nav.Execution">试验执行</sys:String>
   <sys:String x:Key="Exec.NewSheet">新建试验</sys:String>
