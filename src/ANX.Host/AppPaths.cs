@@ -27,17 +27,25 @@ internal static class AppPaths
     public static string ResolveCurrentLogFile() =>
         Path.Combine(ResolveLogDirectory(), $"{LogFilePrefix}{DateTime.Now:yyyyMMdd}{LogFileExtension}");
 
-    /// <summary>数据库：程序目录下的 Bins\Data\anx.db（沿用现役的 Bins\ 产物约定）。</summary>
-    public static string ResolveDatabasePath() =>
-        Path.Combine(AppContext.BaseDirectory, "Bins", "Data", "anx.db");
+    /// <summary>
+    /// **数据目录**：程序目录下的 `Data\`（用户 2026-10-14：把原来 `Bins\` 里的两个子目录提到程序目录下、
+    /// 去掉 `Bins\` 这一层）—— 库在 `Data\anx.db`、报表与曲线图在 `Report\`。
+    /// </summary>
+    public static string ResolveDataDirectory() => Path.Combine(AppContext.BaseDirectory, "Data");
 
-    /// <summary>报表与曲线图产物根：程序目录下的 Bins\Report（沿用现役约定）。</summary>
-    public static string ResolveReportRoot() =>
-        Path.Combine(AppContext.BaseDirectory, "Bins", "Report");
+    /// <summary>数据库：程序目录下的 `Data\anx.db`（SQLite）。</summary>
+    public static string ResolveDatabasePath() =>
+        Path.Combine(ResolveDataDirectory(), "anx.db");
+
+    /// <summary>
+    /// 报表与曲线图产物根：程序目录下的 `Report\`。**目录结构仍沿用现役**：
+    /// `Report\<试验类型>\<单号>\实验报告.<语种>.xlsx` 与 `<试样号>.png`、出厂模板在 `Report\Template\`。
+    /// </summary>
+    public static string ResolveReportRoot() => Path.Combine(AppContext.BaseDirectory, "Report");
 
     /// <summary>
     /// **配置文件目录**：程序目录下的 `Config\` —— **所有配置文件都放这里**（用户 2026-10-14 定）。
-    /// 首次启动时创建；与产物目录 `Bins\`（库在 `Bins\Data`、报表与曲线图在 `Bins\Report`）分开：
+    /// 首次启动时创建；与产物目录（库在 `Data\`、报表与曲线图在 `Report\`）分开：
     /// 一个是"人可以改的配置"，一个是"程序产出的数据"。
     /// </summary>
     public static string ResolveConfigDirectory() => Path.Combine(AppContext.BaseDirectory, "Config");
@@ -45,7 +53,7 @@ internal static class AppPaths
     /// <summary>
     /// **系统设置文件**：`Config\settings.json`（用户 2026-10-14：写外部配置文件）。
     ///
-    /// 为什么单独放文件、不塞进库（`Bins\Data\anx.db`）：
+    /// 为什么单独放文件、不塞进库（`Data\anx.db`）：
     /// <list type="bullet">
     ///   <item>语言与主题必须在**读库之前**就拿到 —— 连"库架构版本不匹配、请备份后重建"那个提示框
     ///         都得用对的语言显示，用户才看得懂；</item>

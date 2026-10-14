@@ -6,7 +6,7 @@ using ANX.Core.Settings;
 /// <summary>
 /// 系统设置的**外部配置文件**实现（用户 2026-10-14 定："写外部配置文件"）。
 ///
-/// 形态：程序目录 `Bins\Config\settings.json`，内容就是一个键值表
+/// 形态：程序目录 `Config\settings.json`，内容就是一个键值表
 /// <c>{ "system.language": "zh-CN", "system.theme": "Dark" }</c> —— 与
 /// <see cref="IAppSettingsService"/> 的键值语义一一对应，人也能看懂、能手工改。
 ///
