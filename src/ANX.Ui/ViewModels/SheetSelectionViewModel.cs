@@ -1,127 +1,508 @@
 namespace ANX.Ui.ViewModels;
 
+using System.Globalization;
 using ANX.Control;
 using ANX.Core.TestSheets;
 using ANX.Ui.Services;
-using Wpf.Ui;
+
+/// <summary>试验单编辑窗体的「试验方式」三选一（用户 2026-10-14 定的口径，与现役一致）。</summary>
+public enum SheetEditMode
+{
+    /// <summary>新建试验项目：单号自动生成、按"试验目的"预填温度与速率。</summary>
+    New = 0,
+
+    /// <summary>上次试验项目：载入**上一次新建**的那张单的信息（试验信息表为空时不可选）。</summary>
+    Last = 1,
+
+    /// <summary>其他试验项目：**直接采用**所选那张单（后续新增的试样归属它）。</summary>
+    Existing = 2,
+}
+
+/// <summary>试验单信息的一行（界面按方法声明的字段生成，不认识具体字段含义）。</summary>
+public partial class SheetFieldRow(ParameterDefinition definition) : ObservableObject
+{
+    public string Key { get; } = definition.Key;
+
+    public string Label { get; } = definition.DisplayName;
+
+    public string Unit { get; } = definition.Unit;
+
+    public ParameterKind Kind { get; } = definition.Kind;
+
+    public ParameterGroup Group { get; } = definition.Group;
+
+    /// <summary>方法给的默认值（新建时先用它；参数表里有同键的值再覆盖）。</summary>
+    public string DefaultValue { get; } = definition.DefaultValue;
+
+    /// <summary>下拉选项（<see cref="ParameterKind.Choice"/> 才有）。</summary>
+    public IReadOnlyList<ParameterOption> Options { get; } = definition.Options ?? [];
+
+    /// <summary>当前值（文本；下拉时是选项的 Value）。</summary>
+    [ObservableProperty]
+    private string _value = string.Empty;
+
+    /// <summary>只读（单号、试验时间；或"采用已有单"模式下展示的信息）。</summary>
+    [ObservableProperty]
+    private bool _isReadOnly;
+
+    public bool IsChoice => Kind == ParameterKind.Choice;
+
+    public bool IsDate => Kind == ParameterKind.Date;
+
+    public bool IsPlain => Kind is ParameterKind.Text or ParameterKind.Number;
+
+    /// <summary>
+    /// 下拉与日期控件没有"只读"这一说，只能整只禁用 —— 照现役 `SetControlsReadonly`：
+    /// 文本框用 ReadOnly，下拉框 / 日期框用 Enabled := False。
+    /// </summary>
+    public bool IsEnabledForEdit => !IsReadOnly;
+
+    partial void OnIsReadOnlyChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsEnabledForEdit));
+    }
+}
 
 /// <summary>
-/// 试验单页（用户 2026-10-13 起改为**弹出窗体**）：顶部 RadioButton 切"新建试验单 / 选择已有试验单"，
-/// 中部随模式切换，下部确定 / 取消。确定后把选定的单交给 <see cref="ICurrentSheetContext"/>，
-/// 再通知宿主窗口关闭（试验执行页监听上下文变化刷新单号，不需要再导航一次）。
+/// 试验单编辑窗体（弹出窗体）：顶部「试验方式」三选一 + 单号（只读、自动生成）+ 字段区（照现役次序，
+/// 两列按行配对：左列工程与试验条件、右列体积指标 + 接样日期 / 试验时间 / 试验员）
+/// + 模板按钮 + "其他试验项目"时的已有单列表 + 确定 / 取消。
+///
+/// 口径（用户 2026-10-14）：
+/// <list type="bullet">
+///   <item>单号**自动生成、只读**（界面显示的是预览值，真正发号在确定时）；</item>
+///   <item>「上次试验项目」= 上一次新建的那张单；试验信息表为空时**不可选**；整页只读；</item>
+///   <item>「其他试验项目」= 直接采用所选单（后续试样归它）；**整页只读**；</item>
+///   <item>只有「新建试验项目」可编辑，且照现役只在新建时做必填校验；</item>
+///   <item>「读取模板」**只在"新建试验项目"模式下可用**；「存为模板」把当前表单内容存成模板；</item>
+///   <item>保存时把单上的加载速率写回参数表（实际控制按单上填的走）；新建时用参数表当前值预填；</item>
+///   <item>必填清单由**方法层**判定并抛消息（项目名称 / 试验规范 / 试验目的 / 试件尺寸 / 混合料类型 /
+///         试验温度 / 加载速率），体积指标 6 项允许留空 —— 界面只显示消息。</item>
+/// </list>
 /// </summary>
 public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewModel
 {
-    private readonly ITestExecution _execution;
     private readonly ITestSheetBrowser _browser;
+    private readonly ITestSheetEditor _editor;
+    private readonly ITestParameters _parameters;
     private readonly ICurrentSheetContext _current;
+
+    /// <summary>单号与前缀：本次沿用工程里的固定前缀（以后接到设置里再改）。</summary>
+    private const string NumberPrefix = "WT";
 
     public SheetSelectionViewModel(
         ILocalizationService localization,
-        ITestExecution execution,
         ITestSheetBrowser browser,
+        ITestSheetEditor editor,
+        ITestParameters parameters,
         ICurrentSheetContext current
     )
         : base(localization)
     {
-        _execution = execution;
         _browser = browser;
+        _editor = editor;
+        _parameters = parameters;
         _current = current;
+
+        Rows = [.. editor.SheetInfoFields.Select(definition => new SheetFieldRow(definition))];
+
+        foreach (var row in Rows)
+        {
+            row.PropertyChanged += OnFieldChanged;
+        }
+
         Status = L("Sheet.Ready");
     }
 
     /// <inheritdoc />
     public event EventHandler<bool>? CloseRequested;
 
-    /// <summary>true = 新建试验单；false = 选择已有试验单。</summary>
-    [ObservableProperty]
-    private bool _isNewSheet = true;
+    /// <summary>
+    /// 全部字段行，**顺序 = 现役版面**：现役窗体是两列网格，左列工程与试验条件、右列体积指标 +
+    /// 接样日期 / 试验时间 / 试验员，两列按行配对；界面用两列 UniformGrid 按行填充，直接照这个顺序摆即可。
+    /// </summary>
+    public ObservableCollection<SheetFieldRow> Rows { get; }
 
-    /// <summary>与 <see cref="IsNewSheet"/> 互补，供第二个面板绑定可见性。</summary>
-    [ObservableProperty]
-    private bool _isExistingSheet;
-
-    [ObservableProperty]
-    private string _projectName = string.Empty;
+    /// <summary>"其他试验项目"时用于挑选的已有单列表。</summary>
+    public ObservableCollection<TestSheetSummary> Sheets { get; } = [];
 
     [ObservableProperty]
-    private string _numberPrefix = "WT";
+    private SheetEditMode _mode = SheetEditMode.New;
+
+    [ObservableProperty]
+    private TestSheetSummary? _selectedSheet;
+
+    /// <summary>单号那一行后面的提示（新建 = 自动生成只读；采用已有单 = 沿用该单）。</summary>
+    [ObservableProperty]
+    private string _sheetIdHint = string.Empty;
+
+    /// <summary>哪些项允许留空 —— 由方法给的分组算出来（体积指标组），界面不写死字段名。</summary>
+    [ObservableProperty]
+    private string _optionalHint = string.Empty;
 
     [ObservableProperty]
     private string _status = string.Empty;
 
+    /// <summary>模板表里有没有内容（决定「读取模板」能不能点）。</summary>
     [ObservableProperty]
-    private TestSheetSummary? _selectedExisting;
+    private bool _hasTemplate;
 
-    /// <summary>已有试验单列表。</summary>
-    public ObservableCollection<TestSheetSummary> ExistingSheets { get; } = [];
+    /// <summary>正在载入表单（载入期间不要触发字段联动）。</summary>
+    private bool _loading;
 
-    partial void OnIsNewSheetChanged(bool value) => IsExistingSheet = !value;
+    // ── 三个单选项（互斥） ───────────────────────────────────────────────
+
+    public bool IsNewMode
+    {
+        get => Mode == SheetEditMode.New;
+        set
+        {
+            if (value)
+            {
+                Mode = SheetEditMode.New;
+            }
+        }
+    }
+
+    public bool IsLastMode
+    {
+        get => Mode == SheetEditMode.Last;
+        set
+        {
+            if (value)
+            {
+                Mode = SheetEditMode.Last;
+            }
+        }
+    }
+
+    public bool IsExistingMode
+    {
+        get => Mode == SheetEditMode.Existing;
+        set
+        {
+            if (value)
+            {
+                Mode = SheetEditMode.Existing;
+            }
+        }
+    }
+
+    /// <summary>「上次试验项目」可不可选：试验信息表里有内容才可（用户 2026-10-14）。</summary>
+    public bool CanUseLastMode => Sheets.Count > 0;
+
+    /// <summary>「读取模板」只在"新建试验项目"模式下可用（用户 2026-10-14）。</summary>
+    public bool CanReadTemplate => Mode == SheetEditMode.New && HasTemplate;
+
+    /// <summary>「存为模板」：当前表单有内容可存。</summary>
+    public bool CanSaveTemplate => Mode != SheetEditMode.Existing || SelectedSheet is not null;
+
+    /// <summary>「确定」：新建随时可点（方法层校验必填）；"上次"要有单；"其他"要有选中项。</summary>
+    public bool CanConfirm =>
+        Mode switch
+        {
+            SheetEditMode.Last => Sheets.Count > 0,
+            SheetEditMode.Existing => SelectedSheet is not null,
+            _ => true,
+        };
+
+    partial void OnModeChanged(SheetEditMode value)
+    {
+        // 换试验方式 = 换一次填表：把上一条提示（"项目名称不能为空"之类）清掉，免得看得心慌
+        Status = L("Sheet.Ready");
+
+        OnPropertyChanged(nameof(IsNewMode));
+        OnPropertyChanged(nameof(IsLastMode));
+        OnPropertyChanged(nameof(IsExistingMode));
+        OnPropertyChanged(nameof(CanReadTemplate));
+        OnPropertyChanged(nameof(CanSaveTemplate));
+        OnPropertyChanged(nameof(CanConfirm));
+        ReadTemplateCommand.NotifyCanExecuteChanged();
+        SaveTemplateCommand.NotifyCanExecuteChanged();
+        ConfirmCommand.NotifyCanExecuteChanged();
+
+        _ = LoadForModeAsync();
+    }
+
+    partial void OnSelectedSheetChanged(TestSheetSummary? value)
+    {
+        OnPropertyChanged(nameof(CanSaveTemplate));
+        OnPropertyChanged(nameof(CanConfirm));
+        SaveTemplateCommand.NotifyCanExecuteChanged();
+        ConfirmCommand.NotifyCanExecuteChanged();
+
+        if (Mode == SheetEditMode.Existing)
+        {
+            _ = ApplySheetAsync(value?.SheetId);
+        }
+    }
+
+    partial void OnHasTemplateChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanReadTemplate));
+        ReadTemplateCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>打开窗体：先取单列表（"上次"要用、也决定它可不可选），再按当前模式载入。</summary>
+    public override void OnOpened() => _ = InitializeAsync();
+
+    private async Task InitializeAsync()
+    {
+        // 文案在这里现取：ViewModel 是单例，语言切换后（弹窗重开时）要跟着变
+        OptionalHint =
+            L("Sheet.OptionalHint")
+            + string.Join(
+                "、",
+                Rows.Where(row => row.Group == ParameterGroup.SheetVolume)
+                    .Select(row => row.Label)
+            );
+        SheetIdHint = L("Sheet.SheetIdAuto");
+
+        await ReloadSheetsAsync().ConfigureAwait(true);
+        HasTemplate = await _editor.HasTemplateAsync().ConfigureAwait(true);
+        await LoadForModeAsync().ConfigureAwait(true);
+    }
+
+    private async Task ReloadSheetsAsync()
+    {
+        Sheets.Clear();
+
+        foreach (var sheet in await _browser.QueryAsync(null).ConfigureAwait(true))
+        {
+            Sheets.Add(sheet);
+        }
+
+        // 查询按创建时间倒序 → 第一条就是"上一次新建的那张单"
+        SelectedSheet = Sheets.FirstOrDefault();
+        OnPropertyChanged(nameof(CanUseLastMode));
+        OnPropertyChanged(nameof(CanConfirm));
+        ConfirmCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>按当前试验方式把表单填起来。</summary>
+    private async Task LoadForModeAsync()
+    {
+        switch (Mode)
+        {
+            case SheetEditMode.New:
+                await ApplyNewDefaultsAsync().ConfigureAwait(true);
+                break;
+
+            case SheetEditMode.Last:
+                await ApplySheetAsync(Sheets.FirstOrDefault()?.SheetId).ConfigureAwait(true);
+                break;
+
+            default:
+                await ApplySheetAsync(SelectedSheet?.SheetId).ConfigureAwait(true);
+                break;
+        }
+    }
 
     /// <summary>
-    /// 切到「选择已有试验单」就**自动加载**列表（用户 2026-10-12 提出；现役
-    /// `TSelectBendingTestMainForm.FormCreate` 同样是打开窗体即 `qryGetSheetInfo.Open`）。
+    /// 新建模式的初值：各字段默认值 + **参数表当前的加载速率** + 试验目的对应的温度/速率 + 当前日期时间；
+    /// 单号显示"下一个号"的预览值（只读）。
     /// </summary>
-    partial void OnIsExistingSheetChanged(bool value)
+    private async Task ApplyNewDefaultsAsync()
     {
-        if (value)
+        _loading = true;
+        try
         {
-            _ = LoadExistingAsync();
+            var stored = await _parameters.LoadAsync().ConfigureAwait(true);
+            var peeked = await _editor.PeekNextSheetIdAsync().ConfigureAwait(true);
+
+            foreach (var row in Rows)
+            {
+                row.IsReadOnly = false;
+
+                if (row.Key == "SheetID")
+                {
+                    // 单号自动生成、只读（显示的是**预览号**，真正发号在「确定」时）
+                    row.Value = peeked;
+                }
+                else if (row.Key == "CreatedOn")
+                {
+                    row.Value = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                }
+                else if (row.IsDate)
+                {
+                    row.Value = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                }
+                else if (stored.TryGetValue(row.Key, out var fromParameters))
+                {
+                    // 用户 2026-10-14：单上的试验条件**新建时用参数表当前值预填**
+                    //（现役 T0715 的加载速率在参数表里；温度参数表里没有，就落回声明里的缺省值）
+                    row.Value = fromParameters;
+                }
+                else
+                {
+                    // 其余取方法给的缺省值（下拉落在第 1 项、温度 15…）
+                    row.Value = row.DefaultValue;
+                }
+            }
+
+            // 单号与试验时间只读：单号自动生成，试验时间取当前时刻
+            SetReadOnly("SheetID");
+            SetReadOnly("CreatedOn");
+            SheetIdHint = L("Sheet.SheetIdAuto");
+
+            // 注意：这里**不**调 ApplyDependentDefaults —— 那是"用户改了试验目的"时的联动
+            //（现役在此硬写 15℃/50），初始化时调会把参数表预填好的加载速率冲成 50。
+        }
+        finally
+        {
+            _loading = false;
         }
     }
 
-    /// <summary>打开时若停在「选择已有试验单」模式，重新查一次（列表可能是上次留下的旧数据）。</summary>
-    public override void OnOpened()
+    /// <summary>
+    /// 采用某张已有单（"上次试验项目" / "其他试验项目"）：把它的信息填进表单。
+    /// **整页只读**（用户 2026-10-14）—— 这两种方式只是"拿这张单接着做"，不在这一步改单上的信息。
+    /// </summary>
+    private async Task ApplySheetAsync(string? sheetId)
     {
-        if (IsExistingSheet)
+        if (string.IsNullOrWhiteSpace(sheetId))
         {
-            _ = LoadExistingAsync();
+            return;
+        }
+
+        _loading = true;
+        try
+        {
+            var values = await _editor.ReadSheetInfoAsync(sheetId).ConfigureAwait(true);
+
+            foreach (var row in Rows)
+            {
+                row.Value = values.GetValueOrDefault(row.Key) ?? string.Empty;
+                row.IsReadOnly = true;
+            }
+
+            SheetIdHint = L("Sheet.SheetIdPicked");
+        }
+        finally
+        {
+            _loading = false;
         }
     }
 
-    /// <summary>读取已有试验单列表（切模式 / 进页面时自动调用，也可点「刷新列表」手动再查）。</summary>
-    [RelayCommand]
-    private async Task LoadExistingAsync()
+    /// <summary>字段被改动（非载入期间）：问方法层要"跟着变的其它字段"（现役：试验目的 → 温度/速率）。</summary>
+    private void OnFieldChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        ExistingSheets.Clear();
-
-        var sheets = await _browser.QueryAsync(null);
-        foreach (var sheet in sheets)
+        if (_loading
+            || sender is not SheetFieldRow row
+            || e.PropertyName != nameof(SheetFieldRow.Value))
         {
-            ExistingSheets.Add(sheet);
+            return;
         }
 
-        Status = $"{L("Sheet.Loaded")} {ExistingSheets.Count}";
-        SelectedExisting = ExistingSheets.FirstOrDefault();
+        ApplyDependentDefaults(row.Key, row.Value);
     }
 
-    /// <summary>确定：新建或采用选中单，然后进执行页。</summary>
-    [RelayCommand]
+    private void ApplyDependentDefaults(string changedKey, string value)
+    {
+        var dependent = _editor.ResolveDependentDefaults(changedKey, value);
+        if (dependent.Count == 0)
+        {
+            return;
+        }
+
+        _loading = true;
+        try
+        {
+            foreach (var (key, text) in dependent)
+            {
+                SetValue(key, text);
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void SetValue(string key, string value)
+    {
+        if (Rows.FirstOrDefault(row => string.Equals(row.Key, key, StringComparison.Ordinal)) is { } row)
+        {
+            row.Value = value;
+        }
+    }
+
+    private void SetReadOnly(string key)
+    {
+        if (Rows.FirstOrDefault(row => string.Equals(row.Key, key, StringComparison.Ordinal)) is { } row)
+        {
+            row.IsReadOnly = true;
+        }
+    }
+
+    /// <summary>「读取模板」（仅新建模式）：把模板内容填进表单，之后照样可以改。</summary>
+    [RelayCommand(CanExecute = nameof(CanReadTemplate))]
+    private async Task ReadTemplateAsync()
+    {
+        var values = await _editor.ReadTemplateAsync().ConfigureAwait(true);
+
+        _loading = true;
+        try
+        {
+            foreach (var row in Rows)
+            {
+                row.Value = values.GetValueOrDefault(row.Key) ?? string.Empty;
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+
+        Status = L("Sheet.TemplateLoaded");
+    }
+
+    /// <summary>「存为模板」：把当前表单内容存成模板。</summary>
+    [RelayCommand(CanExecute = nameof(CanSaveTemplate))]
+    private async Task SaveTemplateAsync()
+    {
+        await _editor.SaveTemplateAsync(Values()).ConfigureAwait(true);
+        HasTemplate = true;
+        Status = L("Sheet.TemplateSaved");
+    }
+
+    /// <summary>确定：新建一张单 / 采用选中的那张单，然后把单上的加载速率写回参数表。</summary>
+    [RelayCommand(CanExecute = nameof(CanConfirm))]
     private async Task ConfirmAsync()
     {
-        if (IsNewSheet)
+        try
         {
-            var sheetId = await _execution.CreateSheetAsync(ProjectName, NumberPrefix);
-            _current.Set(sheetId, ProjectName);
-            Status = $"{L("Sheet.Created")} {sheetId}";
-        }
-        else
-        {
-            if (SelectedExisting is null)
+            var sheetId = Mode switch
+            {
+                SheetEditMode.New => await _editor.CreateSheetAsync(Values()).ConfigureAwait(true),
+                SheetEditMode.Last => Sheets.FirstOrDefault()?.SheetId,
+                _ => SelectedSheet?.SheetId,
+            };
+
+            if (string.IsNullOrWhiteSpace(sheetId))
             {
                 Status = L("Sheet.SelectFirst");
                 return;
             }
 
-            _current.Set(SelectedExisting.SheetId, SelectedExisting.ProjectName);
-            Status = $"{L("Sheet.Selected")} {SelectedExisting.SheetId}";
-        }
+            _current.Set(sheetId, Values().GetValueOrDefault("ProjectName") ?? string.Empty);
 
-        // 结果交给弹窗宿主（不再导航：调用方本来就是试验执行页，回来即可）
-        CloseRequested?.Invoke(this, true);
+            // 实际控制按单上填的加载速率走（用户 2026-10-14）
+            await _editor.PushTestConditionsAsync(sheetId).ConfigureAwait(true);
+
+            Status = $"{L("Sheet.Selected")} {sheetId}";
+            CloseRequested?.Invoke(this, true);
+        }
+        catch (Exception ex)
+        {
+            Status = $"{L("Sheet.CreateFailed")}: {ex.Message}";
+        }
     }
 
     /// <summary>取消：什么都不做，关掉弹窗。</summary>
     [RelayCommand]
     private void Cancel() => CloseRequested?.Invoke(this, false);
+
+    private Dictionary<string, string> Values() =>
+        Rows.ToDictionary(row => row.Key, row => row.Value, StringComparer.Ordinal);
 }

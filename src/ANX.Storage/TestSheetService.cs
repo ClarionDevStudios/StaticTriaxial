@@ -666,4 +666,152 @@ public sealed class TestSheetService : ITestSheetService
 
         command.ExecuteNonQuery();
     }
+    /// <summary>预览当天该前缀的下一个单号（**不消耗流水**，用户 2026-10-14：单号只读显示用）。</summary>
+    public string PeekNextSheetId(string methodCode, string numberPrefix)
+    {
+        _ = ResolveMethod(methodCode); // 只是校验方法代号有效（单号与方法无关）
+        return _numbers.Peek(numberPrefix, DateOnly.FromDateTime(DateTime.Now)).ToString();
+    }
+
+    /// <summary>
+    /// 按**调用方给的一组字段**新建一张试验单（试验单编辑窗体用）。
+    /// 单号由流水生成器发；UUID 照旧自动写；字段名必须在方法声明的主表列里（否则报错，不静默忽略）。
+    /// </summary>
+    /// <returns>新建的单号。</returns>
+    public Task<string> CreateAsync(
+        string methodCode,
+        string numberPrefix,
+        IReadOnlyDictionary<string, object?> fields,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentNullException.ThrowIfNull(fields);
+        var method = ResolveMethod(methodCode);
+
+        foreach (var name in fields.Keys)
+        {
+            if (!IsDeclared(method.MainTable, name))
+            {
+                throw new ArgumentException(
+                    $"方法 {method.MethodCode} 的主表没有声明列 '{name}'",
+                    nameof(fields)
+                );
+            }
+        }
+
+        var number = _numbers.Next(numberPrefix, DateOnly.FromDateTime(DateTime.Now));
+        var sheetId = number.ToString();
+
+        var values = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["SheetID"] = sheetId,
+            ["CreatedOn"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
+        };
+
+        foreach (var (name, value) in fields)
+        {
+            values[name] = value;
+        }
+
+        if (IsDeclared(method.MainTable, UuidColumn))
+        {
+            values[UuidColumn] = RecordUuid.New();
+        }
+
+        using var connection = _initializer.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+        Insert(connection, transaction, method.MainTable, values);
+        transaction.Commit();
+
+        return Task.FromResult(sheetId);
+    }
+
+    /// <summary>读模板表的那一行（没有内容回 null）。列名必须在方法声明的模板表里。</summary>
+    public IReadOnlyDictionary<string, object?>? ReadTemplateRow(
+        string methodCode,
+        IReadOnlyList<string> columns
+    )
+    {
+        ArgumentNullException.ThrowIfNull(columns);
+        var method = ResolveMethod(methodCode);
+
+        using var connection = _initializer.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            $"SELECT {string.Join(", ", columns)} FROM {method.TemplateTable.TableName} LIMIT 1;";
+
+        using var reader = command.ExecuteReader();
+        if (!reader.Read())
+        {
+            return null;
+        }
+
+        var row = new Dictionary<string, object?>(StringComparer.Ordinal);
+        for (var i = 0; i < columns.Count; i++)
+        {
+            row[columns[i]] = reader.IsDBNull(i) ? null : reader.GetValue(i);
+        }
+
+        return row;
+    }
+
+    /// <summary>
+    /// 把一组字段写进模板表（**单行**：模板表只存"当前这一套缺省值"）。
+    /// 现役同口径：模板表沿用一个固定主键；这里用 <c>&lt;方法代号&gt;-TEMPLATE</c>。
+    /// </summary>
+    public Task SaveTemplateAsync(
+        string methodCode,
+        IReadOnlyDictionary<string, object?> fields,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentNullException.ThrowIfNull(fields);
+        var method = ResolveMethod(methodCode);
+
+        var keyColumn = method.TemplateTable.PrimaryKeyColumn;
+        var templateId = $"{method.MethodCode}-TEMPLATE";
+
+        foreach (var name in fields.Keys)
+        {
+            if (!IsDeclared(method.TemplateTable, name))
+            {
+                throw new ArgumentException(
+                    $"方法 {method.MethodCode} 的模板表没有声明列 '{name}'",
+                    nameof(fields)
+                );
+            }
+        }
+
+        using var connection = _initializer.OpenConnection();
+        using var transaction = connection.BeginTransaction();
+
+        // 先删掉旧模板行（只保留一套），再插入新的
+        using (var delete = connection.CreateCommand())
+        {
+            delete.Transaction = transaction;
+            delete.CommandText = $"DELETE FROM {method.TemplateTable.TableName};";
+            delete.ExecuteNonQuery();
+        }
+
+        var values = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            [keyColumn] = templateId,
+        };
+
+        foreach (var (name, value) in fields)
+        {
+            values[name] = value;
+        }
+
+        if (IsDeclared(method.TemplateTable, UuidColumn))
+        {
+            values[UuidColumn] = RecordUuid.New();
+        }
+
+        Insert(connection, transaction, method.TemplateTable, values);
+        transaction.Commit();
+
+        return Task.CompletedTask;
+    }
+
 }

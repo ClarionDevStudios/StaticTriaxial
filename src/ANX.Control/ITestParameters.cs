@@ -8,6 +8,12 @@ public enum ParameterGroup
 
     /// <summary>试件尺寸类参数 → 试样编辑页。</summary>
     Sample = 1,
+
+    /// <summary>试验单信息字段（工程信息 / 体积指标）→ 试验单编辑窗体。</summary>
+    Sheet = 2,
+
+    /// <summary>试验单信息的第二段：体积指标（允许留空）→ 试验单编辑窗体。</summary>
+    SheetVolume = 3,
 }
 
 /// <summary>参数值的编辑类型：界面据此选控件（数字框 / 开关 / 文本框）。</summary>
@@ -24,6 +30,9 @@ public enum ParameterKind
 
     /// <summary>从固定选项里选一个（下拉列表；现役用单选组，我们改下拉以省空间）。</summary>
     Choice = 3,
+
+    /// <summary>日期（界面给日期选择器；取值口径仍是 `yyyy-MM-dd` 文本）。</summary>
+    Date = 4,
 }
 
 /// <summary>下拉列表的一个选项：<paramref name="Value"/> 入库，<paramref name="Label"/> 显示。</summary>

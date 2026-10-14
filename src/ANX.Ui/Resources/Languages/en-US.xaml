@@ -113,6 +113,20 @@
   <sys:String x:Key="History.Fields">Specimen fields</sys:String>
 
   <sys:String x:Key="Sheet.New">New sheet</sys:String>
+  <sys:String x:Key="Sheet.Mode">Mode</sys:String>
+  <sys:String x:Key="Sheet.ModeNew">New test project</sys:String>
+  <sys:String x:Key="Sheet.ModeLast">Last test project</sys:String>
+  <sys:String x:Key="Sheet.ModeExisting">Other test project</sys:String>
+  <sys:String x:Key="Sheet.SheetId">Sheet no.</sys:String>
+  <sys:String x:Key="Sheet.SheetIdAuto">Sheet no. is generated automatically and read-only; it is issued when you click OK</sys:String>
+  <sys:String x:Key="Sheet.SheetIdPicked">Keeps the selected sheet's number (read-only)</sys:String>
+  <sys:String x:Key="Sheet.SectionInfo">Test sheet</sys:String>
+  <sys:String x:Key="Sheet.OptionalHint">Fields marked * are required; these may be left empty:</sys:String>
+  <sys:String x:Key="Sheet.ReadTemplate">Load template</sys:String>
+  <sys:String x:Key="Sheet.SaveTemplate">Save as template</sys:String>
+  <sys:String x:Key="Sheet.TemplateLoaded">Template loaded</sys:String>
+  <sys:String x:Key="Sheet.TemplateSaved">Saved as template</sys:String>
+  <sys:String x:Key="Sheet.CreateFailed">Saving the sheet failed</sys:String>
   <sys:String x:Key="Sheet.Existing">Use an existing sheet</sys:String>
   <sys:String x:Key="Sheet.Project">Project</sys:String>
   <sys:String x:Key="Sheet.Prefix">Number prefix</sys:String>

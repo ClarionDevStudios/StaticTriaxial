@@ -113,6 +113,20 @@
   <sys:String x:Key="History.Fields">试件字段</sys:String>
 
   <sys:String x:Key="Sheet.New">新建试验单</sys:String>
+  <sys:String x:Key="Sheet.Mode">试验方式</sys:String>
+  <sys:String x:Key="Sheet.ModeNew">新建试验项目</sys:String>
+  <sys:String x:Key="Sheet.ModeLast">上次试验项目</sys:String>
+  <sys:String x:Key="Sheet.ModeExisting">其他试验项目</sys:String>
+  <sys:String x:Key="Sheet.SheetId">试验单号</sys:String>
+  <sys:String x:Key="Sheet.SheetIdAuto">试验单号自动生成、只读；点「确定」时才真正发号</sys:String>
+  <sys:String x:Key="Sheet.SheetIdPicked">沿用所选试验单的单号（只读）</sys:String>
+  <sys:String x:Key="Sheet.SectionInfo">试验单信息</sys:String>
+  <sys:String x:Key="Sheet.OptionalHint">带 * 为必填项；以下各项允许留空：</sys:String>
+  <sys:String x:Key="Sheet.ReadTemplate">读取模板</sys:String>
+  <sys:String x:Key="Sheet.SaveTemplate">存为模板</sys:String>
+  <sys:String x:Key="Sheet.TemplateLoaded">已读取模板内容</sys:String>
+  <sys:String x:Key="Sheet.TemplateSaved">已存为模板</sys:String>
+  <sys:String x:Key="Sheet.CreateFailed">保存试验单失败</sys:String>
   <sys:String x:Key="Sheet.Existing">选择已有试验单</sys:String>
   <sys:String x:Key="Sheet.Project">项目名称</sys:String>
   <sys:String x:Key="Sheet.Prefix">单号前缀</sys:String>

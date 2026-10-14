@@ -5,6 +5,8 @@
   xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
 >
   <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+  <!-- 日期字段：界面用日期选择器，值是 `yyyy-MM-dd` 文本 -->
+  <conv:DateTextConverter x:Key="DateText" />
 
   <!-- true→可见，false→占位但不可见（用于让一行保留空间） -->
   <conv:BoolToHiddenVisibilityConverter x:Key="HiddenWhenFalse" />

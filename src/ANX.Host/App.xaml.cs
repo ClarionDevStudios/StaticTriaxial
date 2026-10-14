@@ -115,7 +115,14 @@ public partial class App
                 _ = services.AddSingleton<ParameterStore>();
                 _ = services.AddSingleton<BendingParameters>();
                 _ = services.AddSingleton<ITestParameters>(sp => sp.GetRequiredService<BendingParameters>());
-                _ = services.AddSingleton<ITestExecution, BendingExecution>();
+                // 同一个方法工程实例同时充当"跑试验"和"编辑试验单"两个角色
+                _ = services.AddSingleton<BendingExecution>();
+                _ = services.AddSingleton<ITestExecution>(sp =>
+                    sp.GetRequiredService<BendingExecution>()
+                );
+                _ = services.AddSingleton<ITestSheetEditor>(sp =>
+                    sp.GetRequiredService<BendingExecution>()
+                );
 
                 // 设备：默认连**现场真机**（GR-3 控制器走 UDP，地址沿用现役）。
                 // 想在没有硬件时试跑，设环境变量 ANX_USE_SIMULATOR=1（模拟器只在 Debug 构建里存在）。
@@ -169,8 +176,9 @@ public partial class App
                 _ = services.AddSingleton<IModalPageService, ModalPageService>();
                 _ = services.AddSingleton(sp => new SheetSelectionViewModel(
                     sp.GetRequiredService<ILocalizationService>(),
-                    sp.GetRequiredService<ITestExecution>(),
                     sp.GetRequiredService<ITestSheetBrowser>(),
+                    sp.GetRequiredService<ITestSheetEditor>(),
+                    sp.GetRequiredService<ITestParameters>(),
                     sp.GetRequiredService<ICurrentSheetContext>()
                 ));
                 _ = services.AddSingleton<SheetSelectionPage>();

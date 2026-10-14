@@ -11,100 +11,202 @@
   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
   mc:Ignorable="d"
 >
-  <Grid Margin="24,20,24,20">
+  <!--
+    字段行的显示模板：左边标签、右边控件（文本框 / 下拉 / 日期），两行一对横向排布。
+    控件的选择与内容**完全由方法声明的字段决定**（界面不认识任何具体字段名）。
+  -->
+  <Page.Resources>
+    <DataTemplate x:Key="SheetFieldTemplate">
+      <Grid Margin="0,6,18,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="130" />
+          <ColumnDefinition Width="170" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <TextBlock
+          VerticalAlignment="Center"
+          Style="{StaticResource FieldLabelStyle}"
+          Text="{Binding Label}"
+          TextWrapping="Wrap"
+        />
+
+        <TextBox
+          Grid.Column="1"
+          IsReadOnly="{Binding IsReadOnly}"
+          Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
+          Visibility="{Binding IsPlain, Converter={StaticResource BoolToVisibility}}"
+        />
+
+        <ComboBox
+          Grid.Column="1"
+          DisplayMemberPath="Label"
+          IsEnabled="{Binding IsEnabledForEdit}"
+          ItemsSource="{Binding Options}"
+          SelectedValue="{Binding Value, Mode=TwoWay}"
+          SelectedValuePath="Value"
+          Visibility="{Binding IsChoice, Converter={StaticResource BoolToVisibility}}"
+        />
+
+        <DatePicker
+          Grid.Column="1"
+          IsEnabled="{Binding IsEnabledForEdit}"
+          SelectedDate="{Binding Value, Mode=TwoWay, Converter={StaticResource DateText}}"
+          Visibility="{Binding IsDate, Converter={StaticResource BoolToVisibility}}"
+        />
+
+        <TextBlock
+          Grid.Column="2"
+          Margin="8,0,0,0"
+          VerticalAlignment="Center"
+          Style="{StaticResource FieldLabelStyle}"
+          Text="{Binding Unit}"
+        />
+      </Grid>
+    </DataTemplate>
+  </Page.Resources>
+
+  <Grid Margin="24,16,24,16">
     <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <!-- 顶部：模式单选 -->
-    <StackPanel Grid.Row="0" Orientation="Horizontal">
-      <RadioButton
-        GroupName="SheetMode"
-        IsChecked="{Binding ViewModel.IsNewSheet, Mode=TwoWay}"
-        Content="{DynamicResource Sheet.New}"
+    <!-- ① 试验方式（三选一，照现役）+ 单号（只读、自动生成） -->
+    <StackPanel Grid.Row="0">
+      <StackPanel Orientation="Horizontal">
+        <TextBlock
+          VerticalAlignment="Center"
+          Style="{StaticResource FieldLabelStyle}"
+          Text="{DynamicResource Sheet.Mode}"
+        />
+        <RadioButton
+          Margin="12,0,0,0"
+          GroupName="SheetMode"
+          IsChecked="{Binding ViewModel.IsNewMode, Mode=TwoWay}"
+          Content="{DynamicResource Sheet.ModeNew}"
+        />
+        <RadioButton
+          Margin="18,0,0,0"
+          GroupName="SheetMode"
+          IsChecked="{Binding ViewModel.IsLastMode, Mode=TwoWay}"
+          Content="{DynamicResource Sheet.ModeLast}"
+          IsEnabled="{Binding ViewModel.CanUseLastMode}"
+        />
+        <RadioButton
+          Margin="18,0,0,0"
+          GroupName="SheetMode"
+          IsChecked="{Binding ViewModel.IsExistingMode, Mode=TwoWay}"
+          Content="{DynamicResource Sheet.ModeExisting}"
+        />
+      </StackPanel>
+
+      <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
+        <TextBlock
+          VerticalAlignment="Center"
+          Style="{StaticResource FieldLabelStyle}"
+          Text="{Binding ViewModel.SheetIdHint, Mode=OneWay}"
+          TextWrapping="Wrap"
+        />
+      </StackPanel>
+    </StackPanel>
+
+    <!-- ② "其他试验项目"：先挑单（放在字段区**上方**，切过来就能看见，不必滚动） -->
+    <ui:Card
+      Grid.Row="1"
+      Margin="0,12,0,0"
+      Padding="16"
+      VerticalContentAlignment="Top"
+      Visibility="{Binding ViewModel.IsExistingMode, Converter={StaticResource BoolToVisibility}}"
+    >
+      <DockPanel>
+        <TextBlock
+          DockPanel.Dock="Top"
+          Style="{StaticResource CardTitleStyle}"
+          Text="{DynamicResource Sheet.Existing}"
+        />
+        <DataGrid
+          Height="150"
+          Margin="0,10,0,0"
+          AutoGenerateColumns="False"
+          IsReadOnly="True"
+          ItemsSource="{Binding ViewModel.Sheets}"
+          SelectedItem="{Binding ViewModel.SelectedSheet, Mode=TwoWay}"
+          SelectionMode="Single"
+        >
+          <DataGrid.Columns>
+            <DataGridTextColumn Binding="{Binding SheetId}" Header="{DynamicResource History.ColSheetId}" />
+            <DataGridTextColumn Binding="{Binding ProjectName}" Header="{DynamicResource History.ColProject}" />
+            <DataGridTextColumn Binding="{Binding CreatedOn}" Header="{DynamicResource History.ColDate}" />
+            <DataGridTextColumn Binding="{Binding SampleCount}" Header="{DynamicResource History.ColSamples}" />
+          </DataGrid.Columns>
+        </DataGrid>
+      </DockPanel>
+    </ui:Card>
+
+    <!-- ③ 字段区：一张卡片、两列按行配对（照现役版面） -->
+    <ScrollViewer
+      Grid.Row="2"
+      Margin="0,12,0,0"
+      HorizontalScrollBarVisibility="Disabled"
+      VerticalScrollBarVisibility="Auto"
+    >
+      <StackPanel>
+        <ui:Card Padding="16" VerticalContentAlignment="Top">
+          <StackPanel>
+            <TextBlock Style="{StaticResource CardTitleStyle}" Text="{DynamicResource Sheet.SectionInfo}" />
+            <TextBlock
+              Margin="0,6,0,0"
+              Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+              Text="{Binding ViewModel.OptionalHint, Mode=OneWay}"
+              TextWrapping="Wrap"
+            />
+
+            <ItemsControl
+              Margin="0,6,0,0"
+              HorizontalAlignment="Left"
+              ItemTemplate="{StaticResource SheetFieldTemplate}"
+              ItemsSource="{Binding ViewModel.Rows}"
+            >
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <UniformGrid Columns="2" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+            </ItemsControl>
+          </StackPanel>
+        </ui:Card>
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- ④ 模板按钮（读取模板只在"新建试验项目"可用）+ 状态 -->
+    <StackPanel Grid.Row="3" Margin="0,12,0,0" Orientation="Horizontal">
+      <ui:Button
+        Appearance="Secondary"
+        Command="{Binding ViewModel.ReadTemplateCommand}"
+        Content="{DynamicResource Sheet.ReadTemplate}"
+        Icon="{ui:SymbolIcon DocumentArrowDown24}"
       />
-      <RadioButton
-        Margin="24,0,0,0"
-        GroupName="SheetMode"
-        IsChecked="{Binding ViewModel.IsExistingSheet, Mode=TwoWay}"
-        Content="{DynamicResource Sheet.Existing}"
+      <ui:Button
+        Margin="8,0,0,0"
+        Appearance="Secondary"
+        Command="{Binding ViewModel.SaveTemplateCommand}"
+        Content="{DynamicResource Sheet.SaveTemplate}"
+        Icon="{ui:SymbolIcon Save24}"
+      />
+      <TextBlock
+        Margin="14,0,0,0"
+        VerticalAlignment="Center"
+        Style="{StaticResource MonoTextStyle}"
+        Text="{Binding ViewModel.Status, Mode=OneWay}"
       />
     </StackPanel>
 
-    <!-- 中部：随模式切换 -->
-    <Grid Grid.Row="1" Margin="0,16,0,0">
-      <ui:Card Padding="20" VerticalContentAlignment="Top"
-               Visibility="{Binding ViewModel.IsNewSheet, Converter={StaticResource BoolToVisibility}}">
-        <StackPanel>
-          <TextBlock Style="{StaticResource CardTitleStyle}" Text="{DynamicResource Sheet.New}" />
-          <Grid Margin="0,14,0,0" Width="460" HorizontalAlignment="Left">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="120" />
-              <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-              <RowDefinition Height="Auto" />
-              <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-            <TextBlock Style="{StaticResource FieldLabelStyle}" Text="{DynamicResource Sheet.Project}" />
-            <TextBox Grid.Column="1" Text="{Binding ViewModel.ProjectName, UpdateSourceTrigger=PropertyChanged}" />
-            <TextBlock
-              Grid.Row="1"
-              Grid.Column="0"
-              Margin="0,12,0,0"
-              Style="{StaticResource FieldLabelStyle}"
-              Text="{DynamicResource Sheet.Prefix}"
-            />
-            <TextBox
-              Grid.Row="1"
-              Grid.Column="1"
-              Margin="0,12,0,0"
-              Text="{Binding ViewModel.NumberPrefix, UpdateSourceTrigger=PropertyChanged}"
-            />
-          </Grid>
-        </StackPanel>
-      </ui:Card>
-
-      <ui:Card Padding="20" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch"
-               Visibility="{Binding ViewModel.IsExistingSheet, Converter={StaticResource BoolToVisibility}}">
-        <DockPanel>
-          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
-            <TextBlock Style="{StaticResource CardTitleStyle}" Text="{DynamicResource Sheet.Existing}" />
-            <ui:Button
-              Margin="16,0,0,0"
-              Appearance="Secondary"
-              Command="{Binding ViewModel.LoadExistingCommand}"
-              Content="{DynamicResource Sheet.LoadExisting}"
-            />
-          </StackPanel>
-          <DataGrid
-            Margin="0,12,0,0"
-            AutoGenerateColumns="False"
-            IsReadOnly="True"
-            ItemsSource="{Binding ViewModel.ExistingSheets}"
-            SelectedItem="{Binding ViewModel.SelectedExisting, Mode=TwoWay}"
-          >
-            <DataGrid.Columns>
-              <DataGridTextColumn Binding="{Binding SheetId}" Header="{DynamicResource History.ColSheetId}" />
-              <DataGridTextColumn Binding="{Binding ProjectName}" Header="{DynamicResource History.ColProject}" />
-              <DataGridTextColumn Binding="{Binding CreatedOn}" Header="{DynamicResource History.ColDate}" />
-              <DataGridTextColumn Binding="{Binding SampleCount}" Header="{DynamicResource History.ColSamples}" />
-            </DataGrid.Columns>
-          </DataGrid>
-        </DockPanel>
-      </ui:Card>
-    </Grid>
-
-    <!-- 下部：按钮区 -->
-    <StackPanel
-      Grid.Row="2"
-      Margin="0,16,0,0"
-      HorizontalAlignment="Right"
-      Orientation="Horizontal"
-    >
+    <!-- ⑤ 确定 / 取消 -->
+    <StackPanel Grid.Row="4" Margin="0,12,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
       <ui:Button
         Width="110"
         Appearance="Primary"
@@ -119,12 +221,5 @@
         Content="{DynamicResource Sheet.Cancel}"
       />
     </StackPanel>
-
-    <TextBlock
-      Grid.Row="3"
-      Margin="0,10,0,0"
-      Style="{StaticResource MonoTextStyle}"
-      Text="{Binding ViewModel.Status, Mode=OneWay}"
-    />
   </Grid>
 </Page>

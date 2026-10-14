@@ -10,8 +10,11 @@ using ANX.Storage;
 /// 已有的判定器与存储上。界面只认 <see cref="ITestExecution"/>。
 /// </summary>
 public sealed class BendingExecution(TestSheetService sheets, BendingParameters? parameters = null)
-    : ITestExecution
+    : ITestExecution, ITestSheetEditor
 {
+    /// <summary>单号前缀（沿用现役现场口径；以后接到设置里再改）。</summary>
+    private const string NumberPrefix = "WT";
+
     /// <summary>
     /// 明细行的试验状态：**完成**。现役枚举 `(tsNotTested = 0, tsTesting = 1, tsCompleted = 2, tsFailed = 3)`，
     /// 试件跑完判定落库时写它（用户 2026-10-13 的置灰规则要用"这件做完了没有"）。
@@ -140,6 +143,311 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
         string sampleId,
         CancellationToken cancellationToken = default
     ) => sheets.DeleteSampleAsync(sheetId, sampleId, cancellationToken);
+
+    // ── 试验单编辑（ITestSheetEditor，用户 2026-10-14）────────────────────────
+
+    /// <inheritdoc />
+    public IReadOnlyList<ParameterDefinition> SheetInfoFields => BendingSheetFields.Definitions;
+
+    /// <inheritdoc />
+    public Task<string> PeekNextSheetIdAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(sheets.PeekNextSheetId(MethodCode, NumberPrefix));
+
+    /// <inheritdoc />
+    public Task<IReadOnlyDictionary<string, string>> ReadSheetInfoAsync(
+        string sheetId,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var keys = BendingSheetFields.Definitions.Select(definition => definition.Key).ToArray();
+        return Task.FromResult(ToFieldTexts(sheets.ReadMainRow(sheetId, keys)));
+    }
+
+    /// <inheritdoc />
+    public async Task<string> CreateSheetAsync(
+        IReadOnlyDictionary<string, string> fields,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ValidateSheetFields(fields);
+
+        // 单号由流水生成器发（界面上显示的只是"预览号"）—— 把界面带上来的单号剔掉，避免两处不一致
+        var payload = fields
+            .Where(pair => !string.Equals(pair.Key, "SheetID", StringComparison.Ordinal))
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+
+        var sheetId = await sheets
+            .CreateAsync(MethodCode, NumberPrefix, BuildMainColumns(payload), cancellationToken)
+            .ConfigureAwait(false);
+
+        // 单上的加载速率是"这一单实际要用的"，保存后立刻写回参数表（用户 2026-10-14）
+        await PushTestConditionsAsync(sheetId, cancellationToken).ConfigureAwait(false);
+        return sheetId;
+    }
+
+    /// <summary>
+    /// 必填校验（方法层的事 —— 界面不认识"哪个字段必须填"）。
+    /// 清单照现役 `TEditBendingTestForm.ValidatingInput`（且照现役只在**新建**时校验：
+    /// `if grpSheetMode.ItemIndex &gt; 0 then Exit(True)`）：项目名称、试验规范、试验目的、试件尺寸、
+    /// 混合料类型、试验温度、加载速率；体积指标 6 项**不校验**（用户 2026-10-14：允许留空）。
+    /// 界面侧同一口径：`SheetEditMode` 只有新建模式可编辑，采用已有单时整页只读（用户 2026-10-14）。
+    /// </summary>
+    private static void ValidateSheetFields(IReadOnlyDictionary<string, string> fields)
+    {
+        var required = new (string Key, string Message)[]
+        {
+            (BendingSheetFields.ProjectNameKey, "项目名称不能为空"),
+            (BendingSheetFields.SpecificationKey, "请选择试验规范"),
+            (BendingSheetFields.ObjectiveKey, "请选择试验目的"),
+            (BendingSheetFields.SampleSizeKey, "请选择试件尺寸"),
+            (BendingSheetFields.MixtureTypeKey, "混合料类型不能为空"),
+            (BendingSheetFields.TemperatureKey, "试验温度不能为空"),
+            (BendingSheetFields.LoadRateKey, "加载速率不能为空"),
+        };
+
+        foreach (var (key, message) in required)
+        {
+            if (string.IsNullOrWhiteSpace(fields.GetValueOrDefault(key)))
+            {
+                throw new InvalidOperationException(message);
+            }
+        }
+
+        // 现役对试验温度与加载速率还要求"能解析成数字"（TryStrToFloat / TryStrToInt）
+        foreach (var key in new[] { BendingSheetFields.TemperatureKey, BendingSheetFields.LoadRateKey })
+        {
+            if (
+                !double.TryParse(
+                    fields[key].Trim(),
+                    System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out _
+                )
+            )
+            {
+                throw new InvalidOperationException(
+                    key == BendingSheetFields.TemperatureKey ? "试验温度格式不对" : "加载速率格式不对"
+                );
+            }
+        }
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyDictionary<string, string> ResolveDependentDefaults(
+        string changedKey,
+        string value
+    )
+    {
+        if (
+            !string.Equals(changedKey, BendingSheetFields.ObjectiveKey, StringComparison.Ordinal)
+            || !int.TryParse(
+                value,
+                System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var objective
+            )
+            || objective < 0
+            || objective >= BendingSheetFields.ObjectiveDefaults.Length
+        )
+        {
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+        }
+
+        // 现役：常温弯拉性能 → 15℃/50；低温弯拉性能 → −10℃/50
+        var (temperature, loadRate) = BendingSheetFields.ObjectiveDefaults[objective];
+
+        return new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [BendingSheetFields.TemperatureKey] = temperature,
+            [BendingSheetFields.LoadRateKey] = loadRate,
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task PushTestConditionsAsync(
+        string sheetId,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (parameters is null)
+        {
+            return;
+        }
+
+        var row = sheets.ReadMainRow(sheetId, [BendingSheetFields.LoadRateKey]);
+        var loadRate = Convert.ToString(
+            row[BendingSheetFields.LoadRateKey],
+            System.Globalization.CultureInfo.InvariantCulture
+        );
+
+        if (string.IsNullOrWhiteSpace(loadRate))
+        {
+            return;
+        }
+
+        // 参数表按 key 合并写入（只动加载速率这一项，其余保持）
+        await parameters
+            .SaveAsync(
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    [BendingParameters.LoadRateKey] = loadRate,
+                },
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public Task<bool> HasTemplateAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(
+            sheets.ReadTemplateRow(MethodCode, [BendingSheetFields.ProjectNameKey]) is not null
+        );
+
+    /// <inheritdoc />
+    public Task<IReadOnlyDictionary<string, string>> ReadTemplateAsync(
+        CancellationToken cancellationToken = default
+    )
+    {
+        // 模板只存"下次新建时的缺省值"：单号（自动生成）与试验时间不在模板表里
+        var keys = BendingSheetFields
+            .Definitions.Select(definition => definition.Key)
+            .Where(key => !TemplateExcludedKeys.Contains(key, StringComparer.Ordinal))
+            .ToArray();
+
+        var row = sheets.ReadTemplateRow(MethodCode, keys);
+
+        return Task.FromResult(
+            row is null ? DefaultFieldTexts() : ToFieldTexts(row)
+        );
+    }
+
+    /// <inheritdoc />
+    public Task SaveTemplateAsync(
+        IReadOnlyDictionary<string, string> fields,
+        CancellationToken cancellationToken = default
+    )
+    {
+        // 模板只存"下次新建时的缺省值"：单号（自动生成）与试验时间不存
+        var columns = BuildMainColumns(fields);
+        foreach (var key in TemplateExcludedKeys)
+        {
+            columns.Remove(key);
+        }
+
+        return sheets.SaveTemplateAsync(MethodCode, columns, cancellationToken);
+    }
+
+    /// <summary>模板表里没有的字段（单号自动生成、试验时间每次现取）。</summary>
+    private static readonly string[] TemplateExcludedKeys = ["SheetID", "CreatedOn"];
+
+    /// <summary>
+    /// 把界面填的一组字段翻译成主表列：数值列按 double、选项列按代号（0/1/2），
+    /// 并补齐现役那种 `XxxId + XxxDesc` 成对写法（`TestSpecificationsDesc` / `TestObjective` / `SampleSizeDesc`）。
+    /// 空值不写（留给数据库 NULL，体积指标允许留空）。
+    /// </summary>
+    private static Dictionary<string, object?> BuildMainColumns(
+        IReadOnlyDictionary<string, string> fields
+    )
+    {
+        var columns = new Dictionary<string, object?>(StringComparer.Ordinal);
+
+        foreach (var definition in BendingSheetFields.Definitions)
+        {
+            if (!fields.TryGetValue(definition.Key, out var text))
+            {
+                continue;
+            }
+
+            text = text?.Trim() ?? string.Empty;
+            if (text.Length == 0)
+            {
+                continue;
+            }
+
+            switch (definition.Kind)
+            {
+                case ParameterKind.Number:
+                    if (
+                        double.TryParse(
+                            text,
+                            System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            out var number
+                        )
+                    )
+                    {
+                        columns[definition.Key] = number;
+                    }
+
+                    break;
+
+                case ParameterKind.Choice:
+                    if (
+                        int.TryParse(
+                            text,
+                            System.Globalization.NumberStyles.Integer,
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            out var choice
+                        )
+                    )
+                    {
+                        columns[definition.Key] = choice;
+
+                        var label = definition.Options?.FirstOrDefault(
+                            option =>
+                                string.Equals(option.Value, text, StringComparison.Ordinal)
+                        )?.Label;
+
+                        if (label is { Length: > 0 } && DescriptionColumn(definition.Key) is { } desc)
+                        {
+                            columns[desc] = label;
+                        }
+                    }
+
+                    break;
+
+                default:
+                    columns[definition.Key] = text;
+                    break;
+            }
+        }
+
+        return columns;
+    }
+
+    /// <summary>选项列对应的"描述列"（现役 `XxxId + XxxDesc` 成对；试验目的的 Desc 列叫 `TestObjective`）。</summary>
+    private static string? DescriptionColumn(string key) =>
+        key switch
+        {
+            "TestSpecificationsId" => "TestSpecificationsDesc",
+            "TestObjectiveId" => "TestObjective",
+            "SampleSizeId" => "SampleSizeDesc",
+            _ => null,
+        };
+
+    /// <summary>读回的主表行 → 界面字段文本（空值给空串，由界面决定显示）。</summary>
+    private static IReadOnlyDictionary<string, string> ToFieldTexts(
+        IReadOnlyDictionary<string, object?> row
+    ) =>
+        BendingSheetFields.Definitions.ToDictionary(
+            definition => definition.Key,
+            definition =>
+                row.TryGetValue(definition.Key, out var value) && value is not null
+                    ? Convert.ToString(
+                        value,
+                        System.Globalization.CultureInfo.InvariantCulture
+                    ) ?? string.Empty
+                    : string.Empty,
+            StringComparer.Ordinal
+        );
+
+    /// <summary>各字段的默认值（没有模板时用）。</summary>
+    private static IReadOnlyDictionary<string, string> DefaultFieldTexts() =>
+        BendingSheetFields.Definitions.ToDictionary(
+            definition => definition.Key,
+            definition => definition.DefaultValue,
+            StringComparer.Ordinal
+        );
 
     /// <inheritdoc />
     public Task<IReadOnlyList<SampleRowInfo>> ReadSampleRowsAsync(

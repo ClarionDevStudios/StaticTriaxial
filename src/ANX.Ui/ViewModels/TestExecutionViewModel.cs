@@ -124,10 +124,13 @@ public partial class TestExecutionViewModel : ViewModelBase
     private readonly SampleInfoViewModel? _sampleInfo;
     private readonly INavigationPaneService? _pane;
 
-    /// <summary>「试验单」弹窗尺寸（单号编辑区 460 宽 + 已有单列表 + 底部按钮）。</summary>
-    private const double SheetDialogWidth = 780;
+    /// <summary>
+    /// 「试验单」弹窗尺寸：字段区照现役是**两列按行配对**（10 行），再加"其他试验项目"时的
+    /// 已有单列表 —— 窄了会换行、矮了列表要滚动才能看见（用户 2026-10-14 要求控件排列照现役次序）。
+    /// </summary>
+    private const double SheetDialogWidth = 880;
 
-    private const double SheetDialogHeight = 640;
+    private const double SheetDialogHeight = 780;
 
     /// <summary>
     /// 「试验参数」弹窗尺寸：内容要**并排**放运行期 / 计算期两张卡（各 620 宽 + 边距），

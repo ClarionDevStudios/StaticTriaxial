@@ -9,6 +9,39 @@ using Microsoft.Data.Sqlite;
 /// </summary>
 public sealed class SheetNumberGenerator(DatabaseInitializer initializer)
 {
+    /// <summary>
+    /// **预览**当天该前缀的下一个单号：只读流水、**不消耗**（用户 2026-10-14：新建时单号只读显示）。
+    /// 真正发号仍走 <see cref="Next"/>；若两次调用之间有人建了单，预览值可能过时，
+    /// 所以界面在**保存成功后**要用创建接口返回的真实单号刷新显示。
+    /// </summary>
+    public SheetNumber Peek(string prefix, DateOnly date)
+    {
+        if (string.IsNullOrWhiteSpace(prefix))
+        {
+            throw new ArgumentException("单号前缀不能为空", nameof(prefix));
+        }
+
+        var dateKey = date.ToString("yyyyMMdd");
+
+        using var connection = initializer.OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            $"SELECT LastSequence FROM {SchemaBuilder.SheetSequenceTable} WHERE Prefix = $prefix AND SheetDate = $date;";
+        command.Parameters.AddWithValue("$prefix", prefix);
+        command.Parameters.AddWithValue("$date", dateKey);
+
+        var value = command.ExecuteScalar();
+        var last = value is null or DBNull ? 0 : Convert.ToInt32(value);
+
+        var next = new SheetNumber(prefix, date, last).NextSequence();
+        if (next == SheetNumber.SequenceExhausted)
+        {
+            throw new InvalidOperationException($"单号流水已用尽（{prefix} {dateKey} 当天超过 999 个）。");
+        }
+
+        return new SheetNumber(prefix, date, next);
+    }
+
     /// <summary>取当天该前缀的下一个单号。</summary>
     public SheetNumber Next(string prefix, DateOnly date)
     {
