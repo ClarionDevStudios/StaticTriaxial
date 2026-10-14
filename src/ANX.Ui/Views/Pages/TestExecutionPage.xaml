@@ -343,7 +343,24 @@
             ItemsSource="{Binding ViewModel.Log}"
             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
             ScrollViewer.VerticalScrollBarVisibility="Auto"
-          />
+          >
+            <!--
+              操控信息里的行经常比这一栏宽（用户 2026-10-14：信息被截断，想要悬停看全文）。
+              默认渲染是**直接裁掉**、看不出被截断；这里显式给模板：
+              超长时显示省略号（提示"还有内容"）+ 悬停弹出全文（ToolTip 绑自身文本）。
+              注：短行也会弹一个等长的提示 —— WPF 里"只在真被截断时才弹"需要自写
+              attached property 去量文本宽度，属可选优化（见知识库）。
+            -->
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock
+                  Text="{Binding}"
+                  TextTrimming="CharacterEllipsis"
+                  ToolTip="{Binding}"
+                />
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
         </DockPanel>
       </ui:Card>
     </Grid>
