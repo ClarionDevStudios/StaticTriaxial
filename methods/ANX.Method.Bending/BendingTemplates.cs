@@ -1,11 +1,22 @@
 namespace ANX.Method.Bending;
 
+using FlexCel.Core;
 using FlexCel.XlsAdapter;
 
 /// <summary>
-/// T 0715 的**出厂报表模板**（标签制，中英两套）。首版只做"外观与固定文字"，
-/// 版式结构固定 —— 与既定决策一致（模板外部化 + 标签写入 + 恢复出厂模板）。
-/// 模板不存在时由程序写出，保证任何一台机器上"导出报表"都能用。
+/// T 0715 的**出厂报表模板**（标签制，中英两套）。
+///
+/// **版式照现役 Delphi 的报表**（用户 2026-10-14："报表模板按照现役软件的格式改写"）：
+/// 照抄现役模板 `Bins\Report\Template\T0715-2025Template.xlsx` 的单元格、合并区、列宽与格式 ——
+/// 现役那张是"表单式"报表（A1:I32）：报表头行 2~8（标签在 A/E/H、值在 C/F/I）、
+/// 分节标题行 9、明细表头行 10、明细数据行 11~25（最多 15 件）、
+/// 说明区（C27:I30 合并）、签名行 31 与日期行 32。
+///
+/// 与现役的**唯一差别**是填值方式：现役按"行/列坐标"写，我们按 `{{标签}}` 写
+/// （模板里的值区放占位符，导出器按标签替换）—— 这样版式与填值机制各自独立，
+/// 现场改模板不影响代码。**曲线图不嵌在报表里**（现役同样是把 PNG 放在报表同目录，见 SaveCurveImage）。
+///
+/// 固定文本（执行标准 / 仪器设备名称 / 型号 / 设备编号）与本文件里的常量一致，可在模板文件里直接改。
 /// </summary>
 public static class BendingTemplates
 {
@@ -13,6 +24,20 @@ public static class BendingTemplates
     public const string ChineseCulture = "zh-CN";
 
     public const string EnglishCulture = "en-US";
+
+    /// <summary>执行标准：照现役模板的原文（现役写的是 `JTC3410-2025`，疑似 `JTG` 的笔误，原样照抄）。</summary>
+    private const string StandardTextZh = "JTC3410-2025 / T0715-2025 沥青混合料弯曲试验";
+
+    private const string StandardTextEn = "JTC3410-2025 / T0715-2025 Asphalt Mixture Bending Test";
+
+    /// <summary>仪器设备信息：现役在报表代码里写死的常量（用户现场那台设备）。</summary>
+    private const string InstrumentNameZh = "沥青综合性能试验仪";
+
+    private const string InstrumentNameEn = "Asphalt comprehensive tester";
+
+    private const string InstrumentModel = "ZY-64";
+
+    private const string InstrumentNo = "JLMS-2024-001";
 
     /// <summary>确保两套模板存在；返回中文模板路径。</summary>
     public static string EnsureDefaultTemplates(string templatesRoot)
@@ -50,51 +75,361 @@ public static class BendingTemplates
         var workbook = new XlsFile();
         workbook.NewFile();
 
-        // 抬头（Sheet./Param./Result./Device. 前缀，与 ReportFieldCatalog 的约定一致）
-        workbook.SetCellValue(1, 1, T("沥青混合料弯曲试验报告", "Asphalt Mixture Bending Test Report"));
-        workbook.SetCellValue(2, 1, T("试验单号", "Sheet ID"));
-        workbook.SetCellValue(2, 2, "{{Sheet.SheetID}}");
-        workbook.SetCellValue(3, 1, T("项目名称", "Project"));
-        workbook.SetCellValue(3, 2, "{{Sheet.ProjectName}}");
-        workbook.SetCellValue(4, 1, T("试验目的", "Objective"));
-        workbook.SetCellValue(4, 2, "{{Sheet.TestObjective}}");
-        workbook.SetCellValue(5, 1, T("试验温度(℃)", "Temperature (C)"));
-        workbook.SetCellValue(5, 2, "{{Param.TestTemperature}}");
-        workbook.SetCellValue(6, 1, T("加载速率(mm/min)", "Loading rate (mm/min)"));
-        workbook.SetCellValue(6, 2, "{{Param.LoadRate}}");
-        workbook.SetCellValue(7, 1, T("跨径(mm)", "Span (mm)"));
-        workbook.SetCellValue(7, 2, "{{Param.SpanLength}}");
-        workbook.SetCellValue(8, 1, T("试验日期", "Test date"));
-        workbook.SetCellValue(8, 2, "{{Device.TestDate}}");
-        workbook.SetCellValue(9, 1, T("有效试件数", "Effective specimens"));
-        workbook.SetCellValue(9, 2, "{{Result.EffectiveCount}}");
-        workbook.SetCellValue(10, 1, T("弯拉强度平均值(MPa)", "Mean flexural strength (MPa)"));
-        workbook.SetCellValue(10, 2, "{{Result.FlexuralStrengthAvg}}");
-        workbook.SetCellValue(11, 1, T("最大弯拉应变平均值(με)", "Mean max strain (ue)"));
-        workbook.SetCellValue(11, 2, "{{Result.MaxBendingStrainAvg}}");
+        // ── 格式（照现役模板读出来的：标签粗体右对齐、值左对齐、表格居中+细边框、标题 16pt 粗体居中）──
+        var titleFormat = AddFormat(
+            workbook,
+            T("宋体", "Calibri"),
+            16,
+            bold: true,
+            THFlxAlignment.center,
+            TVFlxAlignment.center
+        );
+        var labelFormat = AddFormat(
+            workbook,
+            "宋体",
+            11,
+            bold: true,
+            THFlxAlignment.right,
+            TVFlxAlignment.center
+        );
+        var valueFormat = AddFormat(
+            workbook,
+            "宋体",
+            11,
+            bold: false,
+            THFlxAlignment.left,
+            TVFlxAlignment.center
+        );
+        var standardFormat = AddFormat(
+            workbook,
+            "宋体",
+            11,
+            bold: true,
+            THFlxAlignment.left,
+            TVFlxAlignment.center
+        );
+        var sectionFormat = AddFormat(
+            workbook,
+            "宋体",
+            11,
+            bold: true,
+            THFlxAlignment.left,
+            TVFlxAlignment.center
+        );
+        var headerFormat = AddFormat(
+            workbook,
+            "宋体",
+            11,
+            bold: true,
+            THFlxAlignment.center,
+            TVFlxAlignment.center,
+            tableBorder: true
+        );
+        var cellFormat = AddFormat(
+            workbook,
+            "宋体",
+            11,
+            bold: false,
+            THFlxAlignment.center,
+            TVFlxAlignment.center,
+            tableBorder: true
+        );
+        var noteFormat = AddFormat(
+            workbook,
+            "宋体",
+            11,
+            bold: false,
+            THFlxAlignment.left,
+            TVFlxAlignment.center,
+            tableBorder: true
+        );
+        var signValueFormat = AddFormat(
+            workbook,
+            "宋体",
+            11,
+            bold: false,
+            THFlxAlignment.general,
+            TVFlxAlignment.bottom,
+            bottomLine: true
+        );
 
-        // 明细标题行
-        var headerRow = 13;
-        workbook.SetCellValue(headerRow, 1, T("试件号", "Sample"));
-        workbook.SetCellValue(headerRow, 2, T("宽度(mm)", "Width"));
-        workbook.SetCellValue(headerRow, 3, T("高度(mm)", "Height"));
-        workbook.SetCellValue(headerRow, 4, T("峰值荷载(kN)", "Peak load"));
-        workbook.SetCellValue(headerRow, 5, T("跨中挠度(mm)", "Deflection"));
-        workbook.SetCellValue(headerRow, 6, T("弯拉强度(MPa)", "Strength"));
-        workbook.SetCellValue(headerRow, 7, T("最大弯拉应变(με)", "Max strain"));
+        // ── 列宽（照现役模板）──
+        foreach (var (col, width) in ColumnWidths())
+        {
+            workbook.SetColWidth(col, (int)Math.Round(width * 256));
+        }
 
-        // 明细模板行（第一个含 {{Detail.*}} 的行，按行展开）
-        var detailRow = headerRow + 1;
-        workbook.SetCellValue(detailRow, 1, "{{Detail.SampleID}}");
-        workbook.SetCellValue(detailRow, 2, "{{Detail.SampleWidth}}");
-        workbook.SetCellValue(detailRow, 3, "{{Detail.SampleHeight}}");
-        workbook.SetCellValue(detailRow, 4, "{{Detail.PeakLoadValue}}");
-        workbook.SetCellValue(detailRow, 5, "{{Detail.CorrectedDeflection}}");
-        workbook.SetCellValue(detailRow, 6, "{{Detail.FlexuralStrength}}");
-        workbook.SetCellValue(detailRow, 7, "{{Detail.MaxBendingTensileStrain}}");
+        // ── 标题（合并 A1:I1）──
+        workbook.SetCellValue(1, 1, T("沥青混合料弯曲试验报表", "Asphalt Mixture Bending Test Report"));
+        workbook.MergeCells(1, 1, 1, 9);
+        Style(workbook, titleFormat, 1, 1, 1, 9);
 
-        workbook.SetCellValue(detailRow + 2, 1, T("执行标准：JTG 3410-2025 T 0715-2025", "Standard: JTG 3410-2025 T 0715-2025"));
+        // ── 报表头（行 2~8）：标签在 A/E/H 列（粗体右对齐），值在 C/F/I 列 ──
+        //    行2 的执行标准是模板固定文本（现役同样"不覆盖"）；仪器设备三项也是固定文本。
+        Row2();
+        Row3();
+        Row4();
+        Row5();
+        Row6();
+        Row7();
+        Row8();
+
+        // ── 分节标题（行 9，合并 A9:I9）──
+        workbook.SetCellValue(9, 1, T("一、试件基本物理指标及试验结果", "1. Specimen properties and test results"));
+        workbook.MergeCells(9, 1, 9, 9);
+        Style(workbook, sectionFormat, 9, 1, 9, 9);
+
+        // ── 明细表头（行 10）──
+        string[] headers =
+        [
+            T("试件编号", "Sample"),
+            T("试件长度(mm)", "Length"),
+            T("试件宽度(mm)", "Width"),
+            T("试件高度(mm)", "Height"),
+            T("跨中挠度(mm)", "Deflection"),
+            T("破坏时荷载(kN)", "Peak load"),
+            T("弯拉强度(MPa)", "Strength"),
+            T("最大弯拉应变(με)", "Max strain"),
+            T("异常值判断", "Validity"),
+        ];
+        for (var i = 0; i < headers.Length; i++)
+        {
+            workbook.SetCellValue(10, i + 1, headers[i]);
+        }
+
+        Style(workbook, headerFormat, 10, 1, 10, 9);
+
+        // ── 明细数据区（行 11~25，最多 15 件）：**整块都套好边框** ──
+        //    只有第一行放占位符（导出器把第 i 条明细写在"起始行 + i"上），
+        //    其余 14 行是空的带框行 —— 这样明细不足 15 件时表格框线依然完整。
+        Style(workbook, cellFormat, 11, 1, 25, 9);
+
+        string[] detailLabels =
+        [
+            "Detail.SampleID",
+            "Detail.SampleLength",
+            "Detail.SampleWidth",
+            "Detail.SampleHeight",
+            "Detail.CorrectedDeflection",
+            "Detail.PeakLoadValue",
+            "Detail.FlexuralStrength",
+            "Detail.MaxBendingTensileStrain",
+            "Detail.EffectiveText",
+        ];
+        for (var i = 0; i < detailLabels.Length; i++)
+        {
+            workbook.SetCellValue(11, i + 1, Label(detailLabels[i]));
+        }
+
+        // ── 其他需要说明的情况（标签 A27:B27，值区合并 C27:I30）──
+        workbook.SetCellValue(27, 1, T("其他需要说明的情况：", "Other remarks:"));
+        workbook.MergeCells(27, 1, 27, 2);
+        workbook.MergeCells(27, 3, 30, 9);
+        Style(workbook, labelFormat, 27, 1, 27, 2);
+        Style(workbook, noteFormat, 27, 3, 30, 9);
+
+        // ── 签名与日期（行 31~32）：标签在 A/D/G，值写在 B/E/H ──
+        workbook.SetCellValue(31, 1, T("试验人员：", "Tester:"));
+        workbook.SetCellValue(31, 4, T("复核人员：", "Reviewer:"));
+        workbook.SetCellValue(31, 7, T("监理人员：", "Supervisor:"));
+        workbook.SetCellValue(32, 1, T("日期：", "Date:"));
+        workbook.SetCellValue(32, 4, T("日期：", "Date:"));
+        workbook.SetCellValue(32, 7, T("日期：", "Date:"));
+
+        foreach (var col in new[] { 1, 4, 7 })
+        {
+            Style(workbook, labelFormat, 31, col);
+            Style(workbook, labelFormat, 32, col);
+        }
+
+        // 试验人员取单上的"试验员"；试验日期取该单的"试验时间"（现役这三个位置里，
+        // 复核/监理目前没有对应数据源，留空手填）
+        workbook.SetCellValue(31, 2, Label("Sheet.Operator"));
+        workbook.SetCellValue(32, 2, Label("Sheet.CreatedOn"));
+        foreach (var col in new[] { 2, 5, 8 })
+        {
+            Style(workbook, signValueFormat, 31, col);
+            Style(workbook, signValueFormat, 32, col);
+        }
 
         workbook.Save(path);
+
+        // ── 行 2~8 的填充（写成局部函数，保持代码从上到下的可读顺序）──
+        void Row2()
+        {
+            Header(2, 1, T("试验项目名称：", "Project name:"), 2);
+            Header(2, 3, "{{Sheet.ProjectName}}", 2, isValue: true);
+            Header(2, 5, T("执行标准：", "Standard:"), 1);
+            workbook.SetCellValue(2, 6, T(StandardTextZh, StandardTextEn));
+            workbook.MergeCells(2, 6, 2, 9);
+            Style(workbook, standardFormat, 2, 6);
+        }
+
+        void Row3()
+        {
+            Header(3, 1, T("委托单位：", "Client:"), 2);
+            Header(3, 3, "{{Sheet.ClientUnits}}", 2, isValue: true);
+            Header(3, 5, T("试验方法：", "Test method:"), 1);
+            workbook.SetCellValue(3, 6, Label("Sheet.TestObjective"));
+            workbook.MergeCells(3, 6, 3, 9);
+            Style(workbook, valueFormat, 3, 6);
+        }
+
+        void Row4()
+        {
+            Header(4, 1, T("沥青混合料类型：", "Mixture type:"), 2);
+            Header(4, 3, "{{Sheet.MixtureType}}", 2, isValue: true);
+            Header(4, 5, T("接样日期：", "Sample date:"), 1);
+            workbook.SetCellValue(4, 6, Label("Sheet.AcceptanceDate"));
+            workbook.MergeCells(4, 6, 4, 7);
+            Style(workbook, valueFormat, 4, 6);
+            Header(4, 8, T("试验日期：", "Test date:"), 1);
+            workbook.SetCellValue(4, 9, Label("Sheet.CreatedOn"));
+            Style(workbook, valueFormat, 4, 9);
+        }
+
+        void Row5()
+        {
+            Header(5, 1, T("毛体积密度(g/cm³)：", "Bulk density (g/cm³):"), 2);
+            Header(5, 3, "{{Sheet.SampleDensity}}", 2, isValue: true);
+            Header(5, 5, T("空隙率(%)：", "Air voids (%):"), 1);
+            workbook.SetCellValue(5, 6, Label("Sheet.VoidRatio"));
+            workbook.MergeCells(5, 6, 5, 7);
+            Style(workbook, valueFormat, 5, 6);
+            Header(5, 8, T("沥青用量(%)：", "Asphalt content (%):"), 1);
+            workbook.SetCellValue(5, 9, Label("Sheet.AsphaltUsage"));
+            Style(workbook, valueFormat, 5, 9);
+        }
+
+        void Row6()
+        {
+            Header(6, 1, T("沥青体积百分率(%)：", "Asphalt volume (%):"), 2);
+            Header(6, 3, "{{Sheet.ContentByVolume}}", 2, isValue: true);
+            Header(6, 5, T("沥青饱和度(%)：", "Asphalt saturation (%):"), 1);
+            workbook.SetCellValue(6, 6, Label("Sheet.AsphaltSaturation"));
+            workbook.MergeCells(6, 6, 6, 7);
+            Style(workbook, valueFormat, 6, 6);
+            Header(6, 8, T("矿料间隙率(%)：", "VMA (%):"), 1);
+            workbook.SetCellValue(6, 9, Label("Sheet.MineralAggregateVoidRatio"));
+            Style(workbook, valueFormat, 6, 9);
+        }
+
+        void Row7()
+        {
+            Header(7, 1, T("试验温度( ℃)：", "Temperature (℃):"), 2);
+            Header(7, 3, "{{Sheet.TestTemperature}}", 2, isValue: true);
+            Header(7, 5, T("试件尺寸：", "Specimen size:"), 1);
+            workbook.SetCellValue(7, 6, Label("Sheet.SampleSizeDesc"));
+            workbook.MergeCells(7, 6, 7, 7);
+            Style(workbook, valueFormat, 7, 6);
+        }
+
+        void Row8()
+        {
+            Header(8, 1, T("仪器设备名称：", "Instrument:"), 2);
+            Header(8, 3, T(InstrumentNameZh, InstrumentNameEn), 2, isValue: true);
+            Header(8, 5, T("型号：", "Model:"), 1);
+            workbook.SetCellValue(8, 6, InstrumentModel);
+            workbook.MergeCells(8, 6, 8, 7);
+            Style(workbook, valueFormat, 8, 6);
+            Header(8, 8, T("设备编号：", "Serial no.:"), 1);
+            workbook.SetCellValue(8, 9, InstrumentNo);
+            Style(workbook, valueFormat, 8, 9);
+        }
+
+        /// <summary>
+        /// 一行的"标签 + 值"：<paramref name="span"/> = 占几列（**1 = 不合并**）。
+        /// 现役模板的合并区是固定的（A2:B2 与 C2:D2 是 2 列、F2:I2 是 4 列、E/H 列标签是单格），
+        /// 所以跨度按格填，别一律给同一个数（这里踩过：值区给成 4 列，合并区就跟现役不一样了）。
+        /// </summary>
+        void Header(int row, int col, string text, int labelSpan, bool isValue = false)
+        {
+            workbook.SetCellValue(row, col, text);
+            var lastCol = col + Math.Max(1, labelSpan) - 1;
+
+            if (lastCol > col)
+            {
+                workbook.MergeCells(row, col, row, lastCol);
+            }
+
+            Style(workbook, isValue ? valueFormat : labelFormat, row, col, row, lastCol);
+        }
+    }
+
+    /// <summary>`{{标签}}` 占位符（与 <c>FlexCelReportExporter</c> 的写法一致）。</summary>
+    private static string Label(string name) => "{{" + name + "}}";
+
+    /// <summary>现役模板的列宽 A~I。</summary>
+    private static IEnumerable<(int Col, double Width)> ColumnWidths()
+    {
+        double[] widths = [18.44, 14.55, 14.66, 12, 16.66, 13, 12.66, 18, 18.11];
+        for (var i = 0; i < widths.Length; i++)
+        {
+            yield return (i + 1, widths[i]);
+        }
+    }
+
+    /// <summary>给一个区域套格式（逐格调用即可 —— 格子不多，不必用范围重载）。</summary>
+    private static void Style(XlsFile workbook, int xf, int row1, int col1, int row2 = -1, int col2 = -1)
+    {
+        row2 = row2 < 0 ? row1 : row2;
+        col2 = col2 < 0 ? col1 : col2;
+
+        for (var row = row1; row <= row2; row++)
+        {
+            for (var col = col1; col <= col2; col++)
+            {
+                workbook.SetCellFormat(row, col, xf);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 造一个格式并登记进工作簿，返回它的 XF 索引（<c>SetCellFormat</c> 用）。
+    ///
+    /// 注意 FlexCel 的用法：<c>TFlxFormat</c> **没有公开构造器**，要从
+    /// <c>workbook.GetDefaultFormat</c> 拿一份**副本**再改（实测：改副本不影响工作簿默认格式，
+    /// 且 <c>AddFormat</c> 会按当时的内容快照，所以每个格式都重新取一次副本）。
+    /// </summary>
+    private static int AddFormat(
+        XlsFile workbook,
+        string fontName,
+        int sizeInPoints,
+        bool bold,
+        THFlxAlignment horizontal,
+        TVFlxAlignment vertical,
+        bool tableBorder = false,
+        bool bottomLine = false
+    )
+    {
+        var format = workbook.GetDefaultFormat;
+        format.Font.Name = fontName;
+        format.Font.Size20 = (short)(sizeInPoints * 20);
+        format.Font.Style = bold ? TFlxFontStyles.Bold : TFlxFontStyles.None;
+        format.HAlignment = horizontal;
+        format.VAlignment = vertical;
+        format.WrapText = true;
+
+        if (tableBorder)
+        {
+            var border = new TFlxOneBorder { Style = TFlxBorderStyle.Thin };
+            format.Borders = new TFlxBorders
+            {
+                Top = border,
+                Bottom = border,
+                Left = border,
+                Right = border,
+            };
+        }
+        else if (bottomLine)
+        {
+            // 签名/日期那种"下面一条横线"（照现役：只有下边框、底端对齐）
+            format.Borders = new TFlxBorders
+            {
+                Bottom = new TFlxOneBorder { Style = TFlxBorderStyle.Thin },
+            };
+        }
+
+        return workbook.AddFormat(format);
     }
 }

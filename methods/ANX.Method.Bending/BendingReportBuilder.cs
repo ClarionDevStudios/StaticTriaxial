@@ -22,10 +22,21 @@ public sealed class BendingReportBuilder(
     private static readonly string[] MainColumns =
     [
         "ProjectName",
+        "ClientUnits",
+        "MixtureType",
         "TestObjective",
         "TestTemperature",
+        "SampleSizeDesc",
         "LoadRate",
         "SpanLength",
+        "AcceptanceDate",
+        "SampleDensity",
+        "VoidRatio",
+        "AsphaltUsage",
+        "ContentByVolume",
+        "AsphaltSaturation",
+        "MineralAggregateVoidRatio",
+        "Operator",
         "EffectiveCount",
         "FlexuralStrengthAvg",
         "MaxBendingStrainAvg",
@@ -35,12 +46,14 @@ public sealed class BendingReportBuilder(
     private static readonly string[] DetailColumns =
     [
         "SampleID",
+        "SampleLength",
         "SampleWidth",
         "SampleHeight",
         "PeakLoadValue",
         "CorrectedDeflection",
         "FlexuralStrength",
         "MaxBendingTensileStrain",
+        "IsEffective",
     ];
 
     private readonly CurveImageRenderer _images = curveImages ?? new CurveImageRenderer();
@@ -62,7 +75,8 @@ public sealed class BendingReportBuilder(
         Directory.CreateDirectory(sheetDirectory);
 
         var curveImagePaths = new List<string>();
-        var detailRows = new List<IReadOnlyDictionary<string, string>>();
+        // 具体类型（不是接口）：下面要给没填长度的行补兜底值，接口索引器是只读的
+        var detailRows = new List<Dictionary<string, string>>();
 
         foreach (var row in details)
         {
@@ -78,12 +92,15 @@ public sealed class BendingReportBuilder(
                 new Dictionary<string, string>(StringComparer.Ordinal)
                 {
                     ["Detail.SampleID"] = sampleId,
+                    ["Detail.SampleLength"] = Format(row["SampleLength"]),
                     ["Detail.SampleWidth"] = Format(row["SampleWidth"]),
                     ["Detail.SampleHeight"] = Format(row["SampleHeight"]),
                     ["Detail.PeakLoadValue"] = Format(row["PeakLoadValue"]),
                     ["Detail.CorrectedDeflection"] = Format(row["CorrectedDeflection"]),
                     ["Detail.FlexuralStrength"] = Format(row["FlexuralStrength"]),
                     ["Detail.MaxBendingTensileStrain"] = Format(row["MaxBendingTensileStrain"]),
+                    // 异常值判断：现役报表里写「正常」/「异常」（不用 0/1，也不用 InvalidReason）
+                    ["Detail.EffectiveText"] = EffectiveText(row["IsEffective"], culture, texts),
                 }
             );
         }
@@ -92,7 +109,20 @@ public sealed class BendingReportBuilder(
         {
             ["Sheet.SheetID"] = sheetId,
             ["Sheet.ProjectName"] = Format(main["ProjectName"]),
+            ["Sheet.ClientUnits"] = Format(main["ClientUnits"]),
+            ["Sheet.MixtureType"] = Format(main["MixtureType"]),
             ["Sheet.TestObjective"] = Format(main["TestObjective"]),
+            ["Sheet.TestTemperature"] = Format(main["TestTemperature"]),
+            ["Sheet.SampleSizeDesc"] = Format(main["SampleSizeDesc"]),
+            ["Sheet.AcceptanceDate"] = Format(main["AcceptanceDate"]),
+            ["Sheet.CreatedOn"] = Format(main["CreatedOn"]),
+            ["Sheet.Operator"] = Format(main["Operator"]),
+            ["Sheet.SampleDensity"] = Format(main["SampleDensity"]),
+            ["Sheet.VoidRatio"] = Format(main["VoidRatio"]),
+            ["Sheet.AsphaltUsage"] = Format(main["AsphaltUsage"]),
+            ["Sheet.ContentByVolume"] = Format(main["ContentByVolume"]),
+            ["Sheet.AsphaltSaturation"] = Format(main["AsphaltSaturation"]),
+            ["Sheet.MineralAggregateVoidRatio"] = Format(main["MineralAggregateVoidRatio"]),
             ["Param.TestTemperature"] = Format(main["TestTemperature"]),
             ["Param.LoadRate"] = Format(main["LoadRate"]),
             ["Param.SpanLength"] = Format(main["SpanLength"]),
@@ -101,6 +131,11 @@ public sealed class BendingReportBuilder(
             ["Result.EffectiveCount"] = Format(main["EffectiveCount"]),
             ["Device.TestDate"] = Format(main["CreatedOn"]),
         };
+
+        // 说明：现役明细第 2 列是「试件长度(mm)」（读明细表 SampleLength）。
+        // 本软件的**试样信息填录**目前只有跨径 / 宽 / 高三项（跨径 ≠ 试件长度，规范里是 200 与 250），
+        // 所以这里**不做兜底**、该列如实留空 —— 拿跨径去填"长度"列属于编数据。
+        // 库里 `SampleLength` 这一列是有的（照现役表结构），要补的话给试样信息加一个字段即可。
 
         // 文件名带语种：中英两套模板各出一份、互不覆盖（"已生成报表不追溯"是既定口径）
         var reportPath = Path.Combine(sheetDirectory, $"实验报告.{culture}.xlsx");
@@ -121,6 +156,26 @@ public sealed class BendingReportBuilder(
             double number => number.ToString("0.###", CultureInfo.InvariantCulture),
             _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty,
         };
+
+    /// <summary>
+    /// 「异常值判断」列的文案：照现役报表写**正常 / 异常**（现役 <c>UT0715Report.pas</c>：
+    /// <c>if Effective then '正常' else '异常'</c>）。
+    /// <c>IsEffective</c> 为 0 才算异常；为 NULL（只填信息、没跑过的件）或 1 都算正常。
+    /// </summary>
+    private static string EffectiveText(object? isEffective, string culture, ITextResolver? texts)
+    {
+        var text = Format(isEffective);
+        var isExcluded = double.TryParse(
+            text,
+            NumberStyles.Float,
+            CultureInfo.InvariantCulture,
+            out var value
+        ) && Math.Abs(value) < 0.0001;
+
+        return isExcluded
+            ? Text(BendingMetricKeys.ValidityAbnormal, culture, texts)
+            : Text(BendingMetricKeys.ValidityNormal, culture, texts);
+    }
 
     /// <summary>
     /// 取译文；没有解析器（无界面 / 测试场景）时退回键名 —— 与 IAP"缺键可见"的口径一致，

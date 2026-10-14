@@ -232,6 +232,8 @@
   <sys:String x:Key="Method.T0715.CorrectedDeflection">跨中挠度</sys:String>
   <sys:String x:Key="Method.T0715.Elapsed">试验持续时间</sys:String>
   <sys:String x:Key="Method.T0715.CurveTitle">试件 {0}</sys:String>
+  <sys:String x:Key="Method.T0715.ValidityNormal">正常</sys:String>
+  <sys:String x:Key="Method.T0715.ValidityAbnormal">异常</sys:String>
   <sys:String x:Key="Exec.PeakFormat">峰值 {0}</sys:String>
 
   <!-- 工作台点动（按住运行、松开停止） -->

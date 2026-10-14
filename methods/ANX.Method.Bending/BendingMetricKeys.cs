@@ -23,6 +23,12 @@ public static class BendingMetricKeys
     /// <summary>曲线图的图题（带试件号占位符）。</summary>
     public const string CurveTitle = "Method.T0715.CurveTitle";
 
+    /// <summary>「异常值判断」列：正常（现役报表写「正常」/「异常」）。</summary>
+    public const string ValidityNormal = "Method.T0715.ValidityNormal";
+
+    /// <summary>「异常值判断」列：异常（已被 5.6 剔除）。</summary>
+    public const string ValidityAbnormal = "Method.T0715.ValidityAbnormal";
+
     /// <summary>全部键 —— 供"语言字典里是否有这些键"的一致性检查使用。</summary>
     public static readonly string[] All =
     [
@@ -34,6 +40,8 @@ public static class BendingMetricKeys
         CorrectedDeflection,
         Elapsed,
         CurveTitle,
+        ValidityNormal,
+        ValidityAbnormal,
         BendingCurveAxes.Deflection,
         BendingCurveAxes.Load,
     ];

@@ -232,6 +232,8 @@
   <sys:String x:Key="Method.T0715.CorrectedDeflection">Midspan deflection</sys:String>
   <sys:String x:Key="Method.T0715.Elapsed">Elapsed time</sys:String>
   <sys:String x:Key="Method.T0715.CurveTitle">Specimen {0}</sys:String>
+  <sys:String x:Key="Method.T0715.ValidityNormal">Normal</sys:String>
+  <sys:String x:Key="Method.T0715.ValidityAbnormal">Abnormal</sys:String>
   <sys:String x:Key="Exec.PeakFormat">Peak {0}</sys:String>
 
   <!-- Worktable jog (press and hold to run, release to stop) -->
