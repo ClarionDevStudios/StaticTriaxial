@@ -42,6 +42,37 @@
     <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
   </Style>
 
+  <!--
+    页面底部那条状态行（ViewModel.Status）：**出错时红字 + 每秒闪一次**（用户 2026-10-14）。
+    "是不是错误"由 ViewModel 的 StatusIsError 说（ViewModelBase.SetStatus 统一维护），界面不猜文案。
+    闪烁用 Opacity 动画：0.5s 变淡 + 0.5s 回实 = 每秒一次；ExitActions 里 StopStoryboard
+    **把动画摘掉**（不是暂停），透明度自然回到 1。
+  -->
+  <Style x:Key="StatusTextStyle" BasedOn="{StaticResource MonoTextStyle}" TargetType="TextBlock">
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding ViewModel.StatusIsError}" Value="True">
+        <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+        <DataTrigger.EnterActions>
+          <BeginStoryboard x:Name="StatusBlinkStoryboard">
+            <Storyboard>
+              <DoubleAnimation
+                AutoReverse="True"
+                Duration="0:0:0.5"
+                From="1"
+                RepeatBehavior="Forever"
+                Storyboard.TargetProperty="Opacity"
+                To="0.15"
+              />
+            </Storyboard>
+          </BeginStoryboard>
+        </DataTrigger.EnterActions>
+        <DataTrigger.ExitActions>
+          <StopStoryboard BeginStoryboardName="StatusBlinkStoryboard" />
+        </DataTrigger.ExitActions>
+      </DataTrigger>
+    </Style.Triggers>
+  </Style>
+
   <!-- 参数配置类页面的分区小标题与行内校验文案 -->
   <Style x:Key="ParamSectionTitleStyle" TargetType="TextBlock">
     <Setter Property="FontSize" Value="15" />

@@ -112,7 +112,7 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
             row.PropertyChanged += OnFieldChanged;
         }
 
-        Status = L("Sheet.Ready");
+        SetStatus(L("Sheet.Ready"));
     }
 
     /// <inheritdoc />
@@ -140,9 +140,6 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
     /// <summary>哪些项允许留空 —— 由方法给的分组算出来（体积指标组），界面不写死字段名。</summary>
     [ObservableProperty]
     private string _optionalHint = string.Empty;
-
-    [ObservableProperty]
-    private string _status = string.Empty;
 
     /// <summary>模板表里有没有内容（决定「读取模板」能不能点）。</summary>
     [ObservableProperty]
@@ -210,7 +207,7 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
     partial void OnModeChanged(SheetEditMode value)
     {
         // 换试验方式 = 换一次填表：把上一条提示（"项目名称不能为空"之类）清掉，免得看得心慌
-        Status = L("Sheet.Ready");
+        SetStatus(L("Sheet.Ready"));
 
         OnPropertyChanged(nameof(IsNewMode));
         OnPropertyChanged(nameof(IsLastMode));
@@ -489,7 +486,7 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
         // 顺手把"当前时间"重新盖一次：模板内容放一会儿再读也不该看到陈旧的时间
         await ApplyAutoValuesAsync().ConfigureAwait(true);
 
-        Status = L("Sheet.TemplateLoaded");
+        SetStatus(L("Sheet.TemplateLoaded"));
     }
 
     /// <summary>「存为模板」：把当前表单内容存成模板。</summary>
@@ -498,7 +495,7 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
     {
         await _editor.SaveTemplateAsync(Values()).ConfigureAwait(true);
         HasTemplate = true;
-        Status = L("Sheet.TemplateSaved");
+        SetStatus(L("Sheet.TemplateSaved"));
     }
 
     /// <summary>
@@ -538,7 +535,7 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
 
             if (string.IsNullOrWhiteSpace(sheetId))
             {
-                Status = L("Sheet.SelectFirst");
+                SetStatus(L("Sheet.SelectFirst"), isError: true);
                 return;
             }
 
@@ -547,12 +544,12 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
             // 实际控制按单上填的加载速率走（用户 2026-10-14）
             await _editor.PushTestConditionsAsync(sheetId).ConfigureAwait(true);
 
-            Status = $"{(updated ? L("Sheet.Updated") : L("Sheet.Selected"))} {sheetId}";
+            SetStatus($"{(updated ? L("Sheet.Updated") : L("Sheet.Selected"))} {sheetId}");
             CloseRequested?.Invoke(this, true);
         }
         catch (Exception ex)
         {
-            Status = $"{L("Sheet.CreateFailed")}: {ex.Message}";
+            SetStatus($"{L("Sheet.CreateFailed")}: {ex.Message}", isError: true);
         }
     }
 

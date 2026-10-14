@@ -96,9 +96,6 @@ public abstract partial class EditableRowsViewModel : ViewModelBase
     private string _description = string.Empty;
 
     [ObservableProperty]
-    private string _status = string.Empty;
-
-    [ObservableProperty]
     private bool _isBusy;
 
     /// <summary>有未保存的修改。</summary>
@@ -163,7 +160,7 @@ public abstract partial class EditableRowsViewModel : ViewModelBase
         }
 
         ApplyValues(await LoadCoreAsync());
-        Status = L("Param.Loaded");
+        SetStatus(L("Param.Loaded"));
     }
 
     /// <summary>所有字段恢复为声明的默认值（不落库，等用户保存；先确认）。</summary>
@@ -183,7 +180,7 @@ public abstract partial class EditableRowsViewModel : ViewModelBase
         RefreshValidation();
         RefreshDirty();
         RaiseStateChanged();
-        Status = L("Param.RestoreDefaultsDone");
+        SetStatus(L("Param.RestoreDefaultsDone"));
     }
 
     /// <summary>保存（有校验错误时拒绝并提示）。</summary>
@@ -194,11 +191,11 @@ public abstract partial class EditableRowsViewModel : ViewModelBase
 
         if (HasErrors)
         {
-            Status = string.Format(
+            SetStatus(string.Format(
                 CultureInfo.CurrentCulture,
                 L("Param.Invalid"),
                 Rows.Count(row => row.HasError)
-            );
+            ), isError: true);
             return;
         }
 
@@ -214,12 +211,12 @@ public abstract partial class EditableRowsViewModel : ViewModelBase
             await SaveCoreAsync(values);
             _saved = values;
             RefreshDirty();
-            Status = L("Param.Saved");
+            SetStatus(L("Param.Saved"));
             AfterSave(values);
         }
         catch (Exception ex)
         {
-            Status = $"{L("Param.SaveFailed")}: {ex.Message}";
+            SetStatus($"{L("Param.SaveFailed")}: {ex.Message}", isError: true);
         }
         finally
         {

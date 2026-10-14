@@ -160,7 +160,7 @@ public abstract partial class ParameterEditorViewModel : EditableRowsViewModel, 
     private async Task ReloadFromStoreAsync()
     {
         ApplyValues(await LoadCoreAsync());
-        Status = L("Param.Loaded");
+        SetStatus(L("Param.Loaded"));
     }
 
     protected override Task<IReadOnlyDictionary<string, string>> LoadCoreAsync() =>

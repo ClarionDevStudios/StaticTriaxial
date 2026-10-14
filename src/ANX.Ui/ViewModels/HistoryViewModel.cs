@@ -39,7 +39,7 @@ public partial class HistoryViewModel : ViewModelBase
         _browser = browser;
         _exporter = exporter;
         _execution = execution;
-        Status = L("History.Ready");
+        SetStatus(L("History.Ready"));
     }
 
     /// <summary>试验单列表。</summary>
@@ -50,9 +50,6 @@ public partial class HistoryViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _keyword = string.Empty;
-
-    [ObservableProperty]
-    private string _status = string.Empty;
 
     [ObservableProperty]
     private TestSheetSummary? _selectedSheet;
@@ -91,7 +88,7 @@ public partial class HistoryViewModel : ViewModelBase
             Sheets.Add(sheet);
         }
 
-        Status = $"{L("History.Found")} {Sheets.Count} {L("History.SheetsUnit")}";
+        SetStatus($"{L("History.Found")} {Sheets.Count} {L("History.SheetsUnit")}");
         SelectedSheet = Sheets.FirstOrDefault();
     }
 
@@ -120,7 +117,7 @@ public partial class HistoryViewModel : ViewModelBase
     {
         if (SelectedSheet is not { } sheet)
         {
-            Status = L("History.SelectSheetFirst");
+            SetStatus(L("History.SelectSheetFirst"), isError: true);
             return;
         }
 
@@ -146,18 +143,18 @@ public partial class HistoryViewModel : ViewModelBase
         try
         {
             var report = await _execution.RecomputeSheetAsync(sheet.SheetId);
-            Status = string.Format(
+            SetStatus(string.Format(
                 System.Globalization.CultureInfo.CurrentCulture,
                 L("History.RecomputeDone"),
                 report.Recomputed,
                 report.Skipped
-            );
+            ));
 
             await LoadSamplesAsync(sheet); // 刷新明细，马上能看到新结果
         }
         catch (Exception ex)
         {
-            Status = $"{L("History.RecomputeFailed")}: {ex.Message}";
+            SetStatus($"{L("History.RecomputeFailed")}: {ex.Message}", isError: true);
         }
     }
 
@@ -175,18 +172,18 @@ public partial class HistoryViewModel : ViewModelBase
     {
         if (SelectedSheet is null)
         {
-            Status = L("History.SelectSheetFirst");
+            SetStatus(L("History.SelectSheetFirst"), isError: true);
             return;
         }
 
         try
         {
             var path = await _exporter.ExportAsync(SelectedSheet.SheetId, culture);
-            Status = $"{L("History.Exported")} {path}";
+            SetStatus($"{L("History.Exported")} {path}");
         }
         catch (Exception ex)
         {
-            Status = $"{L("History.ExportFailed")}: {ex.Message}";
+            SetStatus($"{L("History.ExportFailed")}: {ex.Message}", isError: true);
         }
     }
 

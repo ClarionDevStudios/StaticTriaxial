@@ -70,7 +70,7 @@
         <TextBlock
           Margin="14,0,0,0"
           VerticalAlignment="Center"
-          Style="{StaticResource MonoTextStyle}"
+          Style="{StaticResource StatusTextStyle}"
           Text="{Binding ViewModel.Status, Mode=OneWay}"
         />
       </StackPanel>

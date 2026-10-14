@@ -68,7 +68,7 @@ public sealed partial class SampleInfoViewModel : EditableRowsViewModel, IModalD
         {
             // 没选单：字段仍按默认值铺开（可看、可校验），只是不让保存
             ApplyValues(await LoadCoreAsync());
-            Status = L("Sample.NoSheet");
+            SetStatus(L("Sample.NoSheet"), isError: true);
             return;
         }
 
@@ -86,7 +86,7 @@ public sealed partial class SampleInfoViewModel : EditableRowsViewModel, IModalD
         }
 
         ApplyValues(await LoadCoreAsync());
-        Status = string.Format(CultureInfo.CurrentCulture, L("Sample.Loaded"), SheetId, SampleId);
+        SetStatus(string.Format(CultureInfo.CurrentCulture, L("Sample.Loaded"), SheetId, SampleId));
     }
 
     partial void OnSampleIdChanged(string value)
