@@ -68,6 +68,15 @@
   <sys:String x:Key="Exec.Connected">Connected</sys:String>
   <sys:String x:Key="Exec.LinkDown">Link down</sys:String>
   <sys:String x:Key="Exec.LinkUp">Network link is up</sys:String>
+  <sys:String x:Key="Exec.LinkBlocked">Link down: commands cannot reach the device. Restore the link first (the run will not resume automatically).</sys:String>
+  <sys:String x:Key="Exec.LinkStopBestEffort">Stop command sent on a best-effort basis (link is down, not confirmed)</sys:String>
+  <sys:String x:Key="Exec.LinkAlarmTitle">Communication alarm</sys:String>
+  <sys:String x:Key="Exec.LinkAlarmBodyRunning">Network link lost (**a test was running**): {0}&#10;{1}&#10;&#10;That run was aborted. A stop command was sent on a best-effort basis, but **the device state cannot be confirmed** — the link to the controller is UDP (connectionless): the frame may never have left this PC, and a "successful" send proves nothing.&#10;&#10;Check the machine and specimen on site NOW; after the link recovers the run will NOT resume automatically.</sys:String>
+  <sys:String x:Key="Exec.LinkAlarmBodyIdle">Network link lost (**idle right now — no test running**): {0}&#10;{1}&#10;&#10;No run was interrupted, but commands cannot reach the device while the link is down, so "start test" and worktable jog are temporarily unavailable.&#10;&#10;Check the cable and the controller's power (logs are available too); after the link recovers, confirm on site before operating — the software will not reconnect or resume automatically.</sys:String>
+  <sys:String x:Key="Exec.LinkUnknownAdapter">(adapter not identified)</sys:String>
+  <sys:String x:Key="Exec.StopNotConfirmed">Motor stop NOT confirmed: no "motor stopped" status frame after the stop command — check the machine on site</sys:String>
+  <sys:String x:Key="Exec.ForceCleaned">UI returned to idle: the previous run's cleanup was interrupted (the stop command got no ack). Check the machine state before continuing.</sys:String>
+  <sys:String x:Key="Exec.StopAlarmBody">Motor stop NOT confirmed: no "motor stopped" status frame arrived within 2 s after the stop command.&#10;&#10;The link is up, so this usually means the machine really did not stop (motor stalled / servo protection / controller not responding). Check the machine on site.</sys:String>
   <sys:String x:Key="Exec.ConnectFailed">Connect failed</sys:String>
   <sys:String x:Key="Exec.Stopping">Stopping…</sys:String>
   <sys:String x:Key="Exec.Failed">Run failed</sys:String>

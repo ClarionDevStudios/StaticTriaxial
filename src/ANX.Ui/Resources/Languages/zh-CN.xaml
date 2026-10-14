@@ -68,6 +68,15 @@
   <sys:String x:Key="Exec.Connected">已连接</sys:String>
   <sys:String x:Key="Exec.LinkDown">链路断开</sys:String>
   <sys:String x:Key="Exec.LinkUp">网口链路正常</sys:String>
+  <sys:String x:Key="Exec.LinkBlocked">链路断开：现在发命令也到不了设备，请先恢复链路（恢复后需人工确认再继续）</sys:String>
+  <sys:String x:Key="Exec.LinkStopBestEffort">已尽力发送停止命令（链路不通，未确认）</sys:String>
+  <sys:String x:Key="Exec.LinkAlarmTitle">通讯报警</sys:String>
+  <sys:String x:Key="Exec.LinkAlarmBodyRunning">网口链路断开（**试验进行中**）：{0}&#10;{1}&#10;&#10;正在跑的那一轮已被中止。软件已尽力发送停止命令，但**链路不通，无法确认设备是否已停**——上位机与控制器走 UDP，无连接：命令可能根本没发出去，发送"成功"也说明不了送达。&#10;&#10;请立即到设备现场确认工作台与试件状态；链路恢复后**不会自动续跑**，需人工确认后再启动。</sys:String>
+  <sys:String x:Key="Exec.LinkAlarmBodyIdle">网口链路断开（**当前待机，没有正在跑的试验**）：{0}&#10;{1}&#10;&#10;没有试验动作被打断，但链路不通时下发的命令到不了设备，所以「启动试验」与工作台升降暂时不可用。&#10;&#10;请检查网线与控制器电源（也可查日志）；链路恢复后需人工确认再操作——软件不会自动重连、也不会自动续跑。</sys:String>
+  <sys:String x:Key="Exec.LinkUnknownAdapter">（未定位到网卡）</sys:String>
+  <sys:String x:Key="Exec.StopNotConfirmed">停机未确认：发停止后未收到"电机已停"的状态回帧，请现场确认设备状态</sys:String>
+  <sys:String x:Key="Exec.ForceCleaned">界面已回到待机：上一轮的收尾被中断（停止命令没得到应答），请确认设备状态后再操作</sys:String>
+  <sys:String x:Key="Exec.StopAlarmBody">停机未确认：发出停止命令后，在 2 秒内没有收到下位机"电机已停"的状态回帧。&#10;&#10;链路是通的，所以这通常意味着设备真的没停下来（电机卡住 / 伺服保护 / 下位机不响应）。请到设备现场确认工作台状态。</sys:String>
   <sys:String x:Key="Exec.ConnectFailed">联机失败</sys:String>
   <sys:String x:Key="Exec.Stopping">正在停止…</sys:String>
   <sys:String x:Key="Exec.Failed">运行失败</sys:String>

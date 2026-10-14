@@ -169,6 +169,27 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// <summary>最近一次网口链路结果（没有监视器时为 null）。</summary>
     private NetworkLinkState? _linkState;
 
+    /// <summary>
+    /// 本次运行里链路**是否曾经在位**。只对"从在位变成断开"报警 ——
+    /// 开机时网线本来就没插（或控制器没上电）不该弹报警，那是常态不是异常（用户 2026-10-14）。
+    /// </summary>
+    private bool _linkWasEverUp;
+
+    /// <summary>
+    /// 链路报警弹窗的节流窗口：窗口内不再弹（用户 2026-10-14：**显示一次，关闭后不再弹**）。
+    /// 现场实测网线会抖（同一分钟内 Down/Up 反复），不节流会被弹窗淹了。
+    /// </summary>
+    private static readonly TimeSpan LinkAlarmThrottleWindow = TimeSpan.FromMinutes(1);
+
+    /// <summary>上次链路报警弹窗时间（<see cref="DateTime.MinValue"/> = 从没弹过）。</summary>
+    private DateTime _lastLinkAlarmAt = DateTime.MinValue;
+
+    /// <summary>停机确认窗口（发停止后等状态回帧证实"电机已停"）。</summary>
+    private static readonly TimeSpan StopConfirmTimeout = TimeSpan.FromSeconds(2);
+
+    /// <summary>本轮试验任务（"停止"按钮据此判断收尾到底有没有跑完）。</summary>
+    private Task? _runTask;
+
     public TestExecutionViewModel(
         ILocalizationService localization,
         ITestExecution execution,
@@ -279,8 +300,15 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// <summary>
     /// 能不能**启动试验**（用户 2026-10-13）：**必须选中一件没做完的试样** ——
     /// 启动只跑选中的那件，不会再自动建新件；选中的已做完也不给跑（免得以为在重跑它）。
+    /// 另外**链路断了不给启动**（用户 2026-10-14）：那时命令到不了设备，发出去只会让人以为在跑。
     /// </summary>
-    public bool CanStartTest => SelectedSample is { IsCompleted: false };
+    public bool CanStartTest => SelectedSample is { IsCompleted: false } && LinkAllowsCommand;
+
+    /// <summary>
+    /// 链路是否允许下发命令：没有监视器（模拟器 / 单元测试）时不管，有监视器时**只有链路在位才允许**。
+    /// 恢复后**不自动续跑** —— 要用户自己确认现场后重新点启动（用户 2026-10-14）。
+    /// </summary>
+    private bool LinkAllowsCommand => _linkState is null or { IsUp: true };
 
     /// <summary>
     /// 能不能点「有效性计算」（用户 2026-10-13 三条口径）：
@@ -557,11 +585,137 @@ public partial class TestExecutionViewModel : ViewModelBase
         _linkState = state;
         RefreshConnectionText();
 
-        Append(
-            state.IsUp
-                ? $"{L("Exec.LinkUp")} · {state.AdapterName}（{state.Detail}）"
-                : $"{L("Exec.LinkDown")} · {state.Detail}"
-        );
+        // 链路断了：能下发的命令再也到不了设备，所以不许再"发新指令"，也不自动续跑（用户 2026-10-14）
+        UpdateCommandAvailability();
+
+        if (state.IsUp)
+        {
+            _linkWasEverUp = true;
+            Append($"{L("Exec.LinkUp")} · {state.AdapterName}（{state.Detail}）");
+            return;
+        }
+
+        Append($"{L("Exec.LinkDown")} · {state.Detail}");
+
+        // 链路断了：卡片上的数是**断开前的旧值**，标成 "--" 免得现场当成实时值看（用户 2026-10-14）
+        MarkLiveValuesStale();
+        HandleLinkLost(state);
+    }
+
+    /// <summary>
+    /// 把**实时读数**卡片标成 "--"（用户 2026-10-14）：链路断了以后卡上的数是断开前的旧值，
+    /// 不加标记现场会当成实时值看（危险）。
+    ///
+    /// 只标三张**实时**卡（荷载 / 位移 / 试验持续时间）：
+    /// 峰值与"上一轮结果"类卡片（弯拉强度、修正原点、应变、挠度）是**结果**不是当前读数，
+    /// 标掉它们等于把上一轮的成果从界面上抹了（2026-10-14 第一版就犯了这个错）。
+    /// 链路恢复后新数据一到，实时刷新会自然覆盖掉 "--"。
+    /// </summary>
+    private void MarkLiveValuesStale()
+    {
+        foreach (var key in LiveCardKeys)
+        {
+            if (FindCard(key) is { } card)
+            {
+                card.Value = "--";
+            }
+        }
+    }
+
+    /// <summary>实时读数卡片（与 <see cref="UpdateCards"/> 写的那三张一致）。</summary>
+    private static readonly string[] LiveCardKeys = ["load", "displacement", "elapsed"];
+
+    /// <summary>
+    /// 断链处理（用户 2026-10-14）：**尽力**发一次停止（成本为零，万一只是抖动/对端还在就赚了），
+    /// 但**不当成安全保障** —— 实测链路断开时 UDP 发送照样"成功"，命令到没到设备无从得知，
+    /// 所以这里只报告"已发出、未确认"，并弹一次报警让现场有人去看。
+    /// 恢复后**不自动续跑、不重放旧指令**（我们本来就是"命令即时下发"，没有队列要重放）。
+    /// </summary>
+    private void HandleLinkLost(NetworkLinkState state)
+    {
+        var wasRunning = IsRunning;
+
+        if (wasRunning && _device is not null)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _device.StopAsync(CancellationToken.None).ConfigureAwait(false);
+                    Dispatch(() => Append(L("Exec.LinkStopBestEffort")));
+                }
+                catch (Exception ex)
+                {
+                    Dispatch(() => Append($"{L("Exec.LinkStopBestEffort")}（{ex.Message}）"));
+                }
+            });
+        }
+
+        // 报警弹窗：显示一次，节流窗口内不再弹（用户 2026-10-14）。
+        // 另外**只在"曾经在位"的情况下报警**：开机时线就没插是常态，不该一开机就弹（用户 2026-10-14）。
+        if (!_linkWasEverUp)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        if (now - _lastLinkAlarmAt < LinkAlarmThrottleWindow)
+        {
+            return;
+        }
+
+        _lastLinkAlarmAt = now;
+        Dispatch(() => _ = ShowLinkAlarmAsync(state, testWasRunning: wasRunning));
+    }
+
+    /// <summary>
+    /// 链路报警（模态信息框，照执行页既有做法）。**待机与试验中说法不一样**（用户 2026-10-14）：
+    /// 待机断链只是"暂时不能下发命令"，试验中断链是"那一轮被打断、设备停没停还不知道"——
+    /// 后果不同，现场要采取的动作也不同，用同一句会误导。
+    /// </summary>
+    private async Task ShowLinkAlarmAsync(NetworkLinkState state, bool testWasRunning)
+    {
+        var box = new Wpf.Ui.Controls.MessageBox
+        {
+            Title = L("Exec.LinkAlarmTitle"),
+            Content = string.Format(
+                CultureInfo.CurrentCulture,
+                L(testWasRunning ? "Exec.LinkAlarmBodyRunning" : "Exec.LinkAlarmBodyIdle"),
+                string.IsNullOrWhiteSpace(state.AdapterName) ? L("Exec.LinkUnknownAdapter") : state.AdapterName,
+                state.Detail
+            ),
+            PrimaryButtonText = L("Common.Close"),
+            IsCloseButtonEnabled = false,
+            Owner = Application.Current?.MainWindow,
+        };
+
+        await box.ShowDialogAsync();
+    }
+
+    /// <summary>
+    /// 「停机未确认」报警：链路是好的却等不到"电机已停"的状态回帧 —— 这通常意味着设备真的没停下来
+    /// （伺服保护 / 电机卡住 / 下位机不响应），现场必须有人去看。与链路报警共用一条节流。
+    /// </summary>
+    private async Task ShowStopAlarmAsync()
+    {
+        var now = DateTime.UtcNow;
+        if (now - _lastLinkAlarmAt < LinkAlarmThrottleWindow)
+        {
+            return; // 与断链报警共用节流：同一段时间内只弹一次
+        }
+
+        _lastLinkAlarmAt = now;
+
+        var box = new Wpf.Ui.Controls.MessageBox
+        {
+            Title = L("Exec.LinkAlarmTitle"),
+            Content = L("Exec.StopAlarmBody"),
+            PrimaryButtonText = L("Common.Close"),
+            IsCloseButtonEnabled = false,
+            Owner = Application.Current?.MainWindow,
+        };
+
+        await box.ShowDialogAsync();
     }
 
     /// <summary>
@@ -600,6 +754,12 @@ public partial class TestExecutionViewModel : ViewModelBase
         if (_device is null || !_device.IsConnected)
         {
             Append(L("Exec.JogNeedConnect"));
+            return;
+        }
+
+        if (!LinkAllowsCommand)
+        {
+            Append(L("Exec.LinkBlocked"));
             return;
         }
 
@@ -673,7 +833,20 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// </summary>
     public string RunningHintText => L(IsRunning ? "Exec.RunningHint" : "Exec.IdleHint");
 
-    private void UpdateCanJog() => CanJog = !IsRunning && _device?.IsConnected == true;
+    /// <summary>点动可用性：联机中、没在跑试验、且**链路在位**（链路断了点动按钮也点不了）。</summary>
+    private void UpdateCanJog() =>
+        CanJog = !IsRunning && _device?.IsConnected == true && LinkAllowsCommand;
+
+    /// <summary>链路变化后重算"能不能下发命令"（启动 / 点动 / 有效性计算都受它影响）。</summary>
+    private void UpdateCommandAvailability()
+    {
+        UpdateCanJog();
+        OnPropertyChanged(nameof(CanStartTest));
+        OnPropertyChanged(nameof(CanStartOrStop));
+        OnPropertyChanged(nameof(CanEvaluateValidity));
+        StartOrStopCommand.NotifyCanExecuteChanged();
+        EvaluateValidityCommand.NotifyCanExecuteChanged();
+    }
 
     /// <summary>
     /// 进入执行页就开始把设备的实时采样刷到数值卡上 —— 不跑试验时也能随时看到当前荷载 / 位移
@@ -737,12 +910,24 @@ public partial class TestExecutionViewModel : ViewModelBase
         {
             _cts?.Cancel();
             Append(L("Exec.Stopping"));
+
+            // 兜底（用户 2026-10-14：真机踩到"点停止没反应、按钮回不去"）：
+            // 收尾若被外部异常打断，界面会永远挂在"运行中"。这里盯着本轮任务，
+            // 任务已结束却还显示运行中 → 强制把界面收回来，并如实记一条。
+            _ = ForceCleanupIfStuckAsync();
             return;
         }
 
         if (_device is null)
         {
             Append(L("Exec.NoDevice"));
+            return;
+        }
+
+        // 链路断了不让启动（用户 2026-10-14）：命令到不了设备，"看着在跑"比报错更危险
+        if (IsRunning == false && !LinkAllowsCommand)
+        {
+            Append(L("Exec.LinkBlocked"));
             return;
         }
 
@@ -760,14 +945,42 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// <summary>跑一轮并把异常报给界面（fire-and-forget：命令必须立刻返回，否则停止按钮被置灰）。</summary>
     private async Task RunOneSampleSafeAsync()
     {
+        _runTask = RunOneSampleAsync();
+
         try
         {
-            await RunOneSampleAsync();
+            await _runTask;
         }
         catch (Exception ex)
         {
             Append($"{L("Exec.Failed")}: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// 兜底收尾：本轮任务已经结束、界面却还显示"运行中"时，把界面强制拉回待机。
+    /// 正常情况下这条不会触发（<see cref="RunOneSampleAsync"/> 的 finally 会把状态复位）。
+    /// </summary>
+    private async Task ForceCleanupIfStuckAsync()
+    {
+        var task = _runTask;
+        if (task is null)
+        {
+            return;
+        }
+
+        await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(5))).ConfigureAwait(true);
+
+        if (!IsRunning || !task.IsCompleted)
+        {
+            return;
+        }
+
+        IsRunning = false;
+        _contactEstablished = false;
+        _cts?.Dispose();
+        _cts = null;
+        Append(L("Exec.ForceCleaned"));
     }
 
     /// <summary>
@@ -1218,11 +1431,52 @@ public partial class TestExecutionViewModel : ViewModelBase
         finally
         {
             device.SampleReceived -= OnSample;
-            await device.StopAsync(CancellationToken.None);
+
+            // ⚠ 收尾铁律（2026-10-14 真机踩过）：finally 里**每个可能抛异常的步骤都要自己 try/catch**。
+            // 当时这里是裸的 `await device.StopAsync()`，链路断开时它要等 A1 应答、3 秒后抛超时异常，
+            // 异常从 finally 抛出 → 后面的 `IsRunning = false` / CTS 释放**全没执行** →
+            // 界面永远停在"运行中"：按钮一直显示「停止试验」、再点只打日志、点动按钮一直灰着。
+            // 顺序保持"先发停止、再复位状态"（复位太早会让用户在收尾那几秒里又点启动，两条流程抢同一个 CTS），
+            // 但每一步都包住异常 —— 没有任何一条路径能跳过状态复位。
+            try
+            {
+                await device.StopAsync(CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                // 发不出去 / 没应答：如实报"停止命令未确认"，但绝不因此卡住界面
+                Dispatch(() => Append($"{L("Exec.StopNotConfirmed")}（{ex.Message}）"));
+            }
+
             IsRunning = false;
             _contactEstablished = false;
             _cts?.Dispose();
             _cts = null;
+
+            // 停机闭环确认（用户 2026-10-14）：命令有没有到设备、电机到底停没停，只能看状态回帧
+            try
+            {
+                var stopped = await MotorStopConfirmation
+                    .WaitStoppedAsync(device, StopConfirmTimeout, CancellationToken.None);
+
+                if (!stopped)
+                {
+                    Dispatch(() =>
+                    {
+                        Append(L("Exec.StopNotConfirmed"));
+
+                        // 链路已断的情况下不重复弹窗（断链报警已经说过这件事了）
+                        if (LinkAllowsCommand)
+                        {
+                            _ = ShowStopAlarmAsync();
+                        }
+                    });
+                }
+            }
+            catch (Exception)
+            {
+                // 确认环节也不能把收尾搞砸
+            }
         }
 
         PhaseText = sequencer.StopReason switch
@@ -1290,6 +1544,13 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// <summary>刷新数值卡（荷载 / 位移 / 时间）；点动与跑试验共用。</summary>
     private void UpdateCards(TestSample sample)
     {
+        // 链路断着就别再往卡上写实时值：标记成 "--" 之后，在途的那一帧还会把它覆盖回去
+        //（2026-10-14 实机：断链后 荷载/位移 被写回旧值，其余卡片保持 "--"，看着像"只标了一半"）
+        if (!LinkAllowsCommand)
+        {
+            return;
+        }
+
         SetCard("load", sample.Load, sample.Load);
         SetCard("displacement", sample.Displacement, sample.Displacement);
 
@@ -1348,11 +1609,29 @@ public partial class TestExecutionViewModel : ViewModelBase
         return index >= 0 && index < Cards.Count ? Cards[index] : null;
     }
 
-    private void Append(string message) =>
-        Log.Insert(
-            0,
-            $"{DateTime.Now:HH:mm:ss}  {message}"
-        );
+    /// <summary>
+    /// 往"操控信息"里插一条（最新的在最上面）。
+    ///
+    /// ⚠ 这个集合绑在 ListBox 上，**只允许在 UI 线程改**：2026-10-14 真机踩到
+    /// <c>InvalidOperationException：某个 ItemsControl 与它的项源不一致</c> ——
+    /// 起因是某处 <c>.ConfigureAwait(false)</c> 之后调了本方法，改集合跑到了线程池线程上，
+    /// ListBox 的容器生成器算术对不上（累积 13 项 vs 实际 14 项）。
+    /// 与其在每个调用点记得切线程，不如在这里**兜住**：不在 UI 线程就转投过去。
+    /// </summary>
+    private void Append(string message)
+    {
+        // 时间戳先取（转投到 UI 线程执行时会晚一点，不该让日志时间跟着漂）
+        var line = $"{DateTime.Now:HH:mm:ss}  {message}";
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+
+        if (dispatcher is null || dispatcher.CheckAccess())
+        {
+            Log.Insert(0, line);
+            return;
+        }
+
+        _ = dispatcher.BeginInvoke(() => Log.Insert(0, line));
+    }
 
     private static string Format(double value) =>
         value.ToString("0.###", CultureInfo.InvariantCulture);
