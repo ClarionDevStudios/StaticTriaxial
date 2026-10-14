@@ -50,4 +50,17 @@ public interface IReportExportService
         string culture,
         CancellationToken cancellationToken = default
     );
+
+    /// <summary>
+    /// **只把某一件试件的曲线图**写到产物目录（`Report\弯曲\<单号>\<试样号>.png`），**不出整份报表**。
+    /// 用途：**试验完成后自动存图**（用户 2026-10-13/2026-10-14 的原始口径）。
+    /// 同名覆盖 —— 重跑同一件以最后一次为准。
+    /// </summary>
+    /// <returns>图片路径；这件没有曲线数据（空件 / 未接触）时返回 <c>null</c>。</returns>
+    Task<string?> SaveCurveImageAsync(
+        string sheetId,
+        string sampleId,
+        string culture,
+        CancellationToken cancellationToken = default
+    );
 }

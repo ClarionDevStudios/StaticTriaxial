@@ -42,6 +42,8 @@
   <sys:String x:Key="Settings.Saved">Saved to the config file</sys:String>
   <sys:String x:Key="Settings.SavedNextStart">it stays in effect next time you start</sys:String>
   <sys:String x:Key="Settings.SaveFailed">Saving settings failed</sys:String>
+  <sys:String x:Key="Exec.CurveImageSaved">Curve image saved</sys:String>
+  <sys:String x:Key="Exec.CurveImageSaveFailed">Saving the curve image failed</sys:String>
 
   <sys:String x:Key="Nav.Execution">Test run</sys:String>
   <sys:String x:Key="Exec.NewSheet">New sheet</sys:String>

@@ -166,4 +166,22 @@ public sealed class BendingReportExportService(
 
         return result.ReportPath;
     }
+
+    /// <inheritdoc />
+    public Task<string?> SaveCurveImageAsync(
+        string sheetId,
+        string sampleId,
+        string culture,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var builder = new BendingReportBuilder(sheets, new ANX.Reporting.FlexCelReportExporter());
+
+        // ScottPlot 的离屏渲染不依赖 WPF，但仍是一次文件 IO + 位图渲染（几十毫秒）：
+        // 放线程池跑，别占着界面线程（这一步是在"试验刚跑完"的路径上调的）。
+        return Task.Run(
+            () => builder.SaveCurveImage(sheetId, sampleId, reportsRoot, culture, texts),
+            cancellationToken
+        );
+    }
 }

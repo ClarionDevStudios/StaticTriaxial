@@ -68,20 +68,9 @@ public sealed class BendingReportBuilder(
         {
             var sampleId = Format(row["SampleID"]);
 
-            // 曲线图：一个试件一张，与现役的 Report\<试验类型>\<单号>\<试样号>.png 一致
-            //（现役放在 Bins\Report\ 下；本软件按用户 2026-10-14 的决定把 Bins\ 这一层去掉了）
-            var curve = sheets.ReadCurve(sheetId, sampleId);
-            if (curve.Count > 0)
+            // 曲线图：一个试件一张（与自动存盘共用 SaveCurveImage，见下）
+            if (SaveCurveImage(sheetId, sampleId, outputRoot, culture, texts) is { } imagePath)
             {
-                var imagePath = Path.Combine(sheetDirectory, $"{sampleId}.png");
-                // 图题与轴名也走资源键（按报表语种解析），不在方法里写死中文
-                _images.SavePng(
-                    curve,
-                    imagePath,
-                    Text(BendingMetricKeys.CurveTitle, culture, texts, sampleId),
-                    Text(BendingCurveAxes.Deflection, culture, texts),
-                    Text(BendingCurveAxes.Load, culture, texts)
-                );
                 curveImagePaths.Add(imagePath);
             }
 
@@ -144,5 +133,47 @@ public sealed class BendingReportBuilder(
         return args.Length == 0
             ? format
             : string.Format(CultureInfo.InvariantCulture, format, args);
+    }
+
+    /// <summary>
+    /// 把**某一件试件**的曲线图写成 PNG（不生成整份报表）。
+    ///
+    /// 两处共用这一份实现：
+    /// <list type="bullet">
+    ///   <item>导出报表时逐件出图（<see cref="BuildAsync"/>）；</item>
+    ///   <item>**试验完成后自动存盘**（用户 2026-10-13/2026-10-14 的原始口径：曲线图在试验完成后
+    ///         自动生成保存到相应路径）—— 由 <see cref="BendingReportExportService.SaveCurveImageAsync"/>
+    ///         转给上层。</item>
+    /// </list>
+    /// 产物与现役一致：`<输出根>\弯曲\<单号>\<试样号>.png`。同名即覆盖 —— 重跑同一件以最后一次为准，
+    /// 与"已生成的报表不追溯"是两回事（报表整单一次成型，曲线图逐件刷新）。
+    /// </summary>
+    /// <returns>图片路径；这件没有曲线数据（空件 / 未接触）时返回 <c>null</c>，不写空图。</returns>
+    public string? SaveCurveImage(
+        string sheetId,
+        string sampleId,
+        string outputRoot,
+        string culture = "zh-CN",
+        ITextResolver? texts = null
+    )
+    {
+        var curve = sheets.ReadCurve(sheetId, sampleId);
+        if (curve.Count == 0)
+        {
+            return null;
+        }
+
+        var imagePath = Path.Combine(outputRoot, "弯曲", sheetId, $"{sampleId}.png");
+
+        // 图题与轴名也走资源键（按报表语种解析），不在方法里写死中文
+        _images.SavePng(
+            curve,
+            imagePath,
+            Text(BendingMetricKeys.CurveTitle, culture, texts, sampleId),
+            Text(BendingCurveAxes.Deflection, culture, texts),
+            Text(BendingCurveAxes.Load, culture, texts)
+        );
+
+        return imagePath;
     }
 }

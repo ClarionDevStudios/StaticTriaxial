@@ -288,7 +288,11 @@ public partial class App
 
             // 启动就盯住网口链路（用户 2026-10-14）：拔网线要在界面上看得见，
             // 不能等到"跑试验才发现数据不来"；这里刻意在联机之前起，联机前拔线也认得出。
-            Services.GetRequiredService<INetworkLinkMonitor>().Start();
+            //
+            // **模拟器模式下这个服务没注册**（假设备不该报真网线的状态）→ 必须用 GetService 判空：
+            // 2026-10-14 实机踩过 —— 这里原先写的是 GetRequiredService，一开模拟器就
+            // "No service for type INetworkLinkMonitor has been registered" 直接起不来。
+            Services.GetService<INetworkLinkMonitor>()?.Start();
 
             await AppHost.StartAsync();
 

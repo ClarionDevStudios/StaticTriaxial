@@ -42,6 +42,8 @@
   <sys:String x:Key="Settings.Saved">已写入配置文件</sys:String>
   <sys:String x:Key="Settings.SavedNextStart">下次启动仍然生效</sys:String>
   <sys:String x:Key="Settings.SaveFailed">设置保存失败</sys:String>
+  <sys:String x:Key="Exec.CurveImageSaved">曲线图已保存</sys:String>
+  <sys:String x:Key="Exec.CurveImageSaveFailed">曲线图保存失败</sys:String>
 
   <sys:String x:Key="Nav.Execution">试验执行</sys:String>
   <sys:String x:Key="Exec.NewSheet">新建试验</sys:String>

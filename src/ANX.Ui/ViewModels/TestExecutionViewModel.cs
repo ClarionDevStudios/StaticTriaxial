@@ -1651,8 +1651,41 @@ public partial class TestExecutionViewModel : ViewModelBase
 
         Append($"{L("Exec.SampleDone")} #{sampleId} · {sequencer.Curve.Count} {L("Exec.Points")}");
 
+        // **曲线图在试验完成后自动存盘**（用户 2026-10-13 提的、2026-10-14 确认"按当初口径补上"）：
+        // 这一件已经落库，就把它自己的曲线图写到 Report\弯曲\<单号>\<试样号>.png。
+        // 只写图片、不出整份报表（报表涉及组统计，时机由用户按整单掌握）；失败只记一条，不影响流程。
+        await SaveCurveImageAsync(sampleId).ConfigureAwait(true);
+
         // 这一件已经落库（含尺寸与判定值）：列表刷新一次就能看到它
         await ReloadSampleRowsAsync();
+    }
+
+    /// <summary>
+    /// 把刚跑完那一件的曲线图自动存盘（按**当前界面语言**出图题与轴名；重跑同一件覆盖同名文件）。
+    /// </summary>
+    private async Task SaveCurveImageAsync(string sampleId)
+    {
+        if (_exporter is null || _sheetId is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var path = await _exporter
+                .SaveCurveImageAsync(_sheetId, sampleId, Localization.CurrentCulture)
+                .ConfigureAwait(true);
+
+            // 没有曲线数据（空件 / 未接触）时不写空图，也不刷消息
+            if (path is not null)
+            {
+                Append($"{L("Exec.CurveImageSaved")} {path}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Append($"{L("Exec.CurveImageSaveFailed")}: {ex.Message}");
+        }
     }
 
     private void UpdateLiveValues(TestSample sample, IReadOnlyList<CurvePoint> newCurvePoints)
