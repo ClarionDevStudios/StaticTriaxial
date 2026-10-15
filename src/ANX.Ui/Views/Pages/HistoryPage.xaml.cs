@@ -1,5 +1,6 @@
 namespace ANX.Ui.Views.Pages;
 
+using ANX.Control;
 using ANX.Core;
 using ANX.Ui.Charts;
 using ANX.Ui.Services;
@@ -10,6 +11,7 @@ using Wpf.Ui.Abstractions.Controls;
 public partial class HistoryPage : INavigableView<HistoryViewModel>
 {
     private readonly IThemeService _theme;
+    private readonly ILocalizationService _localization;
 
     /// <summary>当前画在图上的一条曲线（换主题 / 换语言时按它重画，含标注）。</summary>
     private IReadOnlyList<CurvePoint> _curve = [];
@@ -23,6 +25,7 @@ public partial class HistoryPage : INavigableView<HistoryViewModel>
         ViewModel = viewModel;
         DataContext = this;
         _theme = themeService;
+        _localization = localizationService;
 
         InitializeComponent();
 
@@ -80,7 +83,12 @@ public partial class HistoryPage : INavigableView<HistoryViewModel>
         }
 
         // 峰值点 + 修正直线 / 修正原点 / 拟合区间两端（与执行页共用同一个标注器，两处必然一致）
-        CurveAnnotator.Draw(CurvePlot.Plot, _curve, ViewModel.SelectedAnnotation);
+        CurveAnnotator.Draw(
+            CurvePlot.Plot,
+            _curve,
+            ViewModel.SelectedAnnotation,
+            CurveMarkTexts.From(_localization.GetString)
+        );
 
         CurvePlot.Refresh();
     }

@@ -21,6 +21,7 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
 {
     private readonly List<CurvePoint> _points = [];
     private readonly IThemeService _theme;
+    private readonly ILocalizationService _localization;
     private readonly DispatcherTimer _redrawTimer;
 
     /// <summary>有没有攒着还没画的新点（节流用：收点只置脏，到点才真画）。</summary>
@@ -47,6 +48,7 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
         ViewModel = viewModel;
         DataContext = this;
         _theme = themeService;
+        _localization = localizationService;
 
         InitializeComponent();
 
@@ -283,7 +285,13 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
 
         // 标注用**全量**点找峰值（不是抽稀后的），并且放在 AutoScale 之后：
         // 修正直线在尾部的延长值通常远高于峰值，让它参与量程会把曲线压扁（见 CurveAnnotator 的说明）。
-        CurveAnnotator.Draw(RealtimePlot.Plot, _points, _annotation);
+        // 标注文字按**当前界面语言**取（同一条标注的画面与存盘图用同一组资源键）。
+        CurveAnnotator.Draw(
+            RealtimePlot.Plot,
+            _points,
+            _annotation,
+            CurveMarkTexts.From(_localization.GetString)
+        );
 
         RealtimePlot.Refresh();
     }

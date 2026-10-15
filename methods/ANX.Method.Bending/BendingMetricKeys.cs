@@ -1,5 +1,7 @@
 namespace ANX.Method.Bending;
 
+using ANX.Control;
+
 /// <summary>
 /// T 0715 实时指标卡与曲线图用到的资源键。文案在界面层的语言资源里，这里只放键
 /// （IAP 的 `FieldDefinition.DisplayNameKey` 同款做法）。
@@ -29,7 +31,11 @@ public static class BendingMetricKeys
     /// <summary>「异常值判断」列：异常（已被 5.6 剔除）。</summary>
     public const string ValidityAbnormal = "Method.T0715.ValidityAbnormal";
 
-    /// <summary>全部键 —— 供"语言字典里是否有这些键"的一致性检查使用。</summary>
+    /// <summary>
+    /// 全部键 —— 供"语言字典里是否有这些键"的一致性检查使用。
+    /// 含 <see cref="CurveMarkKeys.All"/>（曲线图标注文案）：那三条键由界面与报表共用，
+    /// 所以一并纳入检查，免得漏翻时"实时曲线有文字、存盘图变成键名"。
+    /// </summary>
     public static readonly string[] All =
     [
         Load,
@@ -44,5 +50,6 @@ public static class BendingMetricKeys
         ValidityAbnormal,
         BendingCurveAxes.Deflection,
         BendingCurveAxes.Load,
+        .. CurveMarkKeys.All,
     ];
 }

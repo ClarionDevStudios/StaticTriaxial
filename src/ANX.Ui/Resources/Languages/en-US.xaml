@@ -257,6 +257,10 @@
   <sys:String x:Key="Method.T0715.CurveTitle">Specimen {0}</sys:String>
   <sys:String x:Key="Method.T0715.ValidityNormal">Normal</sys:String>
   <sys:String x:Key="Method.T0715.ValidityAbnormal">Abnormal</sys:String>
+  <!-- Curve chart annotations (shared by the live chart and the saved PNG, see ANX.Control.CurveMarkKeys) -->
+  <sys:String x:Key="Curve.Mark.Peak">Peak {0:0.00} kN / {1:0.00} mm</sys:String>
+  <sys:String x:Key="Curve.Mark.Origin">Origin {0:0.00} mm</sys:String>
+  <sys:String x:Key="Curve.Mark.FitBound">{0:0.#}% {1:0.00} kN</sys:String>
   <sys:String x:Key="Method.T0715.ReportTooManyDetails">This sheet has {0} specimens but the report layout holds {1}, so nothing was exported. Split the sheet and export again.</sys:String>
   <sys:String x:Key="Exec.PeakFormat">Peak {0}</sys:String>
 

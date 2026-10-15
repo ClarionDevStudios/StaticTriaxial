@@ -1,6 +1,7 @@
 namespace ANX.Method.Bending;
 
 using System.Globalization;
+using ANX.Control;
 using ANX.Core;
 using ANX.Core.Reporting;
 using ANX.Reporting;
@@ -17,7 +18,8 @@ public sealed record BendingReportResult(string ReportPath, IReadOnlyList<string
 public sealed class BendingReportBuilder(
     TestSheetService sheets,
     IReportExporter exporter,
-    CurveImageRenderer? curveImages = null
+    CurveImageRenderer? curveImages = null,
+    ITestParameters? parameters = null
 )
 {
     private static readonly string[] MainColumns =
@@ -83,8 +85,15 @@ public sealed class BendingReportBuilder(
         {
             var sampleId = Format(row["SampleID"]);
 
-            // 曲线图：一个试件一张（与自动存盘共用 SaveCurveImage，见下）
-            if (SaveCurveImage(sheetId, sampleId, outputRoot, culture, texts) is { } imagePath)
+            // 曲线图：一个试件一张（与自动存盘共用 SaveCurveImageAsync，见下）
+            if (await SaveCurveImageAsync(
+                sheetId,
+                sampleId,
+                outputRoot,
+                culture,
+                texts,
+                cancellationToken
+            ) is { } imagePath)
             {
                 curveImagePaths.Add(imagePath);
             }
@@ -228,14 +237,18 @@ public sealed class BendingReportBuilder(
     /// </list>
     /// 产物与现役一致：`<输出根>\弯曲\<单号>\<试样号>.png`。同名即覆盖 —— 重跑同一件以最后一次为准，
     /// 与"已生成的报表不追溯"是两回事（报表整单一次成型，曲线图逐件刷新）。
+    ///
+    /// 图上**带标注**（峰值点 / 修正直线 / 修正原点 / 拟合区间两端），与实时曲线同口径
+    /// （用户 2026-10-15：实时曲线有、存盘图里没有）；标注几何取自 <see cref="BendingAnnotations"/>。
     /// </summary>
     /// <returns>图片路径；这件没有曲线数据（空件 / 未接触）时返回 <c>null</c>，不写空图。</returns>
-    public string? SaveCurveImage(
+    public async Task<string?> SaveCurveImageAsync(
         string sheetId,
         string sampleId,
         string outputRoot,
         string culture = "zh-CN",
-        ITextResolver? texts = null
+        ITextResolver? texts = null,
+        CancellationToken cancellationToken = default
     )
     {
         // 报表里的曲线图也按"开头未归零的点裁掉"来画（用户 2026-10-15）—— 与历史页回放同一口径，
@@ -248,15 +261,43 @@ public sealed class BendingReportBuilder(
 
         var imagePath = Path.Combine(outputRoot, "弯曲", sheetId, $"{sampleId}.png");
 
+        // 标注（修正直线 / 修正原点 / 拟合区间两端）：读该件落库的拟合结果列，
+        // 没有拟合（关掉了原点修正 / 老记录）就是 null，图上只有峰值点。
+        var annotation = await ReadAnnotationAsync(sheetId, sampleId, cancellationToken)
+            .ConfigureAwait(false);
+
         // 图题与轴名也走资源键（按报表语种解析），不在方法里写死中文
         _images.SavePng(
             curve,
             imagePath,
             Text(BendingMetricKeys.CurveTitle, culture, texts, sampleId),
             Text(BendingCurveAxes.Deflection, culture, texts),
-            Text(BendingCurveAxes.Load, culture, texts)
+            Text(BendingCurveAxes.Load, culture, texts),
+            annotation,
+            CurveMarkTexts.From(key => Text(key, culture, texts))
         );
 
         return imagePath;
+    }
+
+    /// <summary>读某一件的曲线标注（与历史数据页回放同一份解析：<see cref="BendingAnnotations"/>）。</summary>
+    private async Task<CurveAnnotation?> ReadAnnotationAsync(
+        string sheetId,
+        string sampleId,
+        CancellationToken cancellationToken
+    )
+    {
+        IReadOnlyDictionary<string, string>? values = parameters is null
+            ? null
+            : await parameters.LoadAsync(cancellationToken).ConfigureAwait(false);
+
+        var (startPercent, endPercent) = BendingAnnotations.ReadPercents(values);
+
+        return BendingAnnotations.Find(
+            sheets.ReadDetailRows(sheetId, BendingAnnotations.Columns),
+            sampleId,
+            startPercent,
+            endPercent
+        );
     }
 }

@@ -2,6 +2,7 @@ namespace ANX.Method.Bending.Tests;
 
 using ANX.Control;
 using ANX.Core;
+using ANX.Core.Reporting;
 using ANX.Storage;
 using Microsoft.Data.Sqlite;
 
@@ -67,6 +68,49 @@ public sealed class BendingCurveImageTests : IDisposable
         Assert.False(Directory.Exists(Path.Combine(ReportRoot, "弯曲", sheetId)));
     }
 
+    /// <summary>
+    /// 曲线图上要**带标注**（用户 2026-10-15：实时曲线画了修正直线 / 修正原点 / 拟合区间两端，
+    /// 存盘图里没有）。
+    ///
+    /// 两件用**同一条曲线**、同一个图题（<see cref="FixedTexts"/> 不给占位符），
+    /// 唯一的差别只有落库的拟合结果列 —— 于是"两张图不一样"只能是标注画进去了。
+    /// </summary>
+    [Fact]
+    public async Task 落库的拟合结果会画进曲线图()
+    {
+        var (sheets, execution, _) = Create();
+
+        var sheetId = await execution.CreateSheetAsync(FullFields());
+        List<CurvePoint> curve =
+        [
+            new(0, 0),
+            new(0.2, 0.6),
+            new(0.4, 1.4),
+            new(0.6, 2.0),
+            new(0.8, 1.5),
+        ];
+
+        await sheets.AppendSampleAsync(sheetId, "S001", curve, Results(withFit: true));
+        await sheets.AppendSampleAsync(sheetId, "S002", curve, Results(withFit: false));
+
+        var service = new BendingReportExportService(sheets, ReportRoot, new FixedTexts());
+        var withFit = await service.SaveCurveImageAsync(sheetId, "S001", "zh-CN");
+        var withoutFit = await service.SaveCurveImageAsync(sheetId, "S002", "zh-CN");
+
+        Assert.NotNull(withFit);
+        Assert.NotNull(withoutFit);
+        Assert.False(
+            File.ReadAllBytes(withFit!).AsSpan().SequenceEqual(File.ReadAllBytes(withoutFit!)),
+            "S001 落了拟合结果，图上应当多出修正直线 / 修正原点 / 拟合区间两端"
+        );
+    }
+
+    /// <summary>图题与轴名固定、不带占位符（两件图照着同一段文字画，好比对）。</summary>
+    private sealed class FixedTexts : ITextResolver
+    {
+        public string Get(string key, string culture) => key;
+    }
+
     private (TestSheetService Sheets, BendingExecution Execution, BendingParameters Parameters) Create()
     {
         var module = new BendingPersistenceModule();
@@ -95,9 +139,13 @@ public sealed class BendingCurveImageTests : IDisposable
             ["LoadRate"] = "2",
         };
 
-    /// <summary>明细行的判定值与尺寸（曲线图这一步不看它们，只是让这一件像"跑过"）。</summary>
-    private static Dictionary<string, double> Results() =>
-        new(StringComparer.Ordinal)
+    /// <summary>
+    /// 明细行的判定值与尺寸（曲线图这一步不看它们，只是让这一件像"跑过"）。
+    /// <paramref name="withFit"/> = true 时连拟合结果列一起落库（图上会因此多出标注）。
+    /// </summary>
+    private static Dictionary<string, double> Results(bool withFit = false)
+    {
+        var results = new Dictionary<string, double>(StringComparer.Ordinal)
         {
             ["SampleWidth"] = 30,
             ["SampleHeight"] = 35,
@@ -107,4 +155,14 @@ public sealed class BendingCurveImageTests : IDisposable
             ["MaxBendingTensileStrain"] = 1000,
             ["IsEffective"] = 1,
         };
+
+        if (withFit)
+        {
+            results["TangentK"] = 4.0;
+            results["TangentB"] = -0.1;
+            results["OriginCorrection"] = 0.025;
+        }
+
+        return results;
+    }
 }

@@ -257,6 +257,10 @@
   <sys:String x:Key="Method.T0715.CurveTitle">试件 {0}</sys:String>
   <sys:String x:Key="Method.T0715.ValidityNormal">正常</sys:String>
   <sys:String x:Key="Method.T0715.ValidityAbnormal">异常</sys:String>
+  <!-- 曲线图标注（界面与存盘图共用这三条键，见 ANX.Control.CurveMarkKeys） -->
+  <sys:String x:Key="Curve.Mark.Peak">峰值 {0:0.00} kN / {1:0.00} mm</sys:String>
+  <sys:String x:Key="Curve.Mark.Origin">修正原点 {0:0.00} mm</sys:String>
+  <sys:String x:Key="Curve.Mark.FitBound">{0:0.#}% {1:0.00} kN</sys:String>
   <sys:String x:Key="Method.T0715.ReportTooManyDetails">这张单有 {0} 件试样，超出报表版式的 {1} 行，没有导出。请分两张试验单后再导。</sys:String>
   <sys:String x:Key="Exec.PeakFormat">峰值 {0}</sys:String>
 

@@ -5,6 +5,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ANX.Core\ANX.Core.csproj" />
+    <!-- 曲线标注的几何与文案在 ANX.Control（界面与报表共用同一份，见 CurveAnnotations） -->
+    <ProjectReference Include="..\ANX.Control\ANX.Control.csproj" />
   </ItemGroup>
 
   <ItemGroup>

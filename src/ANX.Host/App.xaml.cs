@@ -280,7 +280,9 @@ public partial class App
                 _ = services.AddSingleton<IReportExportService>(sp => new BendingReportExportService(
                     sp.GetRequiredService<TestSheetService>(),
                     AppPaths.ResolveReportRoot(),
-                    new LocalizationTextResolver(sp.GetRequiredService<ILocalizationService>())
+                    new LocalizationTextResolver(sp.GetRequiredService<ILocalizationService>()),
+                    // 曲线图标注要用拟合区间百分比（出图的数与界面一致）
+                    sp.GetRequiredService<ITestParameters>()
                 ));
                 _ = services.AddSingleton(sp => new HistoryViewModel(
                     sp.GetRequiredService<ILocalizationService>(),
