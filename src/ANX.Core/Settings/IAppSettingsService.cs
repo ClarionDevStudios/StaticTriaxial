@@ -21,4 +21,22 @@ public static class AppSettingKeys
 
     /// <summary>主题（Dark / Light）。</summary>
     public const string Theme = "system.theme";
+
+    /// <summary>
+    /// **数据来源**（<see cref="AppDataSources.Device"/> / <see cref="AppDataSources.Simulator"/>）。
+    ///
+    /// 用户 2026-10-15：没有试件时用模拟器跑通流程，就在系统设置里切这一项，
+    /// 不必再靠环境变量 <c>ANX_USE_SIMULATOR</c>（那个保留作自检 / 冒烟用）。
+    /// </summary>
+    public const string DataSource = "system.dataSource";
+}
+
+/// <summary>数据来源取值。</summary>
+public static class AppDataSources
+{
+    /// <summary>真机试验（默认）：与设备联机，用真实试件做试验。</summary>
+    public const string Device = "device";
+
+    /// <summary>模拟数据：启动试验后由模拟器产生试验数据（用于缺试件时验证流程）。</summary>
+    public const string Simulator = "simulator";
 }

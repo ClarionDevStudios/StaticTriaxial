@@ -311,7 +311,15 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// 链路是否允许下发命令：没有监视器（模拟器 / 单元测试）时不管，有监视器时**只有链路在位才允许**。
     /// 恢复后**不自动续跑** —— 要用户自己确认现场后重新点启动（用户 2026-10-14）。
     /// </summary>
-    private bool LinkAllowsCommand => _linkState is null or { IsUp: true };
+    private bool LinkAllowsCommand =>
+        // 模拟数据时网口不参与，链路状态不该拦命令（用户 2026-10-15 加了数据来源切换）
+        IsSimulatedSource || _linkState is null or { IsUp: true };
+
+    /// <summary>
+    /// 当前是不是"模拟数据"来源（系统设置 → 数据来源，用户 2026-10-15）。
+    /// 模拟时"网口链路 / 联机"这类只对真机有意义的东西都不该出现在界面上。
+    /// </summary>
+    private bool IsSimulatedSource => _device is IDeviceSourceSwitch { IsSimulating: true };
 
     /// <summary>
     /// 能不能点「有效性计算」（用户 2026-10-13 三条口径）：
@@ -611,7 +619,8 @@ public partial class TestExecutionViewModel : ViewModelBase
 
     private void RefreshConnectionText()
     {
-        if (_linkState is { IsUp: false } link)
+        // 模拟数据时"网口链路"这件事不成立（设备根本没参与）—— 报链路断开只会误导
+        if (!IsSimulatedSource && _linkState is { IsUp: false } link)
         {
             ConnectionText = string.IsNullOrWhiteSpace(link.AdapterName)
                 ? L("Exec.LinkDown")
@@ -665,6 +674,12 @@ public partial class TestExecutionViewModel : ViewModelBase
 
         // 链路断了：能下发的命令再也到不了设备，所以不许再"发新指令"，也不自动续跑（用户 2026-10-14）
         UpdateCommandAvailability();
+
+        // 模拟数据时网口链路与试验无关：不记操控信息、不标卡片、不发报警（状态仍留着，切回真机还能用）
+        if (IsSimulatedSource)
+        {
+            return;
+        }
 
         if (state.IsUp)
         {

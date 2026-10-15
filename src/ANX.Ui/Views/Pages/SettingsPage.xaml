@@ -18,55 +18,95 @@
     </Grid.RowDefinitions>
 
     <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
-      <StackPanel Margin="36,28,36,24" HorizontalAlignment="Left" Width="620">
+      <StackPanel Margin="36,28,36,24" HorizontalAlignment="Left" Width="960">
       <TextBlock Style="{StaticResource PageTitleStyle}" Text="{DynamicResource Settings.Title}" />
 
-      <ui:Card Margin="0,20,0,0" Padding="20">
-        <StackPanel>
-          <TextBlock Style="{StaticResource CardTitleStyle}" Text="{DynamicResource Settings.TabPreferences}" />
+      <!--
+        第一行并排两张卡：左边"界面偏好"、右边"数据来源"（用户 2026-10-15：
+        数据来源卡片排在界面偏好右侧）。两张卡等宽、上边对齐。
+      -->
+      <Grid Margin="0,20,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="16" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
 
-          <Grid Margin="0,16,0,0">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="140" />
-              <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-              <RowDefinition Height="Auto" />
-              <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
+        <ui:Card Grid.Column="0" Padding="20" VerticalAlignment="Stretch">
+          <StackPanel>
+            <TextBlock Style="{StaticResource CardTitleStyle}" Text="{DynamicResource Settings.TabPreferences}" />
+
+            <Grid Margin="0,16,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+              </Grid.RowDefinitions>
+
+              <TextBlock
+                Grid.Row="0"
+                Grid.Column="0"
+                Style="{StaticResource FieldLabelStyle}"
+                Text="{DynamicResource Settings.Language}"
+              />
+              <ComboBox
+                Grid.Row="0"
+                Grid.Column="1"
+                DisplayMemberPath="DisplayName"
+                ItemsSource="{Binding ViewModel.Languages}"
+                SelectedItem="{Binding ViewModel.SelectedLanguage, Mode=TwoWay}"
+              />
+
+              <TextBlock
+                Grid.Row="1"
+                Grid.Column="0"
+                Margin="0,14,0,0"
+                Style="{StaticResource FieldLabelStyle}"
+                Text="{DynamicResource Settings.Theme}"
+              />
+              <ComboBox
+                Grid.Row="1"
+                Grid.Column="1"
+                Margin="0,14,0,0"
+                DisplayMemberPath="DisplayName"
+                ItemsSource="{Binding ViewModel.ThemeOptions}"
+                SelectedItem="{Binding ViewModel.SelectedTheme, Mode=TwoWay}"
+              />
+            </Grid>
+          </StackPanel>
+        </ui:Card>
+
+        <!-- 数据来源（用户 2026-10-15）：真机试验 / 模拟数据，选完立即生效、无需重启 -->
+        <ui:Card Grid.Column="2" Padding="20" VerticalAlignment="Stretch">
+          <StackPanel>
+            <TextBlock Style="{StaticResource CardTitleStyle}" Text="{DynamicResource Settings.DataSource}" />
+
+            <StackPanel Margin="0,16,0,0">
+              <RadioButton
+                Margin="0,0,0,10"
+                Content="{DynamicResource Settings.DataSourceDevice}"
+                GroupName="DataSource"
+                IsChecked="{Binding ViewModel.IsDeviceSource, Mode=TwoWay}"
+              />
+              <RadioButton
+                Content="{DynamicResource Settings.DataSourceSimulator}"
+                GroupName="DataSource"
+                IsChecked="{Binding ViewModel.IsSimulatorSource, Mode=TwoWay}"
+              />
+            </StackPanel>
 
             <TextBlock
-              Grid.Row="0"
-              Grid.Column="0"
+              Margin="0,6,0,0"
               Style="{StaticResource FieldLabelStyle}"
-              Text="{DynamicResource Settings.Language}"
+              Text="{DynamicResource Settings.DataSourceHint}"
+              TextWrapping="Wrap"
             />
-            <ComboBox
-              Grid.Row="0"
-              Grid.Column="1"
-              DisplayMemberPath="DisplayName"
-              ItemsSource="{Binding ViewModel.Languages}"
-              SelectedItem="{Binding ViewModel.SelectedLanguage, Mode=TwoWay}"
-            />
-
-            <TextBlock
-              Grid.Row="1"
-              Grid.Column="0"
-              Margin="0,14,0,0"
-              Style="{StaticResource FieldLabelStyle}"
-              Text="{DynamicResource Settings.Theme}"
-            />
-            <ComboBox
-              Grid.Row="1"
-              Grid.Column="1"
-              Margin="0,14,0,0"
-              DisplayMemberPath="DisplayName"
-              ItemsSource="{Binding ViewModel.ThemeOptions}"
-              SelectedItem="{Binding ViewModel.SelectedTheme, Mode=TwoWay}"
-            />
-          </Grid>
-        </StackPanel>
-      </ui:Card>
+          </StackPanel>
+        </ui:Card>
+      </Grid>
 
       <ui:Card Margin="0,16,0,0" Padding="20">
         <StackPanel>

@@ -28,6 +28,12 @@
 
   <sys:String x:Key="Settings.Title">Settings</sys:String>
   <sys:String x:Key="Settings.TabPreferences">Preferences</sys:String>
+  <sys:String x:Key="Settings.DataSource">Data source</sys:String>
+  <sys:String x:Key="Settings.DataSourceDevice">Real machine</sys:String>
+  <sys:String x:Key="Settings.DataSourceSimulator">Simulated data</sys:String>
+  <sys:String x:Key="Settings.DataSourceHint">"Real machine" connects to the device and runs with an actual specimen; "Simulated data" makes the simulator produce the data so the workflow can be verified without specimens. Takes effect immediately, no restart needed.</sys:String>
+  <sys:String x:Key="Settings.DataSourceSwitched">Data source switched</sys:String>
+  <sys:String x:Key="Settings.DataSourceFailed">Failed to switch the data source</sys:String>
   <sys:String x:Key="Settings.Language">Language</sys:String>
   <sys:String x:Key="Settings.Theme">Theme</sys:String>
   <sys:String x:Key="Settings.ThemeDark">Dark</sys:String>

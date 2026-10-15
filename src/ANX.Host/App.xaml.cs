@@ -61,6 +61,58 @@ public partial class App
 
     private const int DevicePort = 5001;
 
+    /// <summary>
+    /// 现场真机（GR-3 控制器走 UDP，地址沿用现役）。
+    /// </summary>
+    private static ITestDeviceController CreateRealDevice() =>
+        new Gr3DeviceController(
+            new UdpChannel(new UdpChannelOptions(DeviceHost, DevicePort, DevicePort)),
+            // 轴向压力 = 压力通道 1（索引 0，100.000kN 主传感器）—— 依据现役生产库
+            // TestParameterConfig：弯曲等所有配置行 AxialPressureChannel = 0
+            pressChannelIndex: 0,
+            // 位移来源默认"位移通道2"（真机验证时读的那一路）；
+            // 通道设置页保存后会按参数表的取值即时覆盖（含双传感器两路平均）
+            displacementSource: DisplacementSource.Displace2
+        );
+
+    /// <summary>
+    /// 模拟器工厂：**只在 Debug 构建里存在**（Release 返回 null → 选了"模拟数据"会回落到真机，
+    /// 不会静默假装在出数据）。
+    /// </summary>
+    private static Func<ITestDeviceController>? CreateSimulator =>
+#if SIMULATOR
+        () => new SimulatedDeviceController(sampleIntervalSeconds: 0.02, timeScale: 5.0);
+#else
+        null;
+#endif
+
+    /// <summary>
+    /// 当前数据来源：环境变量 <c>ANX_USE_SIMULATOR=1</c> 优先（自检 / 冒烟）→ 否则读系统设置，
+    /// 默认"真机试验"。
+    /// </summary>
+    private static async Task<string> ResolveDataSourceAsync(
+        IServiceProvider services,
+        CancellationToken cancellationToken
+    )
+    {
+        if (UseSimulator)
+        {
+            return AppDataSources.Simulator;
+        }
+
+        var settings = services.GetService<IAppSettingsService>();
+        var value =
+            settings is null
+                ? null
+                : await settings
+                    .GetAsync(AppSettingKeys.DataSource, cancellationToken)
+                    .ConfigureAwait(false);
+
+        return string.Equals(value, AppDataSources.Simulator, StringComparison.Ordinal)
+            ? AppDataSources.Simulator
+            : AppDataSources.Device;
+    }
+
     /// <summary>异常签名 → 上次提示时间。签名 = 异常类型 + 消息（不含堆栈），同一处反复出错才算"同一异常"。</summary>
     private static readonly Dictionary<string, DateTime> PromptedErrors = new(StringComparer.Ordinal);
 
@@ -175,35 +227,19 @@ public partial class App
                     });
                 }
 
-                // 设备：默认连**现场真机**（GR-3 控制器走 UDP，地址沿用现役）。
-                // 想在没有硬件时试跑，设环境变量 ANX_USE_SIMULATOR=1（模拟器只在 Debug 构建里存在）。
-                _ = services.AddSingleton<ITestDeviceController>(_ =>
-                {
-#if SIMULATOR
-                    if (
-                        string.Equals(
-                            Environment.GetEnvironmentVariable("ANX_USE_SIMULATOR"),
-                            "1",
-                            StringComparison.Ordinal
-                        )
-                    )
-                    {
-                        return new SimulatedDeviceController(
-                            sampleIntervalSeconds: 0.02,
-                            timeScale: 5.0
-                        );
-                    }
-#endif
-                    return new Gr3DeviceController(
-                        new UdpChannel(new UdpChannelOptions(DeviceHost, DevicePort, DevicePort)),
-                        // 轴向压力 = 压力通道 1（索引 0，100.000kN 主传感器）—— 依据现役生产库
-                        // TestParameterConfig：弯曲等所有配置行 AxialPressureChannel = 0
-                        pressChannelIndex: 0,
-                        // 位移来源默认"位移通道2"（真机验证时读的那一路）；
-                        // 通道设置页保存后会按参数表的取值即时覆盖（含双传感器两路平均）
-                        displacementSource: DisplacementSource.Displace2
-                    );
-                });
+                // 设备：按**系统设置的"数据来源"**在真机与模拟器之间切换（用户 2026-10-15：
+                // 没试件时选"模拟数据"跑通流程）。环境变量 ANX_USE_SIMULATOR=1 仍然优先（自检 / 冒烟用）。
+                _ = services.AddSingleton(sp => new SwitchableDeviceController(
+                    sourceKey: ct => ResolveDataSourceAsync(sp, ct),
+                    deviceFactory: CreateRealDevice,
+                    simulatorFactory: CreateSimulator
+                ));
+                _ = services.AddSingleton<ITestDeviceController>(sp =>
+                    sp.GetRequiredService<SwitchableDeviceController>()
+                );
+                _ = services.AddSingleton<IDeviceSourceSwitch>(sp =>
+                    sp.GetRequiredService<SwitchableDeviceController>()
+                );
 
                 _ = services.AddSingleton(sp => new TestExecutionViewModel(
                     sp.GetRequiredService<ILocalizationService>(),

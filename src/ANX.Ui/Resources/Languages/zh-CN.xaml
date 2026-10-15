@@ -28,6 +28,12 @@
 
   <sys:String x:Key="Settings.Title">系统设置</sys:String>
   <sys:String x:Key="Settings.TabPreferences">界面偏好</sys:String>
+  <sys:String x:Key="Settings.DataSource">数据来源</sys:String>
+  <sys:String x:Key="Settings.DataSourceDevice">真机试验</sys:String>
+  <sys:String x:Key="Settings.DataSourceSimulator">模拟数据</sys:String>
+  <sys:String x:Key="Settings.DataSourceHint">选"真机试验"时与设备联机、用真实试件做试验；选"模拟数据"时启动试验由模拟器产生数据（没有试件时用来验证流程）。改完立即生效，不必重启。</sys:String>
+  <sys:String x:Key="Settings.DataSourceSwitched">已切换数据来源</sys:String>
+  <sys:String x:Key="Settings.DataSourceFailed">切换数据来源失败</sys:String>
   <sys:String x:Key="Settings.Language">语言</sys:String>
   <sys:String x:Key="Settings.Theme">主题</sys:String>
   <sys:String x:Key="Settings.ThemeDark">深色</sys:String>
