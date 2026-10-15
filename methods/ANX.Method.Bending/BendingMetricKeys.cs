@@ -29,9 +29,6 @@ public static class BendingMetricKeys
     /// <summary>「异常值判断」列：异常（已被 5.6 剔除）。</summary>
     public const string ValidityAbnormal = "Method.T0715.ValidityAbnormal";
 
-    /// <summary>导出被拒：该单明细件数超出报表版式的行数（模板明细区只有 15 行）。</summary>
-    public const string ReportTooManyDetails = "Method.T0715.ReportTooManyDetails";
-
     /// <summary>全部键 —— 供"语言字典里是否有这些键"的一致性检查使用。</summary>
     public static readonly string[] All =
     [
@@ -45,7 +42,6 @@ public static class BendingMetricKeys
         CurveTitle,
         ValidityNormal,
         ValidityAbnormal,
-        ReportTooManyDetails,
         BendingCurveAxes.Deflection,
         BendingCurveAxes.Load,
     ];

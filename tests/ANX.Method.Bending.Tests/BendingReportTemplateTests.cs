@@ -359,6 +359,105 @@ public sealed class BendingReportTemplateTests : IDisposable
         Assert.True(File.Exists(second));
     }
 
+    /// <summary>
+    /// 明细超过模板预排的 15 行时**自动插行**，说明区 / 签名行 / 曲线图区整体跟着下移
+    /// （用户 2026-10-15："不限制试样信息行数……在试样信息输出完毕后，在输出剩余内容"）。
+    /// 同时验曲线图真的嵌进表尾：两张一行、竖向往下。
+    /// </summary>
+    [Fact]
+    public async Task 明细超过十五件应自动插行且表尾嵌曲线图()
+    {
+        var sheets = CreateService();
+        var sheetId = await sheets.CreateAsync("T0715", "G15 高速 K12+300", "WT");
+
+        const int count = 18;
+        const int inserted = count - 15;
+        var curve = Enumerable.Range(0, 60).Select(i => new CurvePoint(i * 0.1, i * 0.15)).ToArray();
+
+        for (var index = 1; index <= count; index++)
+        {
+            await sheets.AppendSampleAsync(
+                sheetId,
+                // 用应用里那种零填充试件号：明细是按试件号取的，写 "1".."18" 会排成 1,10,11,…,2,3…（踩过）
+                $"S{index:000}",
+                curve,
+                new Dictionary<string, double>(StringComparer.Ordinal)
+                {
+                    ["SampleLength"] = 250,
+                    ["SampleWidth"] = 30,
+                    ["SampleHeight"] = 35,
+                    ["FlexuralStrength"] = 70 + index,
+                }
+            );
+        }
+
+        var export = new BendingReportExportService(
+            sheets,
+            Path.Combine(_directory, "Report"),
+            new FakeTexts()
+        );
+        var path = await export.ExportAsync(sheetId, "zh-CN");
+
+        var zh = new XlsFile();
+        zh.Open(path);
+
+        // 明细：第 11 行起 18 件，最后一件落在 11+17 = 28 行（模板只预排到 25 行）
+        Assert.Equal("S001", zh.GetCellValue(11, 1));
+        Assert.Equal("S018", zh.GetCellValue(28, 1));
+        Assert.Equal("88", zh.GetCellValue(28, 7)); // 弯拉强度 = 70 + 18
+        Assert.Equal("250", zh.GetCellValue(28, 2)); // 试件长度列
+
+        // 插了 3 行 → 下面三块各下移 3 行（27→30、31/32→34/35、图片标题 34→37）
+        Assert.Equal("其他需要说明的情况：", zh.GetCellValue(27 + inserted, 1));
+        Assert.Equal("试验人员：", zh.GetCellValue(31 + inserted, 1));
+        Assert.Equal("二、试验曲线图", zh.GetCellValue(34 + inserted, 1));
+
+        // 曲线图：18 张全嵌进来，两张一行、竖向往下
+        Assert.Equal(count, zh.ImageCount);
+        // 图片索引是 **1 基**（1..ImageCount），写 0 会抛 "ImageIndex: 0 is not on the range 1 - 18"
+        var first = zh.GetImageProperties(1).Anchor;
+        var second = zh.GetImageProperties(2).Anchor;
+        var third = zh.GetImageProperties(3).Anchor;
+
+        Assert.Equal(first.Row1, second.Row1); // 头两张同一排
+        Assert.True(first.Col1 < second.Col1); // 左右两列
+        Assert.True(third.Row1 > first.Row1); // 第三张换到下一排
+        Assert.True(first.Row2 > first.Row1); // 图有高度
+    }
+
+    /// <summary>
+    /// 这次没有曲线图时，表尾那块图片区（含"二、试验曲线图"标题行）要**整段删掉**，不留空标题。
+    /// </summary>
+    [Fact]
+    public async Task 没有曲线图时应删掉表尾图片区()
+    {
+        var sheets = CreateService();
+        var sheetId = await sheets.CreateAsync("T0715", "G15 高速 K12+300", "WT");
+
+        // 空曲线 → 不出 PNG（SaveCurveImage 对没有曲线的件不写空图）
+        await sheets.AppendSampleAsync(
+            sheetId,
+            "1",
+            [],
+            new Dictionary<string, double>(StringComparer.Ordinal) { ["FlexuralStrength"] = 73.47 }
+        );
+
+        var export = new BendingReportExportService(
+            sheets,
+            Path.Combine(_directory, "Report"),
+            new FakeTexts()
+        );
+        var path = await export.ExportAsync(sheetId, "zh-CN");
+
+        var zh = new XlsFile();
+        zh.Open(path);
+
+        Assert.Equal(0, zh.ImageCount);
+        Assert.Equal(string.Empty, Convert.ToString(zh.GetCellValue(34, 1))); // 标题行没了
+        Assert.Equal("其他需要说明的情况：", zh.GetCellValue(27, 1)); // 说明区没被挪动
+        Assert.Equal("试验人员：", zh.GetCellValue(31, 1));
+    }
+
     /// <summary>最小文案解析器（只给报表用到的那两个键）。</summary>
     private sealed class FakeTexts : ITextResolver
     {

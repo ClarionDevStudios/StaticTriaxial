@@ -71,22 +71,6 @@ public sealed class BendingReportBuilder(
         var main = sheets.ReadMainRow(sheetId, MainColumns);
         var details = sheets.ReadDetailRows(sheetId, DetailColumns);
 
-        // 明细行数上界：模板的明细区只有第 11~25 行（15 件）。超了**不截断、不硬塞** ——
-        // 导出器是按"明细模板行 + i"往下写的，第 16 件会写到第 26 行、再往下就把
-        // "其他需要说明的情况"（C27:I30）整块覆盖掉，等于静默改数据。宁可明确拒导。
-        if (details.Count > BendingTemplates.MaxDetailRows)
-        {
-            throw new InvalidOperationException(
-                Text(
-                    BendingMetricKeys.ReportTooManyDetails,
-                    culture,
-                    texts,
-                    details.Count,
-                    BendingTemplates.MaxDetailRows
-                )
-            );
-        }
-
         var sheetDirectory = Path.Combine(outputRoot, "弯曲", sheetId);
         Directory.CreateDirectory(sheetDirectory);
 
@@ -149,15 +133,23 @@ public sealed class BendingReportBuilder(
         };
 
         // 说明：现役明细第 2 列是「试件长度(mm)」（读明细表 SampleLength）。
-        // 本软件的**试样信息填录**目前只有跨径 / 宽 / 高三项（跨径 ≠ 试件长度，规范里是 200 与 250），
-        // 所以这里**不做兜底**、该列如实留空 —— 拿跨径去填"长度"列属于编数据。
-        // 库里 `SampleLength` 这一列是有的（照现役表结构），要补的话给试样信息加一个字段即可。
+        // 试样信息填录从 2026-10-15 起有这一格（默认 250，照现役 `FDefaultLength`），
+        // 结算时也一并写进明细行；库里没记过的老件仍**如实留空** ——
+        // 拿跨径（规范 200）去填"长度"（规范 250）属于编数据。
 
         // 文件名带语种：中英两套模板各出一份、互不覆盖（"已生成报表不追溯"是既定口径）
         var reportPath = Path.Combine(sheetDirectory, $"实验报告.{culture}.xlsx");
         await exporter
             .ExportAsync(
-                new ReportRequest("T0715", templatePath, reportPath, fields, detailRows),
+                new ReportRequest(
+                    "T0715",
+                    templatePath,
+                    reportPath,
+                    fields,
+                    detailRows,
+                    // 曲线图排在表尾（两张一行、竖向排列）——与上面逐个出图共用同一条渲染路径
+                    curveImagePaths
+                ),
                 cancellationToken
             )
             .ConfigureAwait(false);

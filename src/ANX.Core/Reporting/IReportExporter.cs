@@ -16,12 +16,14 @@ public interface IReportExporter
 /// <param name="OutputPath">输出文件路径。</param>
 /// <param name="Fields">单值标签：标签名 → 文本。</param>
 /// <param name="DetailRows">明细行：每行一个"标签名 → 文本"字典。</param>
-/// <param name="CurveImagePath">曲线图文件路径（可选）。</param>
+/// <param name="CurveImagePaths">
+/// 曲线图文件（可选）。按顺序排在报表尾部：**两张一行、竖向往下**（用户 2026-10-15）。
+/// </param>
 public sealed record ReportRequest(
     string MethodCode,
     string TemplatePath,
     string OutputPath,
     IReadOnlyDictionary<string, string> Fields,
     IReadOnlyList<IReadOnlyDictionary<string, string>> DetailRows,
-    string? CurveImagePath = null
+    IReadOnlyList<string>? CurveImagePaths = null
 );

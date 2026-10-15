@@ -142,30 +142,28 @@ public sealed class BendingReportBuilderTests : IDisposable
     }
 
     /// <summary>
-    /// 明细件数超出模板版式的行数时**明确拒导**，而不是把第 16 件写到说明区去（那是静默改数据）。
-    /// 消息按资源键取，所以这里给一个带占位符的假解析器，验证"键 + 参数 + 格式化"整条链路。
+    /// 明细行数**不再有上限**（用户 2026-10-15："不限制试样信息行数"）：模板里排不下就**自动插行**，
+    /// 而不是像上一版那样明确拒导。这个用例用的是一张只有 1 行明细区的手工模板。
     /// </summary>
     [Fact]
-    public async Task 明细件数超出报表版式应拒导且不产出报表()
+    public async Task 明细超过模板行数时应自动插行而不是拒导()
     {
         var service = CreateService();
         var sheetId = await service.CreateAsync("T0715", "G15 高速 K12+300", "WT");
 
-        var overLimit = BendingTemplates.MaxDetailRows + 1;
-        for (var index = 1; index <= overLimit; index++)
+        const int count = 18;
+        for (var index = 1; index <= count; index++)
         {
             await service.AppendSampleAsync(
                 sheetId,
-                index.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                // 零填充试件号：明细按试件号取，写 "1".."18" 会排成 1,10,11,…,2,3…（踩过）
+                $"S{index:000}",
                 [new CurvePoint(0, 0), new CurvePoint(1, 1), new CurvePoint(2, 2)],
                 new Dictionary<string, double>(StringComparer.Ordinal)
                 {
                     ["SampleWidth"] = 30,
                     ["SampleHeight"] = 35,
-                    ["PeakLoadValue"] = 9.0,
-                    ["CorrectedDeflection"] = 4.5,
-                    ["FlexuralStrength"] = 73.47,
-                    ["MaxBendingTensileStrain"] = 23625,
+                    ["FlexuralStrength"] = 70 + index,
                 }
             );
         }
@@ -173,21 +171,16 @@ public sealed class BendingReportBuilderTests : IDisposable
         var templatePath = Path.Combine(_directory, "template.xlsx");
         BuildTemplate(templatePath);
 
-        var outputRoot = Path.Combine(_directory, "out");
         var builder = new BendingReportBuilder(service, new FlexCelReportExporter());
+        var result = await builder.BuildAsync(sheetId, templatePath, Path.Combine(_directory, "out"));
 
-        var error = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => builder.BuildAsync(sheetId, templatePath, outputRoot, "zh-CN", new DetailLimitTexts())
-        );
+        var workbook = new XlsFile();
+        workbook.Open(result.ReportPath);
 
-        Assert.Equal($"明细 {overLimit} 件 > {BendingTemplates.MaxDetailRows} 行", error.Message);
-        Assert.False(File.Exists(Path.Combine(outputRoot, "弯曲", sheetId, "实验报告.zh-CN.xlsx")));
-    }
-
-    private sealed class DetailLimitTexts : ITextResolver
-    {
-        public string Get(string key, string culture) =>
-            key == BendingMetricKeys.ReportTooManyDetails ? "明细 {0} 件 > {1} 行" : key;
+        // 模板的明细区只有第 3 行一行 → 18 件要插 17 行；1..18 依次落在第 3 行往下
+        Assert.Equal("S001", workbook.GetCellValue(3, 2));
+        Assert.Equal("S018", workbook.GetCellValue(3 + count - 1, 2));
+        Assert.Equal("88", workbook.GetCellValue(3 + count - 1, 4)); // 70 + 18
     }
 
     private static void BuildTemplate(string path)

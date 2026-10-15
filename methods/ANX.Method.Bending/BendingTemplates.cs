@@ -9,8 +9,12 @@ using FlexCel.XlsAdapter;
 /// **版式照现役 Delphi 的报表**（用户 2026-10-14："报表模板按照现役软件的格式改写"）：
 /// 照抄现役模板 `Bins\Report\Template\T0715-2025Template.xlsx` 的单元格、合并区、列宽与格式 ——
 /// 现役那张是"表单式"报表（A1:I32）：报表头行 2~8（标签在 A/E/H、值在 C/F/I）、
-/// 分节标题行 9、明细表头行 10、明细数据行 11~25（最多 15 件）、
-/// 说明区（C27:I30 合并）、签名行 31 与日期行 32。
+/// 分节标题行 9、明细表头行 10、明细数据行 11~25、说明区（C27:I30 合并）、签名行 31 与日期行 32。
+///
+/// **明细行数不再有上限**（用户 2026-10-15）：模板里先排 15 行带框的明细行，装不下时由导出器
+/// **按需插行**（复制块尾那一行的格式），下面的说明区、签名与图片区跟着整体下移。
+/// 我们自己在这张表尾加了**曲线图区**（R33 空行 + R34 标题行带 `{{Images}}` 标记，图从 R35 起）——
+/// 这一块现役没有（现役是把曲线 PNG 放在报表同目录、不嵌进表里），是本项目按用户要求新增的。
 ///
 /// 与现役的**唯一差别**是填值方式：现役按"行/列坐标"写，我们按 `{{标签}}` 写
 /// （模板里的值区放占位符，导出器按标签替换）—— 这样版式与填值机制各自独立，
@@ -43,12 +47,12 @@ public static class BendingTemplates
     ///   <item>v3（2026-10-15，用户："模板很丑，我不满意"）：把**样式逐格照现役抄全** ——
     ///         字体改回**微软雅黑**（v2 误写成宋体）、补上三处底色（标题 #003366 / 分节 #D9E1F2 / 表头 #0070C0）、
     ///         标题与表头白字、以及**全部显式行高**（38.1 / 24 / 33.9 / 15）。</item>
+    ///   <item>v4（2026-10-15，用户："不限制试样信息行数" + "表尾加曲线图"）：明细行数不再有上限
+    ///         （导出器按需插行，下面的说明区/签名/图片区跟着下移），并在表尾加**曲线图区**：
+    ///         标题行 R34 + `{{Images}}` 标记，图从 R35 起两张一行往下排。</item>
     /// </list>
     /// </summary>
-    public const int TemplateVersion = 3;
-
-    /// <summary>明细数据行数上限：模板的明细区是第 11~25 行，即**最多 15 件**（照现役版式）。</summary>
-    public const int MaxDetailRows = 15;
+    public const int TemplateVersion = 4;
 
     /// <summary>版本戳的存放位置：第 1 行 K 列（报表本身只占 A~I，该列隐藏）。</summary>
     private const int StampRow = 1;
@@ -270,10 +274,11 @@ public static class BendingTemplates
         }
         workbook.SetRowHeight(9, RowHeight(24));
         workbook.SetRowHeight(10, RowHeight(33.9));
-        for (var row = 11; row <= 32; row++)
+        for (var row = 11; row <= 33; row++)
         {
             workbook.SetRowHeight(row, RowHeight(15));
         }
+        workbook.SetRowHeight(34, RowHeight(24)); // 图片区标题行，与"一、…"分节标题同高
 
         // ── 标题（合并 A1:I1）──
         workbook.SetCellValue(1, 1, T("沥青混合料弯曲试验报表", "Asphalt Mixture Bending Test Report"));
@@ -367,6 +372,13 @@ public static class BendingTemplates
             Style(workbook, signValueFormat, 31, col);
             Style(workbook, signValueFormat, 32, col);
         }
+
+        // ── 表尾曲线图区（用户 2026-10-15）──
+        //    标记行本身是**图片区标题行**：导出器把曲线图从它的下一行开始排（两张一行、竖向往下），
+        //    这次没有曲线图时会把这一行到模板末尾整段删掉 —— 所以不留一个空标题。
+        workbook.SetCellValue(34, 1, T("二、试验曲线图", "2. Test curves"));
+        workbook.SetCellValue(34, 9, Label("Images"));
+        Style(workbook, sectionFormat, 34, 1, 34, 9);
 
         // ── 出厂版本戳：写在隐藏的 K 列（报表本身只占 A~I），导出前据此判断要不要换代 ──
         workbook.SetCellValue(StampRow, StampColumn, VersionStamp);
