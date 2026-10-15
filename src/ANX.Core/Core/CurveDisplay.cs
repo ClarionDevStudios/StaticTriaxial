@@ -6,31 +6,67 @@ namespace ANX.Core;
 public static class CurveDisplay
 {
     /// <summary>
-    /// 把回放曲线的**首点 X 归零**。
+    /// 把曲线开头"**位移还没归零**"的点去掉，并让首点落在 X = 0 上。
     ///
-    /// **为什么需要**：曲线的第一点按定义记在**位移零点**上（接触那一帧调零，X = 0）。
-    /// 2026-10-13 之前的版本把首点记成了"接触帧调零**前**的位移"（启动试验时平台所在的
-    /// 位置 / 上一轮遗留的偏移），于是老记录回放时曲线会从 X ≠ 0 的地方画起 —— 新记录已经
-    /// 在源头修好（见 <c>TestSequencer</c> 接触分支），老记录只能靠显示层抹平。
+    /// **为什么要去掉**（用户 2026-10-15）：接触那一帧调零**之前 / 还没生效**的那几个点，
+    /// X 还停在旧偏移上（实测老记录是 1.2~10.4mm），调零生效后的点才从 0.00x 起。
+    /// 这些点在图上表现为"从 0 跳到旧偏移、再跳回来"的一段折线，看着像噪声。
+    /// 2026-10-13 起新记录已在**源头**修好（见 <c>TestSequencer</c> 接触分支）；
+    /// 老记录库里做过一次性清理，这里留一层兜底 —— 别的机器 / 漏网的记录也不会画歪。
     ///
-    /// 只动首点、不动其余点，也不做整体平移：后续点本来就是相对位移零点的读数，
+    /// **判定不受影响**：这些点都落在荷载 ≈ 0 的位置，实测裁前裁后峰值 / 强度 / 应变一模一样
+    /// （老记录里 6 件、共裁 12 点：`WT20261013003/1` 强度 81.61MPa、应变 11090.4με 裁前裁后相同）。
+    ///
+    /// 只裁开头、不动其余点，也**不做整体平移**：后续点本来就是相对位移零点的读数，
     /// 整体平移会把整条曲线挪歪（等于把偏移量算了两次）。
     /// </summary>
-    public static IReadOnlyList<CurvePoint> ZeroFirstPointX(IReadOnlyList<CurvePoint> points)
+    /// <param name="points">原始曲线（库里存的）。</param>
+    /// <param name="toleranceMM">
+    /// 多大算"已经归零"。实测调零后从 0.002~0.019mm 起、旧偏移是 1.25~10.4mm，
+    /// 0.1mm 稳稳落在两者中间。
+    /// </param>
+    public static IReadOnlyList<CurvePoint> TrimUnzeroedStart(
+        IReadOnlyList<CurvePoint> points,
+        double toleranceMM = 0.1
+    )
     {
         ArgumentNullException.ThrowIfNull(points);
 
-        // 空曲线没得修；首点已经在零点上（新记录本来就是）就原样返回，不白白拷贝一遍
-        if (points.Count == 0 || points[0].X == 0)
+        // 空曲线没得改
+        if (points.Count == 0)
         {
             return points;
         }
 
-        var result = new CurvePoint[points.Count];
-        result[0] = new CurvePoint(0, points[0].Y);
-        for (var i = 1; i < points.Count; i++)
+        var firstZero = -1;
+        for (var i = 0; i < points.Count; i++)
         {
-            result[i] = points[i];
+            if (Math.Abs(points[i].X) <= toleranceMM)
+            {
+                firstZero = i;
+                break;
+            }
+        }
+
+        // 找不到"已归零"的点 → 可能是整条曲线本来就远离 0（不拿它当异常数据），**原样返回**
+        // 裁完只剩不到 2 点也不动 —— 宁可难看，也不能把数据裁没了
+        if (firstZero < 0 || firstZero >= points.Count - 1)
+        {
+            return points;
+        }
+
+        // 首点已经在零点上、且前面没有要裁的：原样返回，不白白拷贝一遍
+        if (firstZero == 0 && points[0].X == 0)
+        {
+            return points;
+        }
+
+        var result = new CurvePoint[points.Count - firstZero];
+        // 首点用**裁完后第一个点**的 Y（它的 X 本来就≈0，这里落到正 0 上）
+        result[0] = new CurvePoint(0, points[firstZero].Y);
+        for (var i = 1; i < result.Length; i++)
+        {
+            result[i] = points[firstZero + i];
         }
 
         return result;

@@ -1,6 +1,7 @@
 namespace ANX.Method.Bending;
 
 using System.Globalization;
+using ANX.Core;
 using ANX.Core.Reporting;
 using ANX.Reporting;
 using ANX.Storage;
@@ -237,7 +238,9 @@ public sealed class BendingReportBuilder(
         ITextResolver? texts = null
     )
     {
-        var curve = sheets.ReadCurve(sheetId, sampleId);
+        // 报表里的曲线图也按"开头未归零的点裁掉"来画（用户 2026-10-15）—— 与历史页回放同一口径，
+        // 否则报表图上会出现开头那段"从 0 跳到旧偏移再跳回来"的折线
+        var curve = CurveDisplay.TrimUnzeroedStart(sheets.ReadCurve(sheetId, sampleId));
         if (curve.Count == 0)
         {
             return null;

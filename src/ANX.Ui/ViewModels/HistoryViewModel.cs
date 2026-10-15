@@ -239,9 +239,9 @@ public partial class HistoryViewModel : ViewModelBase
 
         var sheetId = SelectedSheet.SheetId;
 
-        // 老记录的首点是"启动试验时那个位置"（bug 期间的库），回放时按定义抹平到位移零点。
-        // 只影响画面：库里与报表用的是原始序列。
-        var curve = CurveDisplay.ZeroFirstPointX(
+        // 老记录开头那几个点是"接触后位移还没归零"时记下的（X 停在旧偏移上，实测 1.2~10.4mm）——
+        // 回放时裁掉、让曲线从位移零点开始（用户 2026-10-15）。
+        var curve = CurveDisplay.TrimUnzeroedStart(
             await _browser.ReadCurveAsync(sheetId, sampleId)
         );
 
