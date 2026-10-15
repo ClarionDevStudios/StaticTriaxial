@@ -238,6 +238,9 @@ public partial class App
 
                 // 历史数据页（查单 / 读明细 / 读曲线 / 导出报表）
                 _ = services.AddSingleton<ITestSheetBrowser, BendingSheetBrowser>();
+                // 报表预览渲染：契约在 Core、实现在 Reporting（界面只引用 Core/Control，不认识 FlexCel）
+                _ = services.AddSingleton<ANX.Core.Reporting.IReportPreviewRenderer,
+                    ANX.Reporting.FlexCelReportPreviewRenderer>();
                 _ = services.AddSingleton<IReportExportService>(sp => new BendingReportExportService(
                     sp.GetRequiredService<TestSheetService>(),
                     AppPaths.ResolveReportRoot(),
@@ -246,10 +249,19 @@ public partial class App
                 _ = services.AddSingleton(sp => new HistoryViewModel(
                     sp.GetRequiredService<ILocalizationService>(),
                     sp.GetRequiredService<ITestSheetBrowser>(),
-                    sp.GetRequiredService<IReportExportService>(),
-                    sp.GetRequiredService<ITestExecution>()
+                    sp.GetRequiredService<ITestExecution>(),
+                    sp.GetRequiredService<PrintPreviewViewModel>(),
+                    sp.GetRequiredService<IModalPageService>()
                 ));
                 _ = services.AddSingleton<HistoryPage>();
+
+                // 打印预览窗体（用户 2026-10-15：历史页"导出报表"两个按钮合并成这一个入口）
+                _ = services.AddSingleton(sp => new PrintPreviewViewModel(
+                    sp.GetRequiredService<ILocalizationService>(),
+                    sp.GetRequiredService<IReportExportService>(),
+                    sp.GetRequiredService<ANX.Core.Reporting.IReportPreviewRenderer>()
+                ));
+                _ = services.AddSingleton<PrintPreviewPage>();
 
                 // 试样编辑页 / 参数配置页（同一套参数编辑逻辑，按分组区分）
                 // 试样信息填录（逐件）：字段来自 ITestExecution.SampleFields，值存明细行

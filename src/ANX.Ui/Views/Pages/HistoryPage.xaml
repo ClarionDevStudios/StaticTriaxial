@@ -36,14 +36,9 @@
       <ui:Button
         Margin="16,0,0,0"
         Appearance="Secondary"
-        Command="{Binding ViewModel.ExportCommand}"
-        Content="{DynamicResource History.Export}"
-      />
-      <ui:Button
-        Margin="8,0,0,0"
-        Appearance="Secondary"
-        Command="{Binding ViewModel.ExportEnglishCommand}"
-        Content="{DynamicResource History.ExportEn}"
+        Command="{Binding ViewModel.PrintPreviewCommand}"
+        Content="{DynamicResource History.PrintPreview}"
+        Icon="{ui:SymbolIcon Print24}"
       />
       <!-- 按当前参数重算历史曲线（改了计算期参数后用；覆盖已存结果，点击时二次确认） -->
       <ui:Button

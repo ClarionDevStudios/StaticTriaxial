@@ -25,20 +25,23 @@ public sealed record SampleRow(
 public partial class HistoryViewModel : ViewModelBase
 {
     private readonly ITestSheetBrowser _browser;
-    private readonly IReportExportService _exporter;
     private readonly ITestExecution _execution;
+    private readonly PrintPreviewViewModel? _preview;
+    private readonly IModalPageService? _modalPages;
 
     public HistoryViewModel(
         ILocalizationService localization,
         ITestSheetBrowser browser,
-        IReportExportService exporter,
-        ITestExecution execution
+        ITestExecution execution,
+        PrintPreviewViewModel? preview = null,
+        IModalPageService? modalPages = null
     )
         : base(localization)
     {
         _browser = browser;
-        _exporter = exporter;
         _execution = execution;
+        _preview = preview;
+        _modalPages = modalPages;
         SetStatus(L("History.Ready"));
     }
 
@@ -99,13 +102,37 @@ public partial class HistoryViewModel : ViewModelBase
     /// </summary>
     public override void OnNavigatedTo() => _ = SearchAsync();
 
-    /// <summary>导出选中试验单的中文报表。</summary>
-    [RelayCommand]
-    private Task ExportAsync() => ExportCoreAsync("zh-CN");
+    /// <summary>弹窗尺寸：预览要装下一整张表（按宽度铺满），比试样编辑页宽高都大一圈。</summary>
+    private const double PreviewDialogWidth = 1120;
 
-    /// <summary>导出选中试验单的英文报表。</summary>
+    private const double PreviewDialogHeight = 900;
+
+    /// <summary>
+    /// 打开**打印预览**（用户 2026-10-15）：报表在预览窗体打开时按**当前界面语言**生成、同名静默覆盖，
+    /// 窗体里能看、能打印、能定位文件 —— 原先的"导出报表（中文）/（英文）"两个按钮合并成这一个。
+    /// </summary>
     [RelayCommand]
-    private Task ExportEnglishAsync() => ExportCoreAsync("en-US");
+    private void PrintPreview()
+    {
+        if (SelectedSheet is not { } sheet)
+        {
+            SetStatus(L("History.SelectSheetFirst"), isError: true);
+            return;
+        }
+
+        if (_modalPages is null || _preview is null)
+        {
+            SetStatus(L("Preview.Unavailable"), isError: true);
+            return;
+        }
+
+        _preview.PrepareFor(sheet.SheetId);
+        _modalPages.Show(
+            typeof(Views.Pages.PrintPreviewPage),
+            PreviewDialogWidth,
+            PreviewDialogHeight
+        );
+    }
 
     /// <summary>
     /// **按当前参数重算**选中试验单的历史曲线（覆盖已存结果列与组统计）。
@@ -166,25 +193,6 @@ public partial class HistoryViewModel : ViewModelBase
     partial void OnSelectedSampleChanged(SampleRow? value)
     {
         _ = LoadCurveAsync(value);
-    }
-
-    private async Task ExportCoreAsync(string culture)
-    {
-        if (SelectedSheet is null)
-        {
-            SetStatus(L("History.SelectSheetFirst"), isError: true);
-            return;
-        }
-
-        try
-        {
-            var path = await _exporter.ExportAsync(SelectedSheet.SheetId, culture);
-            SetStatus($"{L("History.Exported")} {path}");
-        }
-        catch (Exception ex)
-        {
-            SetStatus($"{L("History.ExportFailed")}: {ex.Message}", isError: true);
-        }
     }
 
     private async Task LoadSamplesAsync(TestSheetSummary? sheet)

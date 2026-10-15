@@ -121,8 +121,25 @@
   <sys:String x:Key="History.RecomputeConfirm">Recompute all stored curves of sheet {0} with the current parameters? Stored result columns and group statistics will be overwritten (the curves themselves are untouched).</sys:String>
   <sys:String x:Key="History.RecomputeDone">Recomputed {0} sample(s), skipped {1}</sys:String>
   <sys:String x:Key="History.RecomputeFailed">Recompute failed</sys:String>
-  <sys:String x:Key="History.Exported">Exported</sys:String>
-  <sys:String x:Key="History.ExportFailed">Export failed</sys:String>
+  <sys:String x:Key="History.PrintPreview">Print preview</sys:String>
+
+  <!-- Print preview window (2026-10-15: the report is built on open, in the current UI language, overwriting silently) -->
+  <sys:String x:Key="Preview.Title">Print preview</sys:String>
+  <sys:String x:Key="Preview.Description">The report was generated in the current UI language when this window opened (an existing file is overwritten). You can print it or show the file; PDF export is not wired up yet.</sys:String>
+  <sys:String x:Key="Preview.Print">Print report</sys:String>
+  <sys:String x:Key="Preview.Locate">Show file</sys:String>
+  <sys:String x:Key="Preview.ExportPdf">Export PDF</sys:String>
+  <sys:String x:Key="Preview.ExportPdfPending">PDF export is not wired up yet (the capability exists: FlexCel ships its own PDF export)</sys:String>
+  <sys:String x:Key="Preview.Rendering">Building the report and rendering the preview…</sys:String>
+  <sys:String x:Key="Preview.Created">Report generated: {0}</sys:String>
+  <sys:String x:Key="Preview.Failed">Failed to build the report or the preview</sys:String>
+  <sys:String x:Key="Preview.NoSheet">No test sheet to preview (select one in the list first)</sys:String>
+  <sys:String x:Key="Preview.Unavailable">Print preview is unavailable</sys:String>
+  <sys:String x:Key="Preview.Printed">Sent to the printer: {0}</sys:String>
+  <sys:String x:Key="Preview.PrintFailed">Printing failed</sys:String>
+  <sys:String x:Key="Preview.NothingToPrint">The preview is not ready yet, please retry</sys:String>
+  <sys:String x:Key="Preview.NothingToLocate">The report file is not ready yet</sys:String>
+  <sys:String x:Key="Preview.LocateFailed">Failed to show the file</sys:String>
   <sys:String x:Key="History.ColSheetId">Sheet ID</sys:String>
   <sys:String x:Key="History.ColProject">Project</sys:String>
   <sys:String x:Key="History.ColDate">Date</sys:String>

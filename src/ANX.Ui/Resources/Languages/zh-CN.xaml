@@ -121,8 +121,25 @@
   <sys:String x:Key="History.RecomputeConfirm">按当前参数重算试验单 {0} 的全部已存曲线？已存结果列与组统计会被覆盖（曲线本身不动）。</sys:String>
   <sys:String x:Key="History.RecomputeDone">已重算 {0} 件，跳过 {1} 件（曲线不足或判定不了）</sys:String>
   <sys:String x:Key="History.RecomputeFailed">重算失败</sys:String>
-  <sys:String x:Key="History.Exported">已导出</sys:String>
-  <sys:String x:Key="History.ExportFailed">导出失败</sys:String>
+  <sys:String x:Key="History.PrintPreview">打印预览</sys:String>
+
+  <!-- 打印预览窗体（用户 2026-10-15：报表在窗体打开时按当前界面语言生成、同名静默覆盖） -->
+  <sys:String x:Key="Preview.Title">打印预览</sys:String>
+  <sys:String x:Key="Preview.Description">报表已在打开本窗口时按当前界面语言生成（同名文件直接覆盖）。可以打印、定位文件；导出 PDF 暂未接上。</sys:String>
+  <sys:String x:Key="Preview.Print">打印报表</sys:String>
+  <sys:String x:Key="Preview.Locate">定位文件</sys:String>
+  <sys:String x:Key="Preview.ExportPdf">导出PDF</sys:String>
+  <sys:String x:Key="Preview.ExportPdfPending">导出 PDF 暂未接上（能力已具备：FlexCel 自带 PDF 导出）</sys:String>
+  <sys:String x:Key="Preview.Rendering">正在生成报表并渲染预览…</sys:String>
+  <sys:String x:Key="Preview.Created">报表已生成：{0}</sys:String>
+  <sys:String x:Key="Preview.Failed">报表生成或预览失败</sys:String>
+  <sys:String x:Key="Preview.NoSheet">没有要预览的试验单（请先在列表里选中一张）</sys:String>
+  <sys:String x:Key="Preview.Unavailable">打印预览服务不可用</sys:String>
+  <sys:String x:Key="Preview.Printed">已提交打印：{0}</sys:String>
+  <sys:String x:Key="Preview.PrintFailed">打印失败</sys:String>
+  <sys:String x:Key="Preview.NothingToPrint">预览还没生成好，稍候再试</sys:String>
+  <sys:String x:Key="Preview.NothingToLocate">报表文件还没生成好</sys:String>
+  <sys:String x:Key="Preview.LocateFailed">定位文件失败</sys:String>
   <sys:String x:Key="History.ColSheetId">试验单号</sys:String>
   <sys:String x:Key="History.ColProject">项目名称</sys:String>
   <sys:String x:Key="History.ColDate">日期</sys:String>

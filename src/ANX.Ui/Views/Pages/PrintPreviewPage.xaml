@@ -1,0 +1,108 @@
+<Page
+  x:Class="ANX.Ui.Views.Pages.PrintPreviewPage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+  Title="PrintPreview"
+  d:DesignHeight="700"
+  d:DesignWidth="1080"
+  Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+  mc:Ignorable="d"
+>
+  <Grid Margin="20,16,20,16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <TextBlock
+      Grid.Row="0"
+      Style="{StaticResource PageTitleStyle}"
+      Text="{Binding ViewModel.Title}"
+    />
+
+    <!-- 说明 + 四个按钮 + 状态行（与试样编辑页同构：状态贴近按钮，别放页尾会被窗口裁掉） -->
+    <StackPanel Grid.Row="1" Margin="0,6,0,0">
+      <TextBlock
+        MaxWidth="980"
+        HorizontalAlignment="Left"
+        Style="{StaticResource PageSubtitleStyle}"
+        Text="{Binding ViewModel.Description}"
+      />
+
+      <StackPanel Margin="0,12,0,0" HorizontalAlignment="Left" Orientation="Horizontal">
+        <ui:Button
+          Width="120"
+          Appearance="Primary"
+          Command="{Binding ViewModel.PrintCommand}"
+          Content="{DynamicResource Preview.Print}"
+          Icon="{ui:SymbolIcon Print24}"
+        />
+        <ui:Button
+          Width="120"
+          Margin="8,0,0,0"
+          Appearance="Secondary"
+          Command="{Binding ViewModel.LocateCommand}"
+          Content="{DynamicResource Preview.Locate}"
+          Icon="{ui:SymbolIcon FolderOpen24}"
+        />
+        <!--
+          导出PDF：用户 2026-10-15 定"先置灰"。能力本身是有的（FlexCel 自带 FlexCelPdfExport），
+          所以只是没接；灰掉而不是藏起来，是为了让口径看得见。
+        -->
+        <ui:Button
+          Width="120"
+          Margin="8,0,0,0"
+          Appearance="Secondary"
+          Content="{DynamicResource Preview.ExportPdf}"
+          Icon="{ui:SymbolIcon DocumentPdf24}"
+          IsEnabled="False"
+          ToolTip="{Binding ViewModel.ExportPdfHint}"
+        />
+        <ui:Button
+          Width="120"
+          Margin="8,0,0,0"
+          Appearance="Secondary"
+          Command="{Binding ViewModel.CloseCommand}"
+          Content="{DynamicResource Common.Close}"
+          Icon="{ui:SymbolIcon Dismiss24}"
+        />
+        <TextBlock
+          Margin="14,0,0,0"
+          VerticalAlignment="Center"
+          Style="{StaticResource StatusTextStyle}"
+          Text="{Binding ViewModel.Status, Mode=OneWay}"
+        />
+      </StackPanel>
+    </StackPanel>
+
+    <!-- 预览区：整张表渲染成一张图，按宽度铺满、纵向滚动 -->
+    <Border
+      Grid.Row="2"
+      Margin="0,12,0,0"
+      BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+      BorderThickness="1"
+      CornerRadius="6"
+    >
+      <ScrollViewer
+        Padding="6"
+        HorizontalScrollBarVisibility="Disabled"
+        VerticalScrollBarVisibility="Auto"
+      >
+        <!-- 宽度绑宿主 Grid 的实际宽度：图按宽度铺满、不动横向滚动条 -->
+        <Grid x:Name="PreviewHost">
+          <Image
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            Source="{Binding ViewModel.Preview}"
+            Stretch="Uniform"
+            Width="{Binding ActualWidth, ElementName=PreviewHost}"
+          />
+        </Grid>
+      </ScrollViewer>
+    </Border>
+  </Grid>
+</Page>
