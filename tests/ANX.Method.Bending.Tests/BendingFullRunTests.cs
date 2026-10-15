@@ -43,9 +43,10 @@ public sealed class BendingFullRunTests : IDisposable
 
         await using var device = new SimulatedDeviceController(
             peakLoadKN: 9.0,
-            displacementAtPeakMM: 5.0,
+            deflectionAtPeakMM: 5.0,
             sampleIntervalSeconds: 0.002,
-            timeScale: 20
+            timeScale: 20,
+            loadNoiseRatio: 0 // 判定里的"修正直线拟合"对噪声敏感，这个用例先关噪声（见探针结论）
         );
 
         var runner = new BendingTestRunner(

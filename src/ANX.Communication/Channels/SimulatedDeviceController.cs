@@ -11,28 +11,36 @@ using ANX.Core.Control;
 public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDisposable
 {
     private readonly double _peakLoadKN;
-    private readonly double _displacementAtPeakMM;
+    private readonly double _deflectionAtPeakMM;
     private readonly double _sampleIntervalSeconds;
     private readonly double _timeScale;
+    private readonly double _contactGapMM;
+    private readonly double _loadNoiseRatio;
+    private readonly Random _noise = new(20261015); // 固定种子：噪声每次一样，便于复现
     private CancellationTokenSource? _cts;
     private Task? _loop;
     private JogDirection? _jogDirection;
     private double _jogDisplacementMM;
+    private double _travelMM;
     private double _displacementOffsetMM;
     private double _lastRawDisplacementMM;
     private double? _returnSpeedMillimetersPerMinute;
 
     public SimulatedDeviceController(
-        double peakLoadKN = 9.0,
-        double displacementAtPeakMM = 5.0,
+        double peakLoadKN = 1.5,
+        double deflectionAtPeakMM = 0.7,
         double sampleIntervalSeconds = 0.02,
-        double timeScale = 1.0
+        double timeScale = 1.0,
+        double contactGapMM = SampleCurve.DefaultContactGapMM,
+        double loadNoiseRatio = 0.005
     )
     {
         _peakLoadKN = peakLoadKN;
-        _displacementAtPeakMM = displacementAtPeakMM;
+        _deflectionAtPeakMM = deflectionAtPeakMM;
         _sampleIntervalSeconds = sampleIntervalSeconds;
         _timeScale = timeScale;
+        _contactGapMM = contactGapMM;
+        _loadNoiseRatio = loadNoiseRatio;
     }
 
     public string DeviceName => "模拟器";
@@ -84,6 +92,12 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
 
     public Task StartAsync(CancellationToken cancellationToken = default)
     {
+        // 一件试验从"当前这台设备的位置"起算：上一件跑完平台已归位，新试件重新放好，
+        // 所以行程与偏移都要清零 —— 否则第二件会接着上一件的行程继续走
+        //（曲线一开头就在过峰后的尾巴上，判定拟合不出上升段。2026-10-15 踩到）
+        _travelMM = 0;
+        _displacementOffsetMM = 0;
+
         _cts?.Dispose();
         _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _loop = Task.Run(() => RunAsync(_cts.Token), CancellationToken.None);
@@ -172,7 +186,7 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
                 var sample =
                     _jogDirection is { } direction
                         ? JogSample(direction, seconds)
-                        : SampleCurve.At(seconds, _peakLoadKN, _displacementAtPeakMM);
+                        : LoadSample(_sampleIntervalSeconds * _timeScale, seconds);
 
                 _lastRawDisplacementMM = sample.Displacement;
                 SampleReceived?.Invoke(
@@ -193,6 +207,31 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
         {
             // 正常停止
         }
+    }
+
+    /// <summary>
+    /// 试验采样：平台按**当前设定速率**往前走 dt 秒，荷载按试件响应算
+    /// （挠度 = 平台行程 − 接触空行程，接触那一刻上位机会把净值调零）。
+    ///
+    /// 速率由阶段机切（接近段 10mm/min → 试验段 50mm/min），所以行程必须**增量积分** ——
+    /// 用"速率 × 总时长"的话，切速率那一刻行程会跳。
+    /// </summary>
+    private TestSample LoadSample(double dt, double seconds)
+    {
+        _travelMM += SpeedMillimetersPerMinute / 60.0 * dt;
+
+        var deflection = _travelMM - _contactGapMM;
+        var load = SampleCurve.LoadAt(deflection, _peakLoadKN, _deflectionAtPeakMM);
+
+        // 小噪声：真实传感器读数不是干净的（实测真机相邻差中位 0.007~0.06kN）
+        if (_loadNoiseRatio > 0)
+        {
+            var amplitude = Math.Max(_peakLoadKN * _loadNoiseRatio, 0.002);
+            load = Math.Max(0, load + ((_noise.NextDouble() - 0.5) * 2 * amplitude));
+        }
+
+        // 位移按真机口径给到 0.001mm
+        return new TestSample(load, Math.Round(_travelMM, 3), seconds);
     }
 
     /// <summary>点动采样：上升位移增、下降位移减（不越过 0），空载荷载≈0。</summary>

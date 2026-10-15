@@ -53,7 +53,9 @@ public sealed class DeviceChainTests
 
         while (seconds <= 30.0 && !finished)
         {
-            var sample = SampleCurve.At(seconds, 9.0, 5.0);
+            // contactGap 给 0：这一段是"回放 A2 原始帧"，位移就该从 0 起（真机路径里
+            // 接触空行程体现在控制器积分出来的行程上）
+            var sample = SampleCurve.At(seconds, 9.0, 5.0, contactGapMM: 0);
             controller.ElapsedSeconds = seconds;
             channel.Feed(
                 Gr3FrameCodec.BuildDatagram(
