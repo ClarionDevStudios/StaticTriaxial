@@ -800,21 +800,16 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// </summary>
     private async Task ShowLinkAlarmAsync(NetworkLinkState state)
     {
-        var box = new Wpf.Ui.Controls.MessageBox
-        {
-            Title = L("Exec.LinkAlarmTitle"),
-            Content = string.Format(
+        await AppDialogs.NotifyAsync(
+            L("Exec.LinkAlarmTitle"),
+            string.Format(
                 CultureInfo.CurrentCulture,
                 L("Exec.LinkAlarmBodyRunning"),
                 string.IsNullOrWhiteSpace(state.AdapterName) ? L("Exec.LinkUnknownAdapter") : state.AdapterName,
                 state.Detail
             ),
-            PrimaryButtonText = L("Common.Close"),
-            IsCloseButtonEnabled = false,
-            Owner = Application.Current?.MainWindow,
-        };
-
-        await box.ShowDialogAsync();
+            L("Common.Close")
+        );
     }
 
     /// <summary>
@@ -831,16 +826,11 @@ public partial class TestExecutionViewModel : ViewModelBase
 
         _lastLinkAlarmAt = now;
 
-        var box = new Wpf.Ui.Controls.MessageBox
-        {
-            Title = L("Exec.LinkAlarmTitle"),
-            Content = L("Exec.StopAlarmBody"),
-            PrimaryButtonText = L("Common.Close"),
-            IsCloseButtonEnabled = false,
-            Owner = Application.Current?.MainWindow,
-        };
-
-        await box.ShowDialogAsync();
+        await AppDialogs.NotifyAsync(
+            L("Exec.LinkAlarmTitle"),
+            L("Exec.StopAlarmBody"),
+            L("Common.Close")
+        );
     }
 
     /// <summary>
@@ -1163,20 +1153,15 @@ public partial class TestExecutionViewModel : ViewModelBase
                 // 规范 5.6：**剔除后有效试件少于 3 个**要提示补充试验。
                 // 现役这里既写日志又弹一个信息框（`uBendingTestForm.pas:620-623` 的 UWPInfoMessage），
                 // 我们照做 —— 只写日志容易被埋没在操控信息里。
-                var notice = new Wpf.Ui.Controls.MessageBox
-                {
-                    Title = L("Common.Hint"),
-                    Content = string.Format(
+                await AppDialogs.NotifyAsync(
+                    L("Common.Hint"),
+                    string.Format(
                         CultureInfo.CurrentCulture,
                         L("Exec.NeedsSupplementPrompt"),
                         report.EffectiveCount
                     ),
-                    PrimaryButtonText = L("Common.Yes"),
-                    IsCloseButtonEnabled = false,
-                    Owner = Application.Current?.MainWindow,
-                };
-
-                await notice.ShowDialogAsync();
+                    L("Common.Yes")
+                );
             }
         }
         catch (Exception ex)
@@ -1238,21 +1223,18 @@ public partial class TestExecutionViewModel : ViewModelBase
             return;
         }
 
-        var confirm = new Wpf.Ui.Controls.MessageBox
-        {
-            Title = L("Exec.DeleteSample"),
-            Content = string.Format(
-                System.Globalization.CultureInfo.CurrentCulture,
+        var confirmed = await AppDialogs.ConfirmAsync(
+            L("Exec.DeleteSample"),
+            string.Format(
+                CultureInfo.CurrentCulture,
                 L("Exec.DeleteSampleConfirm"),
                 sample.SampleId
             ),
-            PrimaryButtonText = L("Common.Yes"),
-            SecondaryButtonText = L("Common.No"),
-            IsCloseButtonEnabled = false,
-            Owner = Application.Current?.MainWindow,
-        };
+            L("Common.Yes"),
+            L("Common.No")
+        );
 
-        if (await confirm.ShowDialogAsync() != Wpf.Ui.Controls.MessageBoxResult.Primary)
+        if (!confirmed)
         {
             return;
         }

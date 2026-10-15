@@ -148,21 +148,18 @@ public partial class HistoryViewModel : ViewModelBase
             return;
         }
 
-        var confirm = new Wpf.Ui.Controls.MessageBox
-        {
-            Title = L("History.Recompute"),
-            Content = string.Format(
+        var confirmed = await AppDialogs.ConfirmAsync(
+            L("History.Recompute"),
+            string.Format(
                 System.Globalization.CultureInfo.CurrentCulture,
                 L("History.RecomputeConfirm"),
                 sheet.SheetId
             ),
-            PrimaryButtonText = L("Common.Yes"),
-            SecondaryButtonText = L("Common.No"),
-            IsCloseButtonEnabled = false,
-            Owner = System.Windows.Application.Current?.MainWindow,
-        };
+            L("Common.Yes"),
+            L("Common.No")
+        );
 
-        if (await confirm.ShowDialogAsync() != Wpf.Ui.Controls.MessageBoxResult.Primary)
+        if (!confirmed)
         {
             return;
         }

@@ -304,18 +304,11 @@ public abstract partial class EditableRowsViewModel : ViewModelBase
         value?.ToString("0.###", CultureInfo.InvariantCulture) ?? "-";
 
     /// <summary>确认框（重新载入 / 恢复默认这类会丢弃编辑内容的动作先问一声）。</summary>
-    private async Task<bool> ConfirmAsync(string messageKey, params object[] args)
-    {
-        var messageBox = new Wpf.Ui.Controls.MessageBox
-        {
-            Title = L("Param.ConfirmTitle"),
-            Content = string.Format(CultureInfo.CurrentCulture, L(messageKey), args),
-            PrimaryButtonText = L("Common.Yes"),
-            SecondaryButtonText = L("Common.No"),
-            IsCloseButtonEnabled = false,
-            Owner = System.Windows.Application.Current?.MainWindow,
-        };
-
-        return await messageBox.ShowDialogAsync() == Wpf.Ui.Controls.MessageBoxResult.Primary;
-    }
+    private Task<bool> ConfirmAsync(string messageKey, params object[] args) =>
+        AppDialogs.ConfirmAsync(
+            L("Param.ConfirmTitle"),
+            string.Format(CultureInfo.CurrentCulture, L(messageKey), args),
+            L("Common.Yes"),
+            L("Common.No")
+        );
 }
