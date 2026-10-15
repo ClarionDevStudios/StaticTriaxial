@@ -55,7 +55,14 @@ public abstract partial class ParameterEditorViewModel : EditableRowsViewModel, 
 
         InitializeRows(definitions.Where(d => d.Group == group));
 
-        RefreshTexts();
+        // ⚠ 构造里**不能**调 RefreshTexts()（它会调到子类覆盖的 BuildDescription）：
+        // 子类的字段此刻还没赋值 —— MachineSettingsViewModel 就是这么炸的
+        // （2026-10-15 用户点「试验参数」报 NullReferenceException，堆栈正是 BuildDescription→RefreshTexts→ctor）。
+        // 所以构造里只填**不依赖子类**的部分，描述用基类自己的兜底文字；
+        // 子类在自己的构造末尾调一次 RefreshTexts()，把带方法名的那种描述补上。
+        Title = L(_titleKey);
+        Description = L(_descriptionKey);
+        RebuildTabs();
 
         // 换语言：**页级文字也要跟着变**（用户 2026-10-15：切换语言后参数行变了，
         // 但页标题/页签/分区标题还是旧语言）。它们是构造时算一次就定下来的，得整个重建。
@@ -71,10 +78,15 @@ public abstract partial class ParameterEditorViewModel : EditableRowsViewModel, 
     /// </summary>
     public void RefreshTexts()
     {
-        var selected = SelectedTab is null ? 0 : Tabs.IndexOf(SelectedTab);
-
         Title = L(_titleKey);
         Description = BuildDescription();
+        RebuildTabs();
+    }
+
+    /// <summary>页签与分区（卡片）按当前语言重建，保留选中的那个页签。</summary>
+    private void RebuildTabs()
+    {
+        var selected = SelectedTab is null ? 0 : Tabs.IndexOf(SelectedTab);
 
         Tabs.Clear();
         // 页签 1：通道设置（采集口径）
@@ -250,6 +262,9 @@ public sealed partial class MachineSettingsViewModel : ParameterEditorViewModel
     {
         _device = device;
         _execution = execution;
+
+        // 字段都到齐了才刷描述（构造里那次用的是基类兜底描述）
+        RefreshTexts();
     }
 
     /// <summary>
