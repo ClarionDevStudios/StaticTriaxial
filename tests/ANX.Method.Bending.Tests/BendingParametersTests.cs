@@ -121,6 +121,7 @@ public sealed class BendingParametersTests : IDisposable
         Assert.DoesNotContain(
             parameters.Definitions,
             d => d.Key is BendingSampleFields.SpanLengthKey
+                or BendingSampleFields.SampleLengthKey
                 or BendingSampleFields.SampleWidthKey
                 or BendingSampleFields.SampleHeightKey
         );
@@ -135,11 +136,25 @@ public sealed class BendingParametersTests : IDisposable
                 .DefaultValue
         );
 
-        // 试样信息字段另有声明（跨径 / 宽 / 高）
-        Assert.Equal(3, BendingSampleFields.Definitions.Count);
+        // 试样信息字段另有声明（跨径 / 长度 / 宽 / 高）
+        Assert.Equal(4, BendingSampleFields.Definitions.Count);
         Assert.Equal(
             "200",
             BendingSampleFields.Definitions.First(d => d.Key == BendingSampleFields.SpanLengthKey).DefaultValue
+        );
+
+        // 「试件长度」紧挨在「试件宽度」上面 —— 位置照现役窗体（uEditBendingTestSampleForm.dfm
+        // 按 Top/Left 还原出来的版面：试样长度 → 试样宽度 → 试样高度 → 跨径），用户 2026-10-15 指名要这条
+        var sampleKeys = BendingSampleFields.Definitions.Select(d => d.Key).ToArray();
+        Assert.Equal(
+            1,
+            Array.IndexOf(sampleKeys, BendingSampleFields.SampleWidthKey)
+                - Array.IndexOf(sampleKeys, BendingSampleFields.SampleLengthKey)
+        );
+        // 默认值 250 照现役（FDefaultLength := 250）与规范 T 0715（250±2mm）
+        Assert.Equal(
+            "250",
+            BendingSampleFields.Definitions.First(d => d.Key == BendingSampleFields.SampleLengthKey).DefaultValue
         );
     }
 
@@ -198,9 +213,14 @@ public sealed class BendingParametersTests : IDisposable
         Assert.Equal(48.75, after!["flexuralStrength"], 0.01); // 同一荷载、h=40 → 3·200·7800/(2·30·1600)
 
         // 明细行里记的也是新高度
-        var rows = sheets.ReadDetailRows(sheetId, ["SampleID", "SampleHeight"]);
+        var rows = sheets.ReadDetailRows(sheetId, ["SampleID", "SampleHeight", "SampleLength"]);
         Assert.Equal(2, rows.Count);
         Assert.Equal(40, Convert.ToDouble(rows[1]["SampleHeight"]));
+
+        // 试件长度**只记录、不参与判定**，但结算时要落进明细行（报表那一列靠它）：
+        // 两件都没单独填过 → 取字段默认 250（照现役 FDefaultLength := 250）
+        Assert.Equal(250, Convert.ToDouble(rows[0]["SampleLength"]));
+        Assert.Equal(250, Convert.ToDouble(rows[1]["SampleLength"]));
     }
 
     /// <summary>

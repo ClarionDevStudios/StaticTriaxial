@@ -105,7 +105,7 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
     }
 
     /// <summary>
-    /// 试样信息字段（逐件填录）：跨径 / 试件宽 / 试件高。**不是方法级参数**（用户 2026-10-12 明确：
+    /// 试样信息字段（逐件填录）：跨径 / 试件长度 / 试件宽 / 试件高。**不是方法级参数**（用户 2026-10-12 明确：
     /// 试件尺寸属于试样信息填录的内容），所以这里跟参数表分开声明。
     /// </summary>
     public IReadOnlyList<ParameterDefinition> SampleFields => BendingSampleFields.Definitions;
@@ -695,6 +695,7 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
         // 尺寸从**这一件试样自己的信息**取（试样编辑页填录、存在明细行里），不再从方法级参数取
         var info = await LoadSampleInfoAsync(sheetId, sampleId, cancellationToken).ConfigureAwait(false);
         var span = BendingSampleFields.GetDouble(info, BendingSampleFields.SpanLengthKey);
+        var length = BendingSampleFields.GetDouble(info, BendingSampleFields.SampleLengthKey);
         var width = BendingSampleFields.GetDouble(info, BendingSampleFields.SampleWidthKey);
         var height = BendingSampleFields.GetDouble(info, BendingSampleFields.SampleHeightKey);
         var analysis = await LoadAnalysisSettingsAsync(cancellationToken).ConfigureAwait(false);
@@ -709,7 +710,7 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
             analysis.EndPercent,
             analysis.LockPeakDisplacement
         );
-        var columns = BuildResultColumns(width, height, result);
+        var columns = BuildResultColumns(length, width, height, result);
 
         // 试样记录可能已经在"试样编辑页填录"时建好了：有就更新（补曲线与结果），没有才追加
         if (sheets.ReadDetailRow(sheetId, sampleId, ["SampleID"]) is null)
@@ -812,6 +813,7 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
             );
 
             var span = BendingSampleFields.GetDouble(info, BendingSampleFields.SpanLengthKey);
+            var length = BendingSampleFields.GetDouble(info, BendingSampleFields.SampleLengthKey);
             var width = BendingSampleFields.GetDouble(info, BendingSampleFields.SampleWidthKey);
             var height = BendingSampleFields.GetDouble(info, BendingSampleFields.SampleHeightKey);
 
@@ -839,7 +841,7 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
                 .UpdateDetailFieldsAsync(
                     sheetId,
                     sampleId,
-                    BuildResultColumns(width, height, result),
+                    BuildResultColumns(length, width, height, result),
                     cancellationToken: cancellationToken
                 )
                 .ConfigureAwait(false);
@@ -890,12 +892,16 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
 
     /// <summary>明细行的结果列（结算写入与重算覆盖共用同一份键）。</summary>
     private static Dictionary<string, double> BuildResultColumns(
+        double lengthMM,
         double widthMM,
         double heightMM,
         BendingSampleResult result
     ) =>
         new(StringComparer.Ordinal)
         {
+            // 试件长度只记录（不参与判定），但报表明细有这一列 —— 结算时一并写进去，
+            // 免得"跑过但没开过试样信息弹窗"的件在报表上留一格空白
+            ["SampleLength"] = lengthMM,
             ["SampleWidth"] = widthMM,
             ["SampleHeight"] = heightMM,
             ["PeakLoadValue"] = result.PeakLoadKN,

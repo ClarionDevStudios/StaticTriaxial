@@ -269,19 +269,28 @@ public sealed class BendingReportTemplateTests : IDisposable
         var curve = Enumerable.Range(0, 60).Select(i => new CurvePoint(i * 0.1, i * 0.15)).ToArray();
         foreach (var sampleId in new[] { "1", "2" })
         {
+            var columns = new Dictionary<string, double>(StringComparer.Ordinal)
+            {
+                ["SampleWidth"] = 30,
+                ["SampleHeight"] = 35,
+                ["PeakLoadValue"] = 9.0,
+                ["CorrectedDeflection"] = 4.5,
+                ["FlexuralStrength"] = 73.47,
+                ["MaxBendingTensileStrain"] = 23625,
+            };
+
+            // 只给第 1 件记长度：一份用例同时验"记了就印出来"和"没记就如实留空"两种情况
+            // （不能给第 2 件写 0 —— 那是"长度为 0"，报表会印出 0）
+            if (sampleId == "1")
+            {
+                columns["SampleLength"] = 250;
+            }
+
             await sheets.AppendSampleAsync(
                 sheetId,
                 sampleId,
                 curve,
-                new Dictionary<string, double>(StringComparer.Ordinal)
-                {
-                    ["SampleWidth"] = 30,
-                    ["SampleHeight"] = 35,
-                    ["PeakLoadValue"] = 9.0,
-                    ["CorrectedDeflection"] = 4.5,
-                    ["FlexuralStrength"] = 73.47,
-                    ["MaxBendingTensileStrain"] = 23625,
-                }
+                columns
             );
         }
 
@@ -302,9 +311,9 @@ public sealed class BendingReportTemplateTests : IDisposable
         Assert.Equal("G15 高速 K12+300", zh.GetCellValue(2, 3)); // 试验项目名称
         Assert.Equal("15", zh.GetCellValue(7, 3)); // 试验温度
         Assert.Equal("1", zh.GetCellValue(11, 1)); // 第 1 件：试件编号
-        // 试件长度：本软件的试样信息只有跨径/宽/高，明细没填 SampleLength 就**如实留空**
-        //（跨径 200 ≠ 试件长度 250，不拿它兜底）
-        Assert.Equal(string.Empty, Convert.ToString(zh.GetCellValue(11, 2)));
+        // 试件长度：记了就有（250），没记就**如实留空** —— 不拿跨径 200 兜底充数
+        Assert.Equal("250", zh.GetCellValue(11, 2));
+        Assert.Equal(string.Empty, Convert.ToString(zh.GetCellValue(12, 2)));
         Assert.Equal("30", zh.GetCellValue(11, 3)); // 试件宽度
         Assert.Equal("73.47", zh.GetCellValue(11, 7)); // 弯拉强度
         Assert.Equal("23625", zh.GetCellValue(11, 8)); // 最大弯拉应变
