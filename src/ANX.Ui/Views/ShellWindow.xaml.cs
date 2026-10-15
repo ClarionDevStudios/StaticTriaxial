@@ -1,6 +1,7 @@
 namespace ANX.Ui.Views;
 
 using System.ComponentModel;
+using System.Windows.Threading;
 using ANX.Ui.Services;
 using ANX.Ui.ViewModels;
 using Wpf.Ui;
@@ -84,7 +85,15 @@ public partial class ShellWindow : INavigationWindow
             }
 
             ExitGuard.AllowExit();
-            Close();
+
+            // **不能直接 Close()**：WPF-UI 的 MessageBox 是"先 TrySetResult 再关自己"，而默认的
+            // TaskCompletionSource 会让 await 的后续**同步**跑在它 OnButtonClick 里 —— 也就是说
+            // 这一行执行时，模态框还没关完、主窗口还处在"关闭中"状态，Close() 会抛
+            // 「在窗口关闭期间，无法将可见性设置为可见，也无法调用 Show、ShowDialog、Close…」
+            // 而被 `_ =` 丢掉（用户 2026-10-15 实测：点"是"框关了、软件不退；再点一次 X 才退）。
+            // 把关窗推到消息队列**空下来之后**（ApplicationIdle）：那时模态帧已收干净、主窗口已恢复，
+            // 实测能正常关闭（探针两个场景对比过：直接 Close() 抛异常不生效，这样关 closed=True）。
+            await Dispatcher.InvokeAsync(Close, DispatcherPriority.ApplicationIdle);
         }
         finally
         {

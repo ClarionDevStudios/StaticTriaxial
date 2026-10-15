@@ -1,7 +1,6 @@
 namespace ANX.Ui.ViewModels;
 
 using ANX.Ui.Services;
-using Wpf.Ui;
 using Wpf.Ui.Controls;
 
 /// <summary>
@@ -11,8 +10,6 @@ using Wpf.Ui.Controls;
 /// </summary>
 public partial class ShellViewModel : ViewModelBase, INavigationPaneService
 {
-    private readonly INavigationService _navigationService;
-
     [ObservableProperty]
     private string _applicationTitle = string.Empty;
 
@@ -29,11 +26,8 @@ public partial class ShellViewModel : ViewModelBase, INavigationPaneService
     [ObservableProperty]
     private bool _isPaneOpen = true;
 
-    public ShellViewModel(ILocalizationService localization, INavigationService navigationService)
-        : base(localization)
+    public ShellViewModel(ILocalizationService localization) : base(localization)
     {
-        _navigationService = navigationService;
-
         localization.LanguageChanged += (_, _) => RebuildNavigation();
         RebuildNavigation();
     }
@@ -123,19 +117,14 @@ public partial class ShellViewModel : ViewModelBase, INavigationPaneService
             L("Common.No")
         );
 
-    /// <summary>导航栏「退出系统」：问一句，确认了就退出程序。</summary>
+    /// <summary>
+    /// 导航栏「退出系统」：**关主窗口**，退出确认交给窗口自己（与右上角的 X 完全同一条路）。
+    ///
+    /// 这里刻意不问、也不退：两条入口各问一遍必然分叉 —— 用户 2026-10-15 实测到两处不一致
+    /// （导航栏点"取消"会跳到系统设置，X 点"取消"留在原页）。顺带说明为什么不再"还原选中项"：
+    /// WPF-UI 的 <c>NavigationViewItem.OnClick</c> 只在**带 TargetPageType** 的项上触发导航/选中，
+    /// 这一项只有 Command，点了既不改选中也不改高亮（翻 4.3.0 源码确认），所以那句导航是多余的。
+    /// </summary>
     [RelayCommand]
-    private async Task ExitAsync()
-    {
-        if (!await ConfirmExitAsync())
-        {
-            // 取消后把选中项还原，避免"退出"这一项一直高亮。
-            _navigationService.Navigate(typeof(Views.Pages.SettingsPage));
-            return;
-        }
-
-        // 已经问过了：立闸门再退，免得主窗口在退出流程里又弹一遍确认
-        ExitGuard.AllowExit();
-        Application.Current?.Shutdown();
-    }
+    private void Exit() => Application.Current?.MainWindow?.Close();
 }
