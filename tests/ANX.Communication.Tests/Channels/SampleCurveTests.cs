@@ -26,7 +26,7 @@ public sealed class SampleCurveTests
     }
 
     [Fact]
-    public void 上升段单调且前段基本是直线()
+    public void 上升段单调_接触后先有坐实段再直线()
     {
         var previous = 0.0;
         for (var d = 0.0; d <= PeakDeflection; d += 0.01)
@@ -36,17 +36,65 @@ public sealed class SampleCurveTests
             previous = load;
         }
 
-        // 前 3/4 挠度基本线性（10%~80% 荷载区间都在这段上）——判定的"修正直线"拟合要靠它
-        var quarter = SampleCurve.LoadAt(PeakDeflection / 4, Peak, PeakDeflection);
-        var half = SampleCurve.LoadAt(PeakDeflection / 2, Peak, PeakDeflection);
-        var threeQuarters = SampleCurve.LoadAt(PeakDeflection * 0.75, Peak, PeakDeflection);
-        Assert.Equal(quarter * 2, half, 1e-9);
-        Assert.Equal(quarter * 3, threeQuarters, 1e-9);
+        // ① 接触后先有"坐实段"：挠度在走、荷载涨得慢 —— 用户 2026-10-15 要求这一段"适当延长"
+        var seated = SampleCurve.LoadAt(PeakDeflection * 0.30, Peak, PeakDeflection);
+        Assert.InRange(seated / Peak, 0.06, 0.10);
+
+        // ② 之后是接近直线的上升段：等距挠度 → 等距荷载（10%~80% 荷载区间的拟合要靠它）
+        var low = SampleCurve.LoadAt(PeakDeflection * 0.40, Peak, PeakDeflection);
+        var middle = SampleCurve.LoadAt(PeakDeflection * 0.55, Peak, PeakDeflection);
+        var high = SampleCurve.LoadAt(PeakDeflection * 0.70, Peak, PeakDeflection);
+        Assert.Equal(middle - low, high - middle, 1e-9);
+
+        // ③ 坐实段的斜率要明显低于上升段（否则不算"坐实"）
+        var seatSlope = seated / (PeakDeflection * 0.30);
+        var riseSlope = (high - low) / (PeakDeflection * 0.30);
+        Assert.True(seatSlope < riseSlope / 3, $"坐实段该明显更平：{seatSlope:0.###} vs {riseSlope:0.###}");
 
         // 只在最后一段圆下来（斜率变小）
-        var slopeBefore = (threeQuarters - half) / (PeakDeflection * 0.25);
+        var threeQuarters = SampleCurve.LoadAt(PeakDeflection * 0.75, Peak, PeakDeflection);
+        var slopeBefore = (threeQuarters - high) / (PeakDeflection * 0.05);
         var slopeAfter = (Peak - threeQuarters) / (PeakDeflection * 0.25);
         Assert.True(slopeAfter < slopeBefore, "接近峰值应当圆下来");
+    }
+
+    /// <summary>
+    /// 判定的"修正直线"拟合（参数表默认区间：峰值荷载的 10% ~ 80%）**整段落在直线段上** ——
+    /// 坐实段一旦伸进这个区间，拟合的 R² 就会掉下来，判定报"无法拟合修正直线"。
+    /// </summary>
+    [Fact]
+    public void 修正直线拟合区间整段落在直线段上()
+    {
+        var start = DeflectionAtLoad(Peak * 0.10);
+        var end = DeflectionAtLoad(Peak * 0.80);
+
+        // 区间两端都在坐实段之后、圆膝之前
+        Assert.True(start > PeakDeflection * 0.30, $"10% 荷载点还在坐实段里：{start:0.####}mm");
+        Assert.True(end < PeakDeflection * 0.75, $"80% 荷载点已经进了圆膝：{end:0.####}mm");
+
+        // 区间内等距三点共线（R² = 1）
+        var first = SampleCurve.LoadAt(start, Peak, PeakDeflection);
+        var middle = SampleCurve.LoadAt((start + end) / 2, Peak, PeakDeflection);
+        var last = SampleCurve.LoadAt(end, Peak, PeakDeflection);
+        Assert.Equal((middle - first) * 2, last - first, 1e-9);
+    }
+
+    /// <summary>反查"荷载等于某个值"的挠度（只扫上升段，够用）。</summary>
+    private static double DeflectionAtLoad(double loadKN)
+    {
+        var previous = 0.0;
+        for (var d = 0.0; d <= PeakDeflection; d += 1e-5)
+        {
+            var load = SampleCurve.LoadAt(d, Peak, PeakDeflection);
+            if (load >= loadKN)
+            {
+                return previous;
+            }
+
+            previous = d;
+        }
+
+        return PeakDeflection;
     }
 
     [Fact]

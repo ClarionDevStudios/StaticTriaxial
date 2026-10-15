@@ -189,6 +189,13 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
                         : LoadSample(_sampleIntervalSeconds * _timeScale, seconds);
 
                 _lastRawDisplacementMM = sample.Displacement;
+
+                // **仿真时钟也要走**：位移按"速率 × 仿真时间"前进，样本的时间戳就必须是同一个时钟，
+                // 否则上位机（阶段机）用墙钟计时、曲线用仿真时间走位移，两边的"10 秒"不是一个长度 ——
+                // 用户 2026-10-15 实测：timeScale = 5 时"破坏后继续加载 10s"在真机是 0.33mm（2mm/min），
+                // 模拟数据却记成 1.67mm，曲线右端拖得极长（"模拟曲线右端不要延长那么多"）。
+                ElapsedSeconds += _sampleIntervalSeconds * _timeScale;
+
                 SampleReceived?.Invoke(
                     this,
                     sample with

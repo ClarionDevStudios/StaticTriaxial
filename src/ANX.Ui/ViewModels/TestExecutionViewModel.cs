@@ -1411,8 +1411,8 @@ public partial class TestExecutionViewModel : ViewModelBase
             ApplyAcquisitionSettings(profile);
 
             /**
-             * 控制循环：与现役线程同构 —— 固定 20ms 节拍，每拍拿最新一帧、
-             * 用循环的时间推进 ElapsedSeconds（A2 帧不带时间戳）、喂阶段机、刷界面。
+             * 控制循环：与现役线程同构 —— 固定 20ms 节拍，每拍拿最新一帧、确定该帧的时间
+             * （真机 A2 帧不带时间戳，按控制周期推进；模拟数据由设备按仿真时钟推进）、喂阶段机、刷界面。
              * 采样率再高（真机约 190Hz）界面也只按 50Hz 刷，等于顺带做了节流。
              */
             var loopTask = Task.Run(async () =>
@@ -1459,7 +1459,16 @@ public partial class TestExecutionViewModel : ViewModelBase
                             continue; // 联机阶段下位机本就不回送数据
                         }
 
-                        device.ElapsedSeconds += ControlPeriod.TotalSeconds;
+                        // 设备侧计时：**真机**（A2 帧不带时间戳）由上位机按控制周期推进；
+                        // **模拟数据自己推进**（它按仿真时钟走，见 SimulatedDeviceController）——
+                        // 这里再按墙钟加一遍，时间尺度就被算了两次：timeScale = 5 时"破坏后继续加载
+                        // 10s"（真机 2mm/min 下是 0.33mm）会被记成 1.67mm 的位移，曲线右端拖得极长
+                        //（用户 2026-10-15 反馈"模拟曲线右端不要延长那么多"）。
+                        if (!IsSimulatedSource)
+                        {
+                            device.ElapsedSeconds += ControlPeriod.TotalSeconds;
+                        }
+
                         var sample = latest with { ElapsedSeconds = device.ElapsedSeconds };
 
                         var phaseBefore = sequencer.Phase;
