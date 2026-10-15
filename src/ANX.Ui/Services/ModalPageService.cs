@@ -57,10 +57,16 @@ public sealed class ModalPageService(IServiceProvider services) : IModalPageServ
 
         var owner = Application.Current?.MainWindow;
 
+        // 窗体尺寸**不许超出屏幕工作区**（用户 2026-10-15 报"预览窗体的高度要调整"）：
+        // 本机是 1920×1080 但**缩放 125%** → 工作区只有 1536×816 DIP，而预览窗写死 900 DIP 高，
+        // 物理上 1125px 比工作区 1020px 还高，底边那条会被裁掉（弹窗是 NoResize，用户也没法拉）。
+        // 以后所有弹窗都从工作区里留 24 DIP 边距来夹一下，屏幕小/缩放大的机器上都不会再出这问题。
+        var workArea = System.Windows.SystemParameters.WorkArea;
+
         var window = new Views.Dialogs.PageDialogWindow
         {
-            Width = width,
-            Height = height,
+            Width = Math.Min(width, workArea.Width - 24),
+            Height = Math.Min(height, workArea.Height - 24),
             Owner = owner,
             WindowStartupLocation =
                 owner is null ? WindowStartupLocation.CenterScreen : WindowStartupLocation.CenterOwner,

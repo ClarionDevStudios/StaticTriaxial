@@ -87,8 +87,12 @@
       BorderThickness="1"
       CornerRadius="6"
     >
+      <!--
+        预览区的内边距（用户 2026-10-15："预览时的左边距设置"）：原来只有 6，暗色主题下报表像
+        贴在窗体左边框上。左右都给 16、上下给 12 —— 左右对称，右滑条那侧也不会显得比左边挤。
+      -->
       <ScrollViewer
-        Padding="6"
+        Padding="16,12"
         HorizontalScrollBarVisibility="Disabled"
         VerticalScrollBarVisibility="Auto"
       >
