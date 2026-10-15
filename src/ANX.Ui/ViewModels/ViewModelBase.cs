@@ -43,6 +43,16 @@ public abstract partial class ViewModelBase : ObservableObject, INavigationAware
     /// </summary>
     protected string Text(Exception exception) => UiText.Describe(Localization, exception);
 
+    /// <summary>把链路状态的细节渲染成当前语言的文字（状态栏与断链报警用）。</summary>
+    protected string Text(ANX.Core.Control.NetworkLinkState state) =>
+        UiText.Describe(Localization, state);
+
+    /// <summary>设备名（模拟器 / 还没选来源这类**我们自己的**名字跟语言走；真机报型号名、原样显示）。</summary>
+    protected string DeviceName(ANX.Core.Control.ITestDeviceController device) =>
+        device is ANX.Core.Control.IDeviceSourceSwitch { DeviceNameKey: { } key }
+            ? L(key)
+            : device.DeviceName;
+
     public Task OnNavigatedToAsync()
     {
         OnNavigatedTo();

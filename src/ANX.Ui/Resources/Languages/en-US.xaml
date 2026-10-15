@@ -347,6 +347,26 @@
   <sys:String x:Key="Msg.T0715.CurveTooFewPoints">Curve has too few points for origin correction (3+ needed)</sys:String>
   <sys:String x:Key="Msg.T0715.FitFailed">Cannot fit the tangent line (peak not positive or rising part too short)</sys:String>
   <sys:String x:Key="Msg.T0715.GroupEmpty">A group needs at least 1 specimen</sys:String>
+  <!-- Network link detail (keys in ANX.Communication.NetworkLinkMessageKeys) -->
+  <sys:String x:Key="Link.Detail.NotChecked">Not checked yet</sys:String>
+  <sys:String x:Key="Link.Detail.ReadFailed">Failed to read adapter state: {0}</sys:String>
+  <sys:String x:Key="Link.Detail.AdapterMissing">No adapter can reach {0} (unplugged? subnet changed?)</sys:String>
+  <sys:String x:Key="Link.Detail.Up">Link up ({0})</sys:String>
+  <sys:String x:Key="Link.Detail.MediaDisconnected">Port down: cable unplugged, peer off, or adapter disabled</sys:String>
+  <sys:String x:Key="Link.Detail.Dormant">Port dormant: no carrier</sys:String>
+  <sys:String x:Key="Link.Detail.NotPresent">Adapter not present</sys:String>
+  <sys:String x:Key="Link.Detail.Other">Port state {0}</sys:String>
+  <!-- Messages raised by the storage layer (keys in ANX.Storage.StorageMessageKeys) -->
+  <sys:String x:Key="Msg.Storage.SheetNotFound">Sheet {0} not found</sys:String>
+  <sys:String x:Key="Msg.Storage.SheetNotFoundByNumber">No sheet found for number {0}</sys:String>
+  <sys:String x:Key="Msg.Storage.MethodNotRegistered">Method {0} is not registered</sys:String>
+  <sys:String x:Key="Msg.Storage.NumberExhausted">Sheet numbers exhausted ({0} {1}: over 999 in one day).</sys:String>
+  <!-- Device names and GR-3 protocol messages -->
+  <sys:String x:Key="Device.Name.Simulator">Simulator</sys:String>
+  <sys:String x:Key="Device.Name.NoSource">(no data source selected)</sys:String>
+  <sys:String x:Key="Msg.Gr3.ConnectTimeout">Connect timeout: no A0 system config within {0}s</sys:String>
+  <sys:String x:Key="Msg.Gr3.AckTimeout">Timeout waiting for A1 ack (command {0})</sys:String>
+  <sys:String x:Key="Msg.Gr3.CommandRejected">Device rejected command {0}: {1}</sys:String>
 
   <!-- Method-declared metric names and curve text: the method supplies the key (IAP style), the wording lives here -->
   <sys:String x:Key="Method.T0715.Load">Load</sys:String>

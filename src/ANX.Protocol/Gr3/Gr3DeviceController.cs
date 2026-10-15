@@ -244,7 +244,11 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
 
         if (completed != _systemInfoWaiter.Task)
         {
-            throw new TimeoutException($"联机超时：{_timeout.TotalSeconds:0.#}s 内未收到 A0 系统配置");
+            throw LocalizedException.Single(
+                ProtocolMessageKeys.ConnectTimeout,
+                $"联机超时：{_timeout.TotalSeconds:0.#}s 内未收到 A0 系统配置",
+                $"{_timeout.TotalSeconds:0.#}"
+            );
         }
 
         StartKeepAlive();
@@ -556,13 +560,22 @@ public sealed class Gr3DeviceController : ITestDeviceController, IAsyncDisposabl
 
         if (completed != _ackWaiter.Task)
         {
-            throw new TimeoutException($"等待 A1 应答超时（命令 0x{command.CommandCode:X2}）");
+            throw LocalizedException.Single(
+                ProtocolMessageKeys.AckTimeout,
+                $"等待 A1 应答超时（命令 0x{command.CommandCode:X2}）",
+                $"0x{command.CommandCode:X2}"
+            );
         }
 
         var status = await _ackWaiter.Task.ConfigureAwait(false);
         if (status != Gr3AckStatus.Success)
         {
-            throw new InvalidOperationException($"设备拒绝命令 0x{command.CommandCode:X2}：{status}");
+            throw LocalizedException.Single(
+                ProtocolMessageKeys.CommandRejected,
+                $"设备拒绝命令 0x{command.CommandCode:X2}：{status}",
+                $"0x{command.CommandCode:X2}",
+                status
+            );
         }
     }
 }

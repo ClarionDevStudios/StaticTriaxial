@@ -34,7 +34,11 @@ public sealed class ParameterLocalizationTests : IDisposable
         var missing = new List<string>();
 
         // 方法层抛给界面的消息（BendingMessageKeys）+ 界面自己用到的通用键
-        foreach (var key in BendingMessageKeys.All.Concat(["Common.ListSeparator"]))
+        foreach (
+            var key in BendingMessageKeys
+                .All.Concat(StorageMessageKeys.All)
+                .Concat(["Common.ListSeparator"])
+        )
         {
             if (!dictionary.Contains($"x:Key=\"{key}\"", StringComparison.Ordinal))
             {

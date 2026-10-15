@@ -2,6 +2,7 @@ namespace ANX.Ui.Services;
 
 using System.Globalization;
 using ANX.Core;
+using ANX.Core.Control;
 
 /// <summary>
 /// 界面把"异常 / 可翻译消息"渲染成当前语言。
@@ -53,5 +54,13 @@ public static class UiText
             template,
             [.. text.Args.Select(arg => arg is LocalizedText nested ? Format(localization, nested) : arg)]
         );
+    }
+
+    /// <summary>链路状态的描述：带键的走键（当前语言），否则回落到中文兜底。</summary>
+    public static string Describe(ILocalizationService localization, NetworkLinkState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        return state.DetailText is { } text ? Format(localization, text) : state.Detail;
     }
 }

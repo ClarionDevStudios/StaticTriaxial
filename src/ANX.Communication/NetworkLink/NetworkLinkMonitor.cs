@@ -3,6 +3,7 @@ namespace ANX.Communication.NetworkLink;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using ANX.Core;
 using ANX.Core.Control;
 
 /// <summary>
@@ -31,7 +32,12 @@ public sealed class NetworkLinkMonitor : INetworkLinkMonitor, IDisposable
     private readonly Func<NetworkLinkState>? _probe;
     private readonly object _gate = new();
 
-    private NetworkLinkState _state = new(NetworkLinkKind.Unknown, string.Empty, "尚未检测");
+    private NetworkLinkState _state = new(
+        NetworkLinkKind.Unknown,
+        string.Empty,
+        "尚未检测",
+        new LocalizedText(NetworkLinkMessageKeys.NotChecked)
+    );
     private string? _adapterId;
     private string _adapterName = string.Empty;
     private Timer? _timer;
@@ -123,7 +129,12 @@ public sealed class NetworkLinkMonitor : INetworkLinkMonitor, IDisposable
         catch (Exception ex)
         {
             // 读网卡配置本身失败（少见的驱动/权限问题）：按"未知"报，别把监视循环打死
-            next = new NetworkLinkState(NetworkLinkKind.Unknown, _adapterName, $"读取网卡状态失败：{ex.Message}");
+            next = new NetworkLinkState(
+                NetworkLinkKind.Unknown,
+                _adapterName,
+                $"读取网卡状态失败：{ex.Message}",
+                new LocalizedText(NetworkLinkMessageKeys.ReadFailed, ex.Message)
+            );
         }
 
         EventHandler<NetworkLinkState>? handler;
@@ -174,7 +185,8 @@ public sealed class NetworkLinkMonitor : INetworkLinkMonitor, IDisposable
             return new NetworkLinkState(
                 NetworkLinkKind.AdapterMissing,
                 _adapterName,
-                $"没找到能到达 {_remoteHost} 的网口（网卡被拔掉？地址段变了？）"
+                $"没找到能到达 {_remoteHost} 的网口（网卡被拔掉？地址段变了？）",
+                new LocalizedText(NetworkLinkMessageKeys.AdapterMissing, _remoteHost)
             );
         }
 
@@ -183,27 +195,32 @@ public sealed class NetworkLinkMonitor : INetworkLinkMonitor, IDisposable
             OperationalStatus.Up => new NetworkLinkState(
                 NetworkLinkKind.Up,
                 adapter.Name,
-                $"链路正常（{FormatSpeed(adapter.Speed)}）"
+                $"链路正常（{FormatSpeed(adapter.Speed)}）",
+                new LocalizedText(NetworkLinkMessageKeys.Up, FormatSpeed(adapter.Speed))
             ),
             OperationalStatus.Down => new NetworkLinkState(
                 NetworkLinkKind.MediaDisconnected,
                 adapter.Name,
-                "网口 Down：网线未插 / 对端（交换机、控制器）掉电 / 网卡被禁用"
+                "网口 Down：网线未插 / 对端（交换机、控制器）掉电 / 网卡被禁用",
+                new LocalizedText(NetworkLinkMessageKeys.MediaDisconnected)
             ),
             OperationalStatus.Dormant => new NetworkLinkState(
                 NetworkLinkKind.MediaDisconnected,
                 adapter.Name,
-                "网口 Dormant：没有载波"
+                "网口 Dormant：没有载波",
+                new LocalizedText(NetworkLinkMessageKeys.Dormant)
             ),
             OperationalStatus.NotPresent => new NetworkLinkState(
                 NetworkLinkKind.AdapterMissing,
                 adapter.Name,
-                "网卡不存在"
+                "网卡不存在",
+                new LocalizedText(NetworkLinkMessageKeys.NotPresent)
             ),
             var other => new NetworkLinkState(
                 NetworkLinkKind.MediaDisconnected,
                 adapter.Name,
-                $"网口状态 {other}"
+                $"网口状态 {other}",
+                new LocalizedText(NetworkLinkMessageKeys.Other, other.ToString())
             ),
         };
     }

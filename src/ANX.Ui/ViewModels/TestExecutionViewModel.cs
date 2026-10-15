@@ -536,8 +536,8 @@ public partial class TestExecutionViewModel : ViewModelBase
             SetConnectionState(true);
             Append(
                 automatic
-                    ? $"{L("Exec.Reconnected")} · {device.DeviceName}"
-                    : $"{L("Exec.Connected")} · {device.DeviceName}"
+                    ? $"{L("Exec.Reconnected")} · {DeviceName(device)}"
+                    : $"{L("Exec.Connected")} · {DeviceName(device)}"
             );
             UpdateCanJog();
 
@@ -684,7 +684,7 @@ public partial class TestExecutionViewModel : ViewModelBase
         if (state.IsUp)
         {
             _linkWasEverUp = true;
-            Append($"{L("Exec.LinkUp")} · {state.AdapterName}（{state.Detail}）");
+            Append($"{L("Exec.LinkUp")} · {state.AdapterName}（{Text(state)}）");
 
             // 链路回来了、但设备还没联机（例如开机时线没插 → 首次 C0 握手失败 → A0 配置没取到）
             // → **自动重新联机**（用户 2026-10-14）：只握手、重取设备配置，不碰试验流程。
@@ -697,7 +697,7 @@ public partial class TestExecutionViewModel : ViewModelBase
             return;
         }
 
-        Append($"{L("Exec.LinkDown")} · {state.Detail}");
+        Append($"{L("Exec.LinkDown")} · {Text(state)}");
 
         // 链路断了：卡片上的数是**断开前的旧值**，标成 "--" 免得现场当成实时值看（用户 2026-10-14）
         MarkLiveValuesStale();
@@ -806,7 +806,7 @@ public partial class TestExecutionViewModel : ViewModelBase
                 CultureInfo.CurrentCulture,
                 L("Exec.LinkAlarmBodyRunning"),
                 string.IsNullOrWhiteSpace(state.AdapterName) ? L("Exec.LinkUnknownAdapter") : state.AdapterName,
-                state.Detail
+                Text(state)
             ),
             L("Common.Close")
         );

@@ -350,6 +350,26 @@
   <sys:String x:Key="Msg.T0715.CurveTooFewPoints">曲线点数不足以做原点修正（至少 3 点）</sys:String>
   <sys:String x:Key="Msg.T0715.FitFailed">无法拟合修正直线（峰值非正或上升段不足）</sys:String>
   <sys:String x:Key="Msg.T0715.GroupEmpty">一组至少要有 1 个试件</sys:String>
+  <!-- 网口链路状态的细节（键在 ANX.Communication.NetworkLinkMessageKeys） -->
+  <sys:String x:Key="Link.Detail.NotChecked">尚未检测</sys:String>
+  <sys:String x:Key="Link.Detail.ReadFailed">读取网卡状态失败：{0}</sys:String>
+  <sys:String x:Key="Link.Detail.AdapterMissing">没找到能到达 {0} 的网口（网卡被拔掉？地址段变了？）</sys:String>
+  <sys:String x:Key="Link.Detail.Up">链路正常（{0}）</sys:String>
+  <sys:String x:Key="Link.Detail.MediaDisconnected">网口 Down：网线未插 / 对端（交换机、控制器）掉电 / 网卡被禁用</sys:String>
+  <sys:String x:Key="Link.Detail.Dormant">网口 Dormant：没有载波</sys:String>
+  <sys:String x:Key="Link.Detail.NotPresent">网卡不存在</sys:String>
+  <sys:String x:Key="Link.Detail.Other">网口状态 {0}</sys:String>
+  <!-- 存储层抛给界面的消息（键在 ANX.Storage.StorageMessageKeys） -->
+  <sys:String x:Key="Msg.Storage.SheetNotFound">找不到试验单 {0}</sys:String>
+  <sys:String x:Key="Msg.Storage.SheetNotFoundByNumber">找不到单号 {0} 对应的试验单</sys:String>
+  <sys:String x:Key="Msg.Storage.MethodNotRegistered">未注册的方法代号：{0}</sys:String>
+  <sys:String x:Key="Msg.Storage.NumberExhausted">单号流水已用尽（{0} {1} 当天超过 999 个）。</sys:String>
+  <!-- 设备名（键在 ANX.Communication.DeviceSourceMessageKeys）与协议层消息（ProtocolMessageKeys） -->
+  <sys:String x:Key="Device.Name.Simulator">模拟器</sys:String>
+  <sys:String x:Key="Device.Name.NoSource">（尚未选择数据来源）</sys:String>
+  <sys:String x:Key="Msg.Gr3.ConnectTimeout">联机超时：{0}s 内未收到 A0 系统配置</sys:String>
+  <sys:String x:Key="Msg.Gr3.AckTimeout">等待 A1 应答超时（命令 {0}）</sys:String>
+  <sys:String x:Key="Msg.Gr3.CommandRejected">设备拒绝命令 {0}：{1}</sys:String>
   <sys:String x:Key="Method.T0715.Displacement">位移</sys:String>
   <sys:String x:Key="Method.T0715.FlexuralStrength">弯拉强度</sys:String>
   <sys:String x:Key="Method.T0715.OriginCorrection">修正原点</sys:String>

@@ -1,5 +1,6 @@
 namespace ANX.Storage;
 
+using ANX.Core;
 using ANX.Core.TestSheets;
 using Microsoft.Data.Sqlite;
 
@@ -36,7 +37,12 @@ public sealed class SheetNumberGenerator(DatabaseInitializer initializer)
         var next = new SheetNumber(prefix, date, last).NextSequence();
         if (next == SheetNumber.SequenceExhausted)
         {
-            throw new InvalidOperationException($"单号流水已用尽（{prefix} {dateKey} 当天超过 999 个）。");
+            throw LocalizedException.Single(
+                StorageMessageKeys.NumberExhausted,
+                $"单号流水已用尽（{prefix} {dateKey} 当天超过 999 个）。",
+                prefix,
+                dateKey
+            );
         }
 
         return new SheetNumber(prefix, date, next);
@@ -71,7 +77,12 @@ public sealed class SheetNumberGenerator(DatabaseInitializer initializer)
         var next = new SheetNumber(prefix, date, last).NextSequence();
         if (next == SheetNumber.SequenceExhausted)
         {
-            throw new InvalidOperationException($"单号流水已用尽（{prefix} {dateKey} 当天超过 999 个）。");
+            throw LocalizedException.Single(
+                StorageMessageKeys.NumberExhausted,
+                $"单号流水已用尽（{prefix} {dateKey} 当天超过 999 个）。",
+                prefix,
+                dateKey
+            );
         }
 
         using (var write = connection.CreateCommand())

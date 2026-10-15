@@ -46,6 +46,14 @@ public sealed class SwitchableDeviceController : ITestDeviceController, IDeviceS
     public string DeviceName => _current?.DeviceName ?? "（尚未选择数据来源）";
 
     /// <inheritdoc />
+    public string? DeviceNameKey =>
+        _current is null
+            ? DeviceSourceMessageKeys.NoSource
+            : IsSimulating
+                ? DeviceSourceMessageKeys.Simulator
+                : null; // 真机报的是自己的型号名，不是界面文案，原样显示
+
+    /// <inheritdoc />
     public bool IsConnected => _current?.IsConnected ?? false;
 
     /// <inheritdoc />

@@ -487,7 +487,11 @@ public sealed class TestSheetService : ITestSheetService
         using var reader = command.ExecuteReader();
         if (!reader.Read())
         {
-            throw new InvalidOperationException($"找不到试验单 {sheetId}");
+            throw LocalizedException.Single(
+                StorageMessageKeys.SheetNotFound,
+                $"找不到试验单 {sheetId}",
+                sheetId
+            );
         }
 
         var result = new Dictionary<string, object?>(StringComparer.Ordinal);
@@ -539,7 +543,11 @@ public sealed class TestSheetService : ITestSheetService
     private IMethodPersistenceModule ResolveMethod(string methodCode) =>
         _methods.TryGetValue(methodCode, out var method)
             ? method
-            : throw new InvalidOperationException($"未注册的方法代号：{methodCode}");
+            : throw LocalizedException.Single(
+                StorageMessageKeys.MethodNotRegistered,
+                $"未注册的方法代号：{methodCode}",
+                methodCode
+            );
 
     /// <summary>按单号前缀反查方法：单号形如 `WT20261010001`，前缀由项目定义，这里按"能解析出日期"来识别。</summary>
     private IMethodPersistenceModule ResolveMethodForSheet(string sheetId)
@@ -556,7 +564,11 @@ public sealed class TestSheetService : ITestSheetService
             }
         }
 
-        throw new InvalidOperationException($"找不到单号 {sheetId} 对应的试验单");
+        throw LocalizedException.Single(
+            StorageMessageKeys.SheetNotFoundByNumber,
+            $"找不到单号 {sheetId} 对应的试验单",
+            sheetId
+        );
     }
 
     private static bool IsDeclared(TableDefinition table, string columnName) =>

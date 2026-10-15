@@ -27,7 +27,19 @@ public enum NetworkLinkKind
 /// <param name="Kind">状态类别。</param>
 /// <param name="AdapterName">承载设备流量的网卡名（如"以太网"）；没定位到时为空串。</param>
 /// <param name="Detail">人话解释（中文，进日志）。</param>
-public sealed record NetworkLinkState(NetworkLinkKind Kind, string AdapterName, string Detail)
+/// <param name="Detail">
+/// 细节文字（**中文兜底**：日志、以及没有译文时用）。界面按 <paramref name="DetailText"/> 取当前语言。
+/// </param>
+/// <param name="DetailText">
+/// 细节文字的资源键 + 参数（用户 2026-10-15：语言切换要把链路状态也盖住）。监视器不认识语言，
+/// 只带键上路 —— 见 <see cref="LocalizedText"/>。
+/// </param>
+public sealed record NetworkLinkState(
+    NetworkLinkKind Kind,
+    string AdapterName,
+    string Detail,
+    LocalizedText? DetailText = null
+)
 {
     /// <summary>链路是否在位（只有 <see cref="NetworkLinkKind.Up"/> 算在位）。</summary>
     public bool IsUp => Kind == NetworkLinkKind.Up;
