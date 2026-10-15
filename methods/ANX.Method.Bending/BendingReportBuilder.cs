@@ -115,7 +115,9 @@ public sealed class BendingReportBuilder(
             ["Sheet.TestTemperature"] = Format(main["TestTemperature"]),
             ["Sheet.SampleSizeDesc"] = Format(main["SampleSizeDesc"]),
             ["Sheet.AcceptanceDate"] = Format(main["AcceptanceDate"]),
-            ["Sheet.CreatedOn"] = Format(main["CreatedOn"]),
+            // 试验日期只印日期（用户 2026-10-15）：库里 `CreatedOn` 存的是 `yyyy-MM-dd HH:mm:ss`，
+            // 现役那边单元格是**日期格式**、显示的也只有日期 —— 我们的值是文本，所以在装配时裁掉时间
+            ["Sheet.CreatedOn"] = DateOnly(main["CreatedOn"]),
             ["Sheet.Operator"] = Format(main["Operator"]),
             ["Sheet.SampleDensity"] = Format(main["SampleDensity"]),
             ["Sheet.VoidRatio"] = Format(main["VoidRatio"]),
@@ -129,7 +131,7 @@ public sealed class BendingReportBuilder(
             ["Result.FlexuralStrengthAvg"] = Format(main["FlexuralStrengthAvg"]),
             ["Result.MaxBendingStrainAvg"] = Format(main["MaxBendingStrainAvg"]),
             ["Result.EffectiveCount"] = Format(main["EffectiveCount"]),
-            ["Device.TestDate"] = Format(main["CreatedOn"]),
+            ["Device.TestDate"] = DateOnly(main["CreatedOn"]),
         };
 
         // 说明：现役明细第 2 列是「试件长度(mm)」（读明细表 SampleLength）。
@@ -164,6 +166,21 @@ public sealed class BendingReportBuilder(
             double number => number.ToString("0.###", CultureInfo.InvariantCulture),
             _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty,
         };
+
+    /// <summary>
+    /// 报表里的"日期"只印**日期**、不带时间（用户 2026-10-15）。
+    ///
+    /// 库里 `CreatedOn` 存的是 `yyyy-MM-dd HH:mm:ss` 文本；现役报表那边单元格是日期格式，显示的只有日期。
+    /// 认得出时间就裁掉，认不出（空值 / 别的写法）就**原样返回** —— 宁可显示得丑一点，也别把数据改坏。
+    /// </summary>
+    private static string DateOnly(object? value)
+    {
+        var text = Format(value);
+
+        return DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed)
+            ? parsed.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+            : text;
+    }
 
     /// <summary>
     /// 「异常值判断」列的文案：照现役报表写**正常 / 异常**（现役 <c>UT0715Report.pas</c>：

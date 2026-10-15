@@ -333,6 +333,16 @@ public sealed class BendingReportTemplateTests : IDisposable
         Assert.Equal("G15 高速 K12+300", en.GetCellValue(2, 3));
         Assert.Equal("2", en.GetCellValue(12, 1));
         Assert.Equal("Normal", en.GetCellValue(11, 9));
+
+        // 试验日期**只印日期**、不带时间（用户 2026-10-15）：库里 CreateOn 是 `yyyy-MM-dd HH:mm:ss`，
+        // 报表装配时裁掉时间；签名行那个"日期："同样只印日期
+        var today = DateTime.Now.ToString(
+            "yyyy-MM-dd",
+            System.Globalization.CultureInfo.InvariantCulture
+        );
+        Assert.Equal(today, zh.GetCellValue(4, 9)); // 表头 R4 的"试验日期"
+        Assert.Equal(today, zh.GetCellValue(32, 2)); // 签名行"日期："
+        Assert.Equal(today, en.GetCellValue(4, 9));
     }
 
     /// <summary>
