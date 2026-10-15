@@ -35,8 +35,11 @@ public enum ParameterKind
     Date = 4,
 }
 
-/// <summary>下拉列表的一个选项：<paramref name="Value"/> 入库，<paramref name="Label"/> 显示。</summary>
-public sealed record ParameterOption(string Value, string Label);
+/// <summary>
+/// 下拉列表的一个选项：<paramref name="Value"/> 入库，<paramref name="Label"/> 显示。
+/// <paramref name="LabelKey"/> 是显示文字的资源键（空串 = 还没接键，界面回落 <paramref name="Label"/>）。
+/// </summary>
+public sealed record ParameterOption(string Value, string Label, string LabelKey = "");
 
 /// <summary>参数的作用时点（界面据此分组与提示"什么时候生效"）。</summary>
 public enum ParameterScope
@@ -56,7 +59,9 @@ public enum ParameterScope
 
 /// <summary>一个方法参数的声明（界面据此生成编辑控件，方法只声明"我有哪些参数"）。</summary>
 /// <param name="Key">参数键（入库用，发布后不改名）。</param>
-/// <param name="DisplayName">显示名。</param>
+/// <param name="DisplayName">
+/// 显示名（**兜底文本**：声明了 <c>DisplayNameKey</c> 时界面按当前语言取；取不到才用这里的中文）。
+/// </param>
 /// <param name="Unit">单位符号，无量纲留空。</param>
 /// <param name="DefaultValue">默认值（库里没有该键时用它）。</param>
 /// <param name="Kind">编辑类型（数字 / 开关 / 文本）。</param>
@@ -84,8 +89,43 @@ public sealed record ParameterDefinition(
     bool PendingIntegration = false,
 
     /// <summary><see cref="ParameterKind.Choice"/> 的选项；其它类型为 null。</summary>
-    IReadOnlyList<ParameterOption>? Options = null
-);
+    IReadOnlyList<ParameterOption>? Options = null,
+
+    /// <summary>
+    /// 显示名的**资源键**（用户 2026-10-15：语言切换要把参数名/试样信息字段名一起盖住）。
+    /// 空串 = 还没接键（迁移中：界面回落 <see cref="DisplayName"/> 的中文）。
+    /// </summary>
+    string DisplayNameKey = "",
+
+    /// <summary>说明文本的资源键（同上，空串 = 还没接键）。</summary>
+    string DescriptionKey = ""
+)
+{
+    /// <summary>
+    /// 按 <see cref="ParameterTextKeys"/> 的约定给这一项（含它的下拉选项）补上显示文本资源键；
+    /// 已经显式给了键的不动。<b>没接键的项保持空串</b> —— 界面据此回落中文兜底文本，
+    /// 于是"迁移中的一半"不会变成 ⚠ 键名。
+    /// </summary>
+    public ParameterDefinition WithTextKeys() =>
+        this with
+        {
+            DisplayNameKey = string.IsNullOrEmpty(DisplayNameKey)
+                ? ParameterTextKeys.Name(Key)
+                : DisplayNameKey,
+            DescriptionKey = string.IsNullOrEmpty(DescriptionKey)
+                && !string.IsNullOrWhiteSpace(Description)
+                    ? ParameterTextKeys.Description(Key)
+                    : DescriptionKey,
+            Options = Options?
+                .Select(option => option with
+                {
+                    LabelKey = string.IsNullOrEmpty(option.LabelKey)
+                        ? ParameterTextKeys.Option(Key, option.Value)
+                        : option.LabelKey,
+                })
+                .ToArray(),
+        };
+}
 
 /// <summary>
 /// 方法参数的读写契约。两类页面共用它：**试样编辑页**（试件尺寸）与**参数配置页**（机器与控制参数）。

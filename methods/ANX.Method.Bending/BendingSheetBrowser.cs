@@ -24,8 +24,8 @@ public sealed class BendingSheetBrowser(TestSheetService sheets, ITestParameters
     private static readonly (string Column, string DisplayKey)[] SampleColumns =
     [
         ("SampleID", BendingMetricKeys.SampleId),
-        ("SampleWidth", BendingMetricKeys.SampleWidth),
-        ("SampleHeight", BendingMetricKeys.SampleHeight),
+        ("SampleWidth", ParameterTextKeys.Name(BendingSampleFields.SampleWidthKey)),
+        ("SampleHeight", ParameterTextKeys.Name(BendingSampleFields.SampleHeightKey)),
         ("PeakLoadValue", BendingMetricKeys.PeakLoad),
         ("CorrectedDeflection", BendingMetricKeys.CorrectedDeflection),
         ("FlexuralStrength", BendingMetricKeys.FlexuralStrength),

@@ -8,13 +8,21 @@ using ANX.Ui.Services;
 /// 一行可编辑数据：键 / 显示名 / 编辑类型 / 范围提示 / 当前值 / 校验状态 / 是否改过。
 /// 界面不认识任何具体含义 —— 全部来自字段声明（方法参数与试样信息共用同一套 <see cref="ParameterDefinition"/>）。
 /// </summary>
-public partial class ParameterRow(ParameterDefinition definition, string hint) : ObservableObject
+public partial class ParameterRow(
+    ParameterDefinition definition,
+    string hint,
+    Func<string, string>? resolveText = null
+) : ObservableObject
 {
     public ParameterDefinition Definition { get; } = definition;
 
     public string Key => definition.Key;
 
-    public string DisplayName => definition.DisplayName;
+    /// <summary>
+    /// 显示名：**按资源键取当前语言**，没接键（迁移中）或取不到才用声明里的中文兜底
+    /// （用户 2026-10-15：语言切换要把参数名一起盖住）。
+    /// </summary>
+    public string DisplayName => Text(definition.DisplayNameKey, definition.DisplayName);
 
     public ParameterKind Kind => definition.Kind;
 
@@ -25,17 +33,35 @@ public partial class ParameterRow(ParameterDefinition definition, string hint) :
     /// <summary>下拉列表（通道号这类固定选项；现役用单选组，我们改下拉省空间）。</summary>
     public bool IsChoice => definition.Kind == ParameterKind.Choice;
 
-    /// <summary>下拉列表的选项。</summary>
-    public IReadOnlyList<ParameterOption> Options => definition.Options ?? [];
+    /// <summary>下拉列表的选项（<see cref="ParameterOption.Label"/> 已按当前语言解析）。</summary>
+    public IReadOnlyList<ParameterOption> Options =>
+        definition.Options is not { Count: > 0 } options
+            ? []
+            : [.. options.Select(option => option with { Label = Text(option.LabelKey, option.Label) })];
 
     /// <summary>数字与文本都走文本框（与开关 / 下拉互斥显示）。</summary>
     public bool IsTextBox =>
         definition.Kind is ParameterKind.Number or ParameterKind.Text;
 
-    /// <summary>一句话说明（照现役窗体每项的注释），显示在名称下方。</summary>
-    public string Description => definition.Description;
+    /// <summary>一句话说明（照现役窗体每项的注释），显示在名称下方；同样按资源键取当前语言。</summary>
+    public string Description => Text(definition.DescriptionKey, definition.Description);
 
-    public bool HasDescription => !string.IsNullOrWhiteSpace(definition.Description);
+    public bool HasDescription => !string.IsNullOrWhiteSpace(Description);
+
+    /// <summary>
+    /// 换语言后让界面重读显示名 / 说明 / 选项（属性是算出来的，得手动通知一声）。
+    /// </summary>
+    public void RaiseTextChanged()
+    {
+        OnPropertyChanged(nameof(DisplayName));
+        OnPropertyChanged(nameof(Description));
+        OnPropertyChanged(nameof(HasDescription));
+        OnPropertyChanged(nameof(Options));
+    }
+
+    /// <summary>取译文；没接键就回落声明里的中文（迁移期间不会变成 ⚠ 键名）。</summary>
+    private string Text(string key, string fallback) =>
+        string.IsNullOrEmpty(key) || resolveText is null ? fallback : resolveText(key);
 
     /// <summary>现役有、本软件还没功能：置灰 + 标注"待接线"。</summary>
     public bool PendingIntegration => definition.PendingIntegration;
@@ -84,7 +110,18 @@ public abstract partial class EditableRowsViewModel : ViewModelBase
     /// <summary>上次载入 / 保存的值的快照（脏状态与"重新载入"用它比对）。</summary>
     private Dictionary<string, string> _saved = new(StringComparer.Ordinal);
 
-    protected EditableRowsViewModel(ILocalizationService localization) : base(localization) { }
+    protected EditableRowsViewModel(ILocalizationService localization) : base(localization)
+    {
+        // 换语言：让每一行重读显示文本（显示名 / 说明 / 下拉选项都是算出来的属性，不通知就不会刷）。
+        // 订阅放在基类构造里：只挂一次，且后加进来的行也照顾得到。
+        localization.LanguageChanged += (_, _) =>
+        {
+            foreach (var row in Rows)
+            {
+                row.RaiseTextChanged();
+            }
+        };
+    }
 
     /// <summary>扁平清单（校验 / 保存 / 脏状态用；界面按需再分组渲染）。</summary>
     public ObservableCollection<ParameterRow> Rows { get; } = [];
@@ -118,13 +155,15 @@ public abstract partial class EditableRowsViewModel : ViewModelBase
     {
         foreach (var definition in definitions)
         {
-            Rows.Add(new ParameterRow(definition, BuildHint(definition)));
+            // 传取词函数进去：行里的显示名 / 说明 / 选项按当前语言解析（见 ParameterRow.Text）
+            Rows.Add(new ParameterRow(definition, BuildHint(definition), Localization.GetString));
         }
 
         foreach (var row in Rows)
         {
             row.PropertyChanged += (_, _) => OnRowChanged();
         }
+
     }
 
     /// <summary>把一组值写进行里并记快照（载入完成后调用）。</summary>

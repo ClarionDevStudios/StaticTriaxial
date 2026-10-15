@@ -53,10 +53,10 @@ public static class MachineParameterCatalog
     /// <summary>压力通道选项：压力通道 1~4（值 = 现役的 0 基通道索引）。</summary>
     private static readonly IReadOnlyList<ParameterOption> PressChannelOptions =
     [
-        new("0", "压力通道1"),
-        new("1", "压力通道2"),
-        new("2", "压力通道3"),
-        new("3", "压力通道4"),
+        new("0", "压力通道1", ParameterTextKeys.Option(PressChannelKey, "0")),
+        new("1", "压力通道2", ParameterTextKeys.Option(PressChannelKey, "1")),
+        new("2", "压力通道3", ParameterTextKeys.Option(PressChannelKey, "2")),
+        new("3", "压力通道4", ParameterTextKeys.Option(PressChannelKey, "3")),
     ];
 
     /// <summary>
@@ -65,23 +65,23 @@ public static class MachineParameterCatalog
     /// </summary>
     private static readonly IReadOnlyList<ParameterOption> DisplaceChannelOptions =
     [
-        new("0", "位移通道1"),
-        new("1", "位移通道2"),
-        new("2", "位移通道3"),
-        new("3", "位移通道4"),
-        new("4", "千分表1"),
-        new("5", "千分表2"),
-        new("6", "千分表3"),
-        new("7", "千分表4"),
-        new("8", "位移1+2通道平均值"),
-        new("9", "位移3+4通道平均值"),
-        new("10", "千分表1+2通道平均值"),
-        new("11", "千分表3+4通道平均值"),
+        new("0", "位移通道1", ParameterTextKeys.Option(DisplaceChannelKey, "0")),
+        new("1", "位移通道2", ParameterTextKeys.Option(DisplaceChannelKey, "1")),
+        new("2", "位移通道3", ParameterTextKeys.Option(DisplaceChannelKey, "2")),
+        new("3", "位移通道4", ParameterTextKeys.Option(DisplaceChannelKey, "3")),
+        new("4", "千分表1", ParameterTextKeys.Option(DisplaceChannelKey, "4")),
+        new("5", "千分表2", ParameterTextKeys.Option(DisplaceChannelKey, "5")),
+        new("6", "千分表3", ParameterTextKeys.Option(DisplaceChannelKey, "6")),
+        new("7", "千分表4", ParameterTextKeys.Option(DisplaceChannelKey, "7")),
+        new("8", "位移1+2通道平均值", ParameterTextKeys.Option(DisplaceChannelKey, "8")),
+        new("9", "位移3+4通道平均值", ParameterTextKeys.Option(DisplaceChannelKey, "9")),
+        new("10", "千分表1+2通道平均值", ParameterTextKeys.Option(DisplaceChannelKey, "10")),
+        new("11", "千分表3+4通道平均值", ParameterTextKeys.Option(DisplaceChannelKey, "11")),
     ];
 
     /// <summary>水平通道在正常选项前加一项"不用"。</summary>
     private static IReadOnlyList<ParameterOption> WithUnused(IReadOnlyList<ParameterOption> options) =>
-        [new("12", "不用"), .. options];
+        [new("12", "不用", "Field.Option.Unused"), .. options];
 
     /// <summary>
     /// 试验参数页「运行期」卡片的显示顺序（用户 2026-10-12 指定；键不在此表里的排在后面）。
@@ -110,8 +110,17 @@ public static class MachineParameterCatalog
 
     private const string BendingConfirmKey = "BreakConfirmSamples";
 
-    /// <summary>通用参数声明（界面按 Scope 分页签、按作用时点分区）。</summary>
+    /// <summary>
+    /// 通用参数声明（界面按 Scope 分页签、按作用时点分区）。
+    /// 显示名/说明的**中文**写在声明里当兜底，资源键按 <see cref="ParameterTextKeys"/> 的约定**自动补**上
+    /// （<c>Field.&lt;参数键&gt;</c> / <c>….Desc</c> / 选项 <c>Field.&lt;参数键&gt;.&lt;选项值&gt;</c>）——
+    /// 见 <see cref="ParameterDefinition.WithTextKeys"/>。语言字典里缺哪条，语言切换用例会红。
+    /// </summary>
     public static IReadOnlyList<ParameterDefinition> Definitions { get; } =
+        [.. RawDefinitions().Select(definition => definition.WithTextKeys())];
+
+    // 用**方法**而不是 static 属性：静态初始化按声明顺序跑，属性写在后面会被"还没赋值"坑到（实测踩过）
+    private static IReadOnlyList<ParameterDefinition> RawDefinitions() =>
     [
         // ── 通道设置 ────────────────────────────────────────────────────────
         new(PressChannelKey, "轴向压力通道", "", "1", ParameterGroup.Machine,

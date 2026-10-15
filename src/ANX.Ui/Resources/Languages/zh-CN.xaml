@@ -248,6 +248,69 @@
 
   <!-- 方法声明的指标名与曲线文字：键由方法给出（IAP 同款），文案在这里 -->
   <sys:String x:Key="Method.T0715.Load">荷载</sys:String>
+  <!--
+    参数 / 试样信息字段的显示名与说明（键 = Field.<参数键> / Field.<参数键>.Desc / Field.<参数键>.<选项值>，
+    由 ANX.Control 的 ParameterTextKeys 约定出来）。中文与声明里的兜底文本逐字一致，
+    英文尽量用缩写（用户 2026-10-15：「翻译成英文时，能使用缩写的必须使用缩写」）。
+  -->
+  <sys:String x:Key="Field.PressChannel">轴向压力通道</sys:String>
+  <sys:String x:Key="Field.PressChannel.Desc">轴向压力取自哪个通道；保存即时生效，荷载读数立刻按新通道取。现役默认通道 1 = 100.000kN 主传感器（通道 2 是 5kN 小量程）。</sys:String>
+  <sys:String x:Key="Field.PressChannel.0">压力通道1</sys:String>
+  <sys:String x:Key="Field.PressChannel.1">压力通道2</sys:String>
+  <sys:String x:Key="Field.PressChannel.2">压力通道3</sys:String>
+  <sys:String x:Key="Field.PressChannel.3">压力通道4</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel">轴向位移通道</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.Desc">轴向位移取自哪个通道；保存即时生效，位移读数立刻按新通道取。真机两路位移量程都是 25.000mm。</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.0">位移通道1</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.1">位移通道2</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.2">位移通道3</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.3">位移通道4</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.4">千分表1</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.5">千分表2</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.6">千分表3</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.7">千分表4</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.8">位移1+2通道平均值</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.9">位移3+4通道平均值</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.10">千分表1+2通道平均值</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.11">千分表3+4通道平均值</sys:String>
+  <sys:String x:Key="Field.Option.Unused">不用</sys:String>
+  <sys:String x:Key="Field.HorizontalPressChannel">水平压力通道</sys:String>
+  <sys:String x:Key="Field.HorizontalPressChannel.Desc">水平压力取自哪个通道（不用 = 0）。当前判定不使用该通道，先把现场配置存下来。</sys:String>
+  <sys:String x:Key="Field.HorizontalDisplaceChannel">水平位移通道</sys:String>
+  <sys:String x:Key="Field.HorizontalDisplaceChannel.Desc">水平位移取自哪个通道（不用 = 0）。当前判定不使用该通道，先把现场配置存下来。</sys:String>
+  <sys:String x:Key="Field.AutoFallTime">试验完成后归位时间</sys:String>
+  <sys:String x:Key="Field.AutoFallTime.Desc">试验完成（破坏确认，或量程停机）后，电机反转把工作台送回起始位置所用的秒数（现役 AutoFallTime「试验结束自动下降时间」；现场配 5s）。归位段的数据不记入曲线；生效时点在「破坏后继续加载时间」之后：破坏确认 → 继续加载 → 归位。</sys:String>
+  <sys:String x:Key="Field.JogSpeed">平台升降速率</sys:String>
+  <sys:String x:Key="Field.JogSpeed.Desc">执行页「工作台上升 / 下降」按钮的升降速率，与试验加载速率分开；受电机 50mm/min 上限约束。</sys:String>
+  <sys:String x:Key="Field.DisplacementSafetyFactor">位移闸门安全系数</sys:String>
+  <sys:String x:Key="Field.DisplacementSafetyFactor.Desc">位移闸门 = 设备位移量程 × 本系数（真机 25mm → 23.75mm）。超量程会压坏位移传感器。</sys:String>
+  <sys:String x:Key="Field.LoadSafetyFactor">荷载闸门安全系数</sys:String>
+  <sys:String x:Key="Field.LoadSafetyFactor.Desc">荷载闸门 = 设备压力量程 × 本系数（真机 100kN → 95kN）；取不到量程时回落现役常量 50kN。</sys:String>
+  <sys:String x:Key="Field.MinBreakLoad">不判破坏荷载下限</sys:String>
+  <sys:String x:Key="Field.MinBreakLoad.Desc">峰值荷载小于该值时不判断破坏（现役弯曲线程 MaxLoad &gt;= BREAK_MIN_LOAD_KN；现场配 200N = 0.2kN）。0 = 不启用下限。</sys:String>
+  <sys:String x:Key="Field.ContinueLoadingTime">破坏后继续加载时间</sys:String>
+  <sys:String x:Key="Field.ContinueLoadingTime.Desc">破坏确认后仍继续加载的时间（单位秒），让曲线走出一段破坏后的荷载下降趋势（现役 ContinueLoadingTime）。这一段的数据记入曲线；走完再按「试验完成后归位时间」反转归位（归位段不记曲线）。0 = 不做继续加载，确认后直接归位。</sys:String>
+  <sys:String x:Key="Field.EnableOriginCorrection">启用曲线原点修正</sys:String>
+  <sys:String x:Key="Field.EnableOriginCorrection.Desc">是否做曲线原点修正（有的试验需要、有的不需要）。关闭时修正原点记 0、校正挠度 = 峰值挠度、应变按未修正挠度算。</sys:String>
+  <sys:String x:Key="Field.OriginCorrectionStart">原点修正区间起点</sys:String>
+  <sys:String x:Key="Field.OriginCorrectionStart.Desc">拟合修正直线的荷载区间起点（占峰值荷载百分数）。规范未规定拟合方法；现役代码默认 10，现场配 20。</sys:String>
+  <sys:String x:Key="Field.OriginCorrectionEnd">原点修正区间终点</sys:String>
+  <sys:String x:Key="Field.OriginCorrectionEnd.Desc">拟合修正直线的荷载区间终点（占峰值荷载百分数）。现役代码默认 80，现场配 60。</sys:String>
+  <sys:String x:Key="Field.LockDisplacement">锁定峰值位移</sys:String>
+  <sys:String x:Key="Field.LockDisplacement.Desc">跨中挠度取峰值荷载点的位移（现役 LockDisplacement）；每个试验默认选中。取消则取曲线最大位移。</sys:String>
+  <sys:String x:Key="Field.LoadRate">加载速率</sys:String>
+  <sys:String x:Key="Field.LoadRate.Desc">试验过程的加载速率。规范 T0715 规定 50mm/min±5；电机上限 50mm/min。现役现场配的是 5（属现场配置）。</sys:String>
+  <sys:String x:Key="Field.ContactLoad">接触判定阈值</sys:String>
+  <sys:String x:Key="Field.ContactLoad.Desc">荷载达到该值视为压头已接触试件（现役 ZeroDisplacement「压力小于该值时位移清零」，单位 N→kN）；接触成立时位移调零并切到试验速率。</sys:String>
+  <sys:String x:Key="Field.BreakDrop">破坏判据（荷载下降量）</sys:String>
+  <sys:String x:Key="Field.BreakDrop.Desc">荷载自峰值下降超过该值即视为破坏（现役 PressureDrop「压力落差」，单位 N→kN；现场配 0.5kN）。</sys:String>
+  <sys:String x:Key="Field.BreakConfirmSamples">破坏确认帧数</sys:String>
+  <sys:String x:Key="Field.BreakConfirmSamples.Desc">破坏确认所需的连续帧数（现役 NumberOfFilters，注释写「滤波次数」，实际当确认帧数用；现场配 5）。</sys:String>
+  <!-- 试样信息字段（试件尺寸；填录后随该件存进明细） -->
+  <sys:String x:Key="Field.SpanLength">跨径 L</sys:String>
+  <sys:String x:Key="Field.SampleLength">试件长度</sys:String>
+  <sys:String x:Key="Field.SampleWidth">试件宽度 b</sys:String>
+  <sys:String x:Key="Field.SampleHeight">试件高度 h</sys:String>
   <sys:String x:Key="Method.T0715.Displacement">位移</sys:String>
   <sys:String x:Key="Method.T0715.FlexuralStrength">弯拉强度</sys:String>
   <sys:String x:Key="Method.T0715.OriginCorrection">修正原点</sys:String>
@@ -257,8 +320,6 @@
   <sys:String x:Key="Method.T0715.CurveTitle">试件 {0}</sys:String>
   <!-- 历史数据页「试件」列表与字段表的列名（用户 2026-10-15：要和当前语言一致） -->
   <sys:String x:Key="Method.T0715.SampleId">试件号</sys:String>
-  <sys:String x:Key="Method.T0715.SampleWidth">试件宽度</sys:String>
-  <sys:String x:Key="Method.T0715.SampleHeight">试件高度</sys:String>
   <sys:String x:Key="Method.T0715.PeakLoad">峰值荷载</sys:String>
   <sys:String x:Key="Method.T0715.ValidityNormal">正常</sys:String>
   <sys:String x:Key="Method.T0715.ValidityAbnormal">异常</sys:String>

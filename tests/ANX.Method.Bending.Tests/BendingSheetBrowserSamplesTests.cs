@@ -65,9 +65,16 @@ public sealed class BendingSheetBrowserSamplesTests : IDisposable
         // 第一列就是试件号本身（列表标题要用），值照旧
         Assert.Equal("S001", row[BendingMetricKeys.SampleId]);
 
-        // 全部键都是**方法声明的**资源键（资源存在性由 CurveAxisResourceTests 对着语言字典查）
+        // 全部键都是**声明里挂着的**资源键（明细列用方法指标键或试样字段键；存在性由
+        // CurveAxisResourceTests / ParameterLocalizationTests 对着语言字典查）
+        string[] declared =
+        [
+            .. BendingMetricKeys.All,
+            .. BendingSampleFields.Definitions.Select(field => field.DisplayNameKey),
+        ];
+
         IEnumerable<string> keys = row.Keys;
-        Assert.All(keys, key => Assert.Contains(key, BendingMetricKeys.All));
+        Assert.All(keys, key => Assert.Contains(key, declared));
 
         // 库里那几个列名一个都不该露出来
         Assert.DoesNotContain("SampleID", keys);

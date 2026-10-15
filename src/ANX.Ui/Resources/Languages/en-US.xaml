@@ -246,6 +246,69 @@
   <sys:String x:Key="Chart.Axis.Deflection">Midspan deflection (mm)</sys:String>
   <sys:String x:Key="Chart.Axis.Load">Load (kN)</sys:String>
 
+  <!--
+    Parameter / sample-info field texts (keys come from ANX.Control.ParameterTextKeys).
+    English keeps to abbreviations wherever possible (user 2026-10-15: "能使用缩写的必须使用缩写").
+  -->
+  <sys:String x:Key="Field.PressChannel">Load channel</sys:String>
+  <sys:String x:Key="Field.PressChannel.Desc">Which channel the axial load comes from. Takes effect on save. Factory default ch. 1 = 100 kN main sensor (ch. 2 = 5 kN).</sys:String>
+  <sys:String x:Key="Field.PressChannel.0">Load ch. 1</sys:String>
+  <sys:String x:Key="Field.PressChannel.1">Load ch. 2</sys:String>
+  <sys:String x:Key="Field.PressChannel.2">Load ch. 3</sys:String>
+  <sys:String x:Key="Field.PressChannel.3">Load ch. 4</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel">Displ. channel</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.Desc">Which channel the axial displacement comes from. Takes effect on save. Both machine channels are 25.000 mm.</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.0">Displ. ch. 1</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.1">Displ. ch. 2</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.2">Displ. ch. 3</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.3">Displ. ch. 4</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.4">Dial 1</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.5">Dial 2</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.6">Dial 3</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.7">Dial 4</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.8">Avg. displ. 1+2</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.9">Avg. displ. 3+4</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.10">Avg. dial 1+2</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.11">Avg. dial 3+4</sys:String>
+  <sys:String x:Key="Field.Option.Unused">Unused</sys:String>
+  <sys:String x:Key="Field.HorizontalPressChannel">Horiz. load ch.</sys:String>
+  <sys:String x:Key="Field.HorizontalPressChannel.Desc">Which channel the horizontal load comes from (Unused = 0). Not used by the current analysis — stored for the record only.</sys:String>
+  <sys:String x:Key="Field.HorizontalDisplaceChannel">Horiz. displ. ch.</sys:String>
+  <sys:String x:Key="Field.HorizontalDisplaceChannel.Desc">Which channel the horizontal displacement comes from (Unused = 0). Not used by the current analysis — stored for the record only.</sys:String>
+  <sys:String x:Key="Field.AutoFallTime">Reset time</sys:String>
+  <sys:String x:Key="Field.AutoFallTime.Desc">Seconds the motor reverses after the test ends (break confirmed or limit stop) to return the table home. Not recorded into the curve. Runs after "Continue after break".</sys:String>
+  <sys:String x:Key="Field.JogSpeed">Jog speed</sys:String>
+  <sys:String x:Key="Field.JogSpeed.Desc">Speed of the worktable up/down buttons on the run page; separate from the test load rate. Capped at 50 mm/min by the motor.</sys:String>
+  <sys:String x:Key="Field.DisplacementSafetyFactor">Displ. limit factor</sys:String>
+  <sys:String x:Key="Field.DisplacementSafetyFactor.Desc">Displacement limit = device range x factor (25 mm → 23.75 mm). Going past the range damages the sensor.</sys:String>
+  <sys:String x:Key="Field.LoadSafetyFactor">Load limit factor</sys:String>
+  <sys:String x:Key="Field.LoadSafetyFactor.Desc">Load limit = device load range x factor (100 kN → 95 kN); falls back to 50 kN when the range is unknown.</sys:String>
+  <sys:String x:Key="Field.MinBreakLoad">Min. break load</sys:String>
+  <sys:String x:Key="Field.MinBreakLoad.Desc">Peak load below this value is not judged as a break (factory bending constant BREAK_MIN_LOAD_KN; site value 200 N = 0.2 kN). 0 = no lower limit.</sys:String>
+  <sys:String x:Key="Field.ContinueLoadingTime">Continue after break</sys:String>
+  <sys:String x:Key="Field.ContinueLoadingTime.Desc">Seconds of extra loading after the break is confirmed, so the curve shows the falling trend. This part IS recorded. Then the table resets. 0 = reset right away.</sys:String>
+  <sys:String x:Key="Field.EnableOriginCorrection">Origin correction</sys:String>
+  <sys:String x:Key="Field.EnableOriginCorrection.Desc">Whether to correct the curve origin (some tests need it, some not). When off, origin = 0 and the strain uses the uncorrected deflection.</sys:String>
+  <sys:String x:Key="Field.OriginCorrectionStart">Fit range start</sys:String>
+  <sys:String x:Key="Field.OriginCorrectionStart.Desc">Start of the load range used to fit the tangent line (% of peak load). Not fixed by the standard; code default 10, site value 20.</sys:String>
+  <sys:String x:Key="Field.OriginCorrectionEnd">Fit range end</sys:String>
+  <sys:String x:Key="Field.OriginCorrectionEnd.Desc">End of the load range used to fit the tangent line (% of peak load). Code default 80, site value 60.</sys:String>
+  <sys:String x:Key="Field.LockDisplacement">Lock peak displ.</sys:String>
+  <sys:String x:Key="Field.LockDisplacement.Desc">Midspan deflection taken at the peak load point (factory LockDisplacement); selected by default. Clear it to use the maximum deflection.</sys:String>
+  <sys:String x:Key="Field.LoadRate">Load rate</sys:String>
+  <sys:String x:Key="Field.LoadRate.Desc">Loading rate of the test. T0715 specifies 50 mm/min ±5; motor cap 50 mm/min. Site value is 5.</sys:String>
+  <sys:String x:Key="Field.ContactLoad">Contact load</sys:String>
+  <sys:String x:Key="Field.ContactLoad.Desc">Load above this value means the head has touched the specimen (factory ZeroDisplacement). On contact the deflection is zeroed and the rate switches to the test rate.</sys:String>
+  <sys:String x:Key="Field.BreakDrop">Break drop</sys:String>
+  <sys:String x:Key="Field.BreakDrop.Desc">Load falling this far below the peak counts as a break (factory PressureDrop; site value 0.5 kN).</sys:String>
+  <sys:String x:Key="Field.BreakConfirmSamples">Break frames</sys:String>
+  <sys:String x:Key="Field.BreakConfirmSamples.Desc">Consecutive frames required to confirm a break (factory NumberOfFilters; site value 5).</sys:String>
+  <!-- Specimen info fields (specimen dimensions, stored per specimen) -->
+  <sys:String x:Key="Field.SpanLength">Span L</sys:String>
+  <sys:String x:Key="Field.SampleLength">Length</sys:String>
+  <sys:String x:Key="Field.SampleWidth">Width b</sys:String>
+  <sys:String x:Key="Field.SampleHeight">Height h</sys:String>
+
   <!-- Method-declared metric names and curve text: the method supplies the key (IAP style), the wording lives here -->
   <sys:String x:Key="Method.T0715.Load">Load</sys:String>
   <sys:String x:Key="Method.T0715.Displacement">Displacement</sys:String>
@@ -257,8 +320,6 @@
   <sys:String x:Key="Method.T0715.CurveTitle">Specimen {0}</sys:String>
   <!-- Column names of the history page's specimen list / field table -->
   <sys:String x:Key="Method.T0715.SampleId">Specimen</sys:String>
-  <sys:String x:Key="Method.T0715.SampleWidth">Specimen width</sys:String>
-  <sys:String x:Key="Method.T0715.SampleHeight">Specimen height</sys:String>
   <sys:String x:Key="Method.T0715.PeakLoad">Peak load</sys:String>
   <sys:String x:Key="Method.T0715.ValidityNormal">Normal</sys:String>
   <sys:String x:Key="Method.T0715.ValidityAbnormal">Abnormal</sys:String>

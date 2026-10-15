@@ -124,7 +124,15 @@ public sealed class BendingParameters(ParameterStore store) : ITestParameters
     /// 记录显示…）属于通用界面，声明在 <see cref="MachineParameterCatalog"/>；
     /// 界面把"通用目录 ∪ 方法参数"合并渲染，同键以方法声明为准。
     /// </summary>
+    /// <summary>
+    /// 方法级参数声明。中文写在声明里当兜底，资源键按 <see cref="ParameterTextKeys"/> 的约定自动补
+    /// （见 <see cref="ParameterDefinition.WithTextKeys"/>）—— 语言切换时这几项跟着走。
+    /// </summary>
     public IReadOnlyList<ParameterDefinition> Definitions { get; } =
+        [.. RawDefinitions().Select(definition => definition.WithTextKeys())];
+
+    /// <summary>中文兜底的原始声明（键由 <see cref="ParameterDefinition.WithTextKeys"/> 按约定补）。</summary>
+    private static IReadOnlyList<ParameterDefinition> RawDefinitions() =>
     [
         new(LoadRateKey, "加载速率", "mm/min", "50",
             Kind: ParameterKind.Number, Minimum: 0.1, Maximum: 50, Scope: ParameterScope.Runtime,

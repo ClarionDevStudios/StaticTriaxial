@@ -32,6 +32,10 @@ public static class BendingSampleFields
     /// （现役窗体里长度/宽度/高度还各有一句注释：宽度与高度是"3 处测量的平均值"、跨径是"支点间距"。）
     /// </summary>
     public static readonly IReadOnlyList<ParameterDefinition> Definitions =
+        [.. RawDefinitions().Select(definition => definition.WithTextKeys())];
+
+    /// <summary>中文兜底的原始声明（键由 <see cref="ParameterDefinition.WithTextKeys"/> 按约定补）。</summary>
+    private static IReadOnlyList<ParameterDefinition> RawDefinitions() =>
     [
         new(SpanLengthKey, "跨径 L", "mm", "200",
             Kind: ParameterKind.Number, Minimum: 10, Maximum: 1000, Scope: ParameterScope.Computation),

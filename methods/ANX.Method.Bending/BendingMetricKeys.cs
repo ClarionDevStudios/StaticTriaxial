@@ -31,12 +31,6 @@ public static class BendingMetricKeys
     /// </summary>
     public const string SampleId = "Method.T0715.SampleId";
 
-    /// <summary>试件宽度（明细列 <c>SampleWidth</c>）。</summary>
-    public const string SampleWidth = "Method.T0715.SampleWidth";
-
-    /// <summary>试件高度（明细列 <c>SampleHeight</c>）。</summary>
-    public const string SampleHeight = "Method.T0715.SampleHeight";
-
     /// <summary>峰值荷载（明细列 <c>PeakLoadValue</c>）。</summary>
     public const string PeakLoad = "Method.T0715.PeakLoad";
 
@@ -64,8 +58,6 @@ public static class BendingMetricKeys
         ValidityNormal,
         ValidityAbnormal,
         SampleId,
-        SampleWidth,
-        SampleHeight,
         PeakLoad,
         BendingCurveAxes.Deflection,
         BendingCurveAxes.Load,
