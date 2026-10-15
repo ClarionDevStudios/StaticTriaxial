@@ -32,6 +32,16 @@ public sealed class ParameterLocalizationTests : IDisposable
         var dictionary = File.ReadAllText(FindDictionary(language), Encoding.UTF8);
 
         var missing = new List<string>();
+
+        // 方法层抛给界面的消息（BendingMessageKeys）+ 界面自己用到的通用键
+        foreach (var key in BendingMessageKeys.All.Concat(["Common.ListSeparator"]))
+        {
+            if (!dictionary.Contains($"x:Key=\"{key}\"", StringComparison.Ordinal))
+            {
+                missing.Add($"消息 {key}");
+            }
+        }
+
         foreach (var definition in DefinitionsUnderTest())
         {
             Check(definition.DisplayNameKey, $"{definition.Key} 显示名", required: true);
@@ -88,6 +98,7 @@ public sealed class ParameterLocalizationTests : IDisposable
         return [
             .. MachineParameterCatalog.Definitions,
             .. BendingSampleFields.Definitions,
+            .. BendingSheetFields.Definitions,
             .. method.Definitions,
         ];
     }

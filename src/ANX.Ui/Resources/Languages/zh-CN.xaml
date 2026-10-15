@@ -12,6 +12,7 @@
   <sys:String x:Key="Common.Yes">确定</sys:String>
   <sys:String x:Key="Common.No">取消</sys:String>
   <sys:String x:Key="Common.ExitConfirm">确定要退出软件吗？</sys:String>
+  <sys:String x:Key="Common.ListSeparator">；</sys:String>
 
   <sys:String x:Key="Home.Title">首页</sys:String>
   <sys:String x:Key="Home.Subtitle">C# / WPF 重构版（学习项目）。目标不是替换现役软件，而是练 C# 与工业上位机开发能力；现役 Delphi 软件继续维护，并扮演"标准答案"。</sys:String>
@@ -311,6 +312,44 @@
   <sys:String x:Key="Field.SampleLength">试件长度</sys:String>
   <sys:String x:Key="Field.SampleWidth">试件宽度 b</sys:String>
   <sys:String x:Key="Field.SampleHeight">试件高度 h</sys:String>
+  <!-- 试验单字段（试验单编辑弹窗；名字里的 " *" 是必填标记，照现役） -->
+  <sys:String x:Key="Field.Sheet.SheetID">试验单号</sys:String>
+  <sys:String x:Key="Field.Sheet.SheetID.Desc">自动生成（只读）</sys:String>
+  <sys:String x:Key="Field.Sheet.ClientUnits">委托单位</sys:String>
+  <sys:String x:Key="Field.Sheet.SupervisionUnits">监理单位</sys:String>
+  <sys:String x:Key="Field.Sheet.ProjectName">项目名称 *</sys:String>
+  <sys:String x:Key="Field.Sheet.TestSpecificationsId">试验规范 *</sys:String>
+  <sys:String x:Key="Field.Sheet.TestSpecificationsId.0">T 0715-2025 沥青混合料弯曲试验</sys:String>
+  <sys:String x:Key="Field.Sheet.MixtureType">混合料类型 *</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleSizeId">试件尺寸(mm) *</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleSizeId.Desc">该单的描述性记录；判定用逐件试样信息的 b/h/跨径</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleSizeId.0">(250×30x35)mm</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleSizeId.1">(250×40x40)mm</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleSizeId.2">(250×50x50)mm</sys:String>
+  <sys:String x:Key="Field.Sheet.TestObjectiveId">试验目的 *</sys:String>
+  <sys:String x:Key="Field.Sheet.TestObjectiveId.0">常温弯拉性能</sys:String>
+  <sys:String x:Key="Field.Sheet.TestObjectiveId.1">低温弯拉性能</sys:String>
+  <sys:String x:Key="Field.Sheet.CreatedOn">试验时间</sys:String>
+  <sys:String x:Key="Field.Sheet.CreatedOn.Desc">新建时填当前时间</sys:String>
+  <sys:String x:Key="Field.Sheet.TestTemperature">试验温度 *</sys:String>
+  <sys:String x:Key="Field.Sheet.LoadRate">加载速率 *</sys:String>
+  <sys:String x:Key="Field.Sheet.AcceptanceDate">接样日期</sys:String>
+  <sys:String x:Key="Field.Sheet.Operator">试验员</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleDensity">试样密度</sys:String>
+  <sys:String x:Key="Field.Sheet.VoidRatio">空隙率</sys:String>
+  <sys:String x:Key="Field.Sheet.AsphaltUsage">沥青用量</sys:String>
+  <sys:String x:Key="Field.Sheet.ContentByVolume">沥青体积百分比</sys:String>
+  <sys:String x:Key="Field.Sheet.AsphaltSaturation">沥青饱和度</sys:String>
+  <sys:String x:Key="Field.Sheet.MineralAggregateVoidRatio">矿料间隙率</sys:String>
+  <!-- 方法层抛给界面的消息（键在 BendingMessageKeys；参数里嵌的是字段名的键） -->
+  <sys:String x:Key="Method.T0715.Name">沥青混合料弯曲试验</sys:String>
+  <sys:String x:Key="Msg.FieldRequired">{0}不能为空</sys:String>
+  <sys:String x:Key="Msg.FieldChoose">请选择{0}</sys:String>
+  <sys:String x:Key="Msg.FieldFormat">{0}格式不对</sys:String>
+  <sys:String x:Key="Msg.FieldOutOfRange">{0}必须在 {1} ~ {2} 之间</sys:String>
+  <sys:String x:Key="Msg.T0715.CurveTooFewPoints">曲线点数不足以做原点修正（至少 3 点）</sys:String>
+  <sys:String x:Key="Msg.T0715.FitFailed">无法拟合修正直线（峰值非正或上升段不足）</sys:String>
+  <sys:String x:Key="Msg.T0715.GroupEmpty">一组至少要有 1 个试件</sys:String>
   <sys:String x:Key="Method.T0715.Displacement">位移</sys:String>
   <sys:String x:Key="Method.T0715.FlexuralStrength">弯拉强度</sys:String>
   <sys:String x:Key="Method.T0715.OriginCorrection">修正原点</sys:String>

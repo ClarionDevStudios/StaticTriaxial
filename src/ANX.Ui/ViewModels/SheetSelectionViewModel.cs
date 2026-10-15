@@ -19,11 +19,15 @@ public enum SheetEditMode
 }
 
 /// <summary>试验单信息的一行（界面按方法声明的字段生成，不认识具体字段含义）。</summary>
-public partial class SheetFieldRow(ParameterDefinition definition) : ObservableObject
+public partial class SheetFieldRow(
+    ParameterDefinition definition,
+    Func<string, string>? resolveText = null
+) : ObservableObject
 {
     public string Key { get; } = definition.Key;
 
-    public string Label { get; } = definition.DisplayName;
+    /// <summary>显示名：按资源键取当前语言，没接键（迁移中）才回落声明里的中文。</summary>
+    public string Label => Text(definition.DisplayNameKey, definition.DisplayName);
 
     public string Unit { get; } = definition.Unit;
 
@@ -34,8 +38,21 @@ public partial class SheetFieldRow(ParameterDefinition definition) : ObservableO
     /// <summary>方法给的默认值（新建时先用它；参数表里有同键的值再覆盖）。</summary>
     public string DefaultValue { get; } = definition.DefaultValue;
 
-    /// <summary>下拉选项（<see cref="ParameterKind.Choice"/> 才有）。</summary>
-    public IReadOnlyList<ParameterOption> Options { get; } = definition.Options ?? [];
+    /// <summary>下拉选项（<see cref="ParameterKind.Choice"/> 才有）；<c>Label</c> 已按当前语言解析。</summary>
+    public IReadOnlyList<ParameterOption> Options =>
+        definition.Options is not { Count: > 0 } options
+            ? []
+            : [.. options.Select(option => option with { Label = Text(option.LabelKey, option.Label) })];
+
+    /// <summary>换语言 / 重开弹窗时让界面重读显示名与选项（都是算出来的属性）。</summary>
+    public void RaiseTextChanged()
+    {
+        OnPropertyChanged(nameof(Label));
+        OnPropertyChanged(nameof(Options));
+    }
+
+    private string Text(string key, string fallback) =>
+        string.IsNullOrEmpty(key) || resolveText is null ? fallback : resolveText(key);
 
     /// <summary>当前值（文本；下拉时是选项的 Value）。</summary>
     [ObservableProperty]
@@ -105,7 +122,14 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
         _parameters = parameters;
         _current = current;
 
-        Rows = [.. editor.SheetInfoFields.Select(definition => new SheetFieldRow(definition))];
+        // 取词函数传进去：行里的显示名与下拉选项按当前语言解析（见 SheetFieldRow.Text）
+        Rows =
+        [
+            .. editor.SheetInfoFields.Select(definition => new SheetFieldRow(
+                definition,
+                localization.GetString
+            )),
+        ];
 
         foreach (var row in Rows)
         {
@@ -267,6 +291,11 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
         }
 
         // 文案在这里现取：ViewModel 是单例，语言切换后（弹窗重开时）要跟着变
+        foreach (var row in Rows)
+        {
+            row.RaiseTextChanged(); // 字段显示名与下拉选项同样是"现取"的（见 SheetFieldRow）
+        }
+
         OptionalHint =
             L("Sheet.OptionalHint")
             + string.Join(
@@ -569,7 +598,7 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
         }
         catch (Exception ex)
         {
-            SetStatus($"{L("Sheet.CreateFailed")}: {ex.Message}", isError: true);
+            SetStatus($"{L("Sheet.CreateFailed")}: {Text(ex)}", isError: true);
         }
     }
 

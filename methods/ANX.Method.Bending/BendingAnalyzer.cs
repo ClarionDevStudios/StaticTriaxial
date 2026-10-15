@@ -125,7 +125,14 @@ public static class BendingAnalyzer
         ArgumentNullException.ThrowIfNull(curve);
         if (curve.Count < 3)
         {
-            throw new ArgumentException("曲线点数不足以做原点修正（至少 3 点）", nameof(curve));
+            throw new ArgumentException(
+                "曲线点数不足以做原点修正（至少 3 点）",
+                nameof(curve),
+                new LocalizedException(
+                    "曲线点数不足以做原点修正（至少 3 点）",
+                    new LocalizedText(BendingMessageKeys.CurveTooFewPoints)
+                )
+            );
         }
 
         var (peakLoad, peakDeflection) = FindMaxLoadPoint(curve);
@@ -144,7 +151,10 @@ public static class BendingAnalyzer
             );
             if (tangent is null)
             {
-                throw new InvalidOperationException("无法拟合修正直线（峰值非正或上升段不足）");
+                throw LocalizedException.Single(
+                    BendingMessageKeys.FitFailed,
+                    "无法拟合修正直线（峰值非正或上升段不足）"
+                );
             }
 
             (k, b) = tangent.Value;
@@ -202,7 +212,11 @@ public static class BendingAnalyzer
         ArgumentNullException.ThrowIfNull(samples);
         if (samples.Count == 0)
         {
-            throw new ArgumentException("一组至少要有 1 个试件", nameof(samples));
+            throw new ArgumentException(
+                "一组至少要有 1 个试件",
+                nameof(samples),
+                LocalizedException.Single(BendingMessageKeys.GroupEmpty, "一组至少要有 1 个试件")
+            );
         }
 
         var working = samples.Select((sample, index) => (Index: index, Sample: sample)).ToList();

@@ -255,7 +255,7 @@ public abstract partial class EditableRowsViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            SetStatus($"{L("Param.SaveFailed")}: {ex.Message}", isError: true);
+            SetStatus($"{L("Param.SaveFailed")}: {Text(ex)}", isError: true);
         }
         finally
         {

@@ -1,6 +1,7 @@
 namespace ANX.Method.Bending.Tests;
 
 using ANX.Control;
+using ANX.Core;
 using ANX.Storage;
 using Microsoft.Data.Sqlite;
 
@@ -129,7 +130,7 @@ public sealed class BendingSheetEditorTests : IDisposable
         var (_, execution, _) = Create();
 
         // 一项都不填 → 项目名称先报
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAsync<LocalizedException>(
             () => execution.CreateSheetAsync(new Dictionary<string, string>(StringComparer.Ordinal))
         );
 
@@ -139,7 +140,7 @@ public sealed class BendingSheetEditorTests : IDisposable
             var fields = FullFields();
             fields.Remove(key);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(
+            await Assert.ThrowsAsync<LocalizedException>(
                 () => execution.CreateSheetAsync(fields)
             );
         }
@@ -147,7 +148,7 @@ public sealed class BendingSheetEditorTests : IDisposable
         // 温度 / 速率要能解析成数字（现役 TryStrToFloat / TryStrToInt）
         var bad = FullFields();
         bad["TestTemperature"] = "常温";
-        await Assert.ThrowsAsync<InvalidOperationException>(() => execution.CreateSheetAsync(bad));
+        await Assert.ThrowsAsync<LocalizedException>(() => execution.CreateSheetAsync(bad));
 
         // 体积指标留空**不算错**（用户 2026-10-14）
         var ok = FullFields();
@@ -229,7 +230,7 @@ public sealed class BendingSheetEditorTests : IDisposable
         {
             ["ProjectName"] = string.Empty,
         };
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAsync<LocalizedException>(
             () => execution.UpdateSheetAsync(sheetId, missingName)
         );
 
@@ -237,7 +238,7 @@ public sealed class BendingSheetEditorTests : IDisposable
         {
             ["VoidRatio"] = "不是数字",
         };
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAsync<LocalizedException>(
             () => execution.UpdateSheetAsync(sheetId, badNumber)
         );
 
@@ -245,7 +246,7 @@ public sealed class BendingSheetEditorTests : IDisposable
         {
             ["LoadRate"] = "60",
         };
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        await Assert.ThrowsAsync<LocalizedException>(
             () => execution.UpdateSheetAsync(sheetId, tooFast)
         );
 

@@ -110,7 +110,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            SetStatus($"{L("Settings.DataSourceFailed")}: {ex.Message}", isError: true);
+            SetStatus($"{L("Settings.DataSourceFailed")}: {Text(ex)}", isError: true);
         }
     }
 
@@ -173,7 +173,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            SetStatus($"{L("Settings.SaveFailed")}: {ex.Message}", isError: true);
+            SetStatus($"{L("Settings.SaveFailed")}: {Text(ex)}", isError: true);
         }
     }
 

@@ -12,6 +12,7 @@
   <sys:String x:Key="Common.Yes">OK</sys:String>
   <sys:String x:Key="Common.No">Cancel</sys:String>
   <sys:String x:Key="Common.ExitConfirm">Are you sure you want to exit?</sys:String>
+  <sys:String x:Key="Common.ListSeparator">; </sys:String>
 
   <sys:String x:Key="Home.Title">Home</sys:String>
   <sys:String x:Key="Home.Subtitle">C# / WPF rewrite (a learning project). The goal is not to replace the existing software but to practise C# and industrial HMI engineering; the Delphi software stays in service and serves as the reference answer.</sys:String>
@@ -308,6 +309,44 @@
   <sys:String x:Key="Field.SampleLength">Length</sys:String>
   <sys:String x:Key="Field.SampleWidth">Width b</sys:String>
   <sys:String x:Key="Field.SampleHeight">Height h</sys:String>
+  <!-- Test-sheet fields (sheet editor dialog); the trailing " *" marks a required field -->
+  <sys:String x:Key="Field.Sheet.SheetID">Sheet no.</sys:String>
+  <sys:String x:Key="Field.Sheet.SheetID.Desc">Auto-generated (read-only)</sys:String>
+  <sys:String x:Key="Field.Sheet.ClientUnits">Client</sys:String>
+  <sys:String x:Key="Field.Sheet.SupervisionUnits">Supervisor</sys:String>
+  <sys:String x:Key="Field.Sheet.ProjectName">Project *</sys:String>
+  <sys:String x:Key="Field.Sheet.TestSpecificationsId">Standard *</sys:String>
+  <sys:String x:Key="Field.Sheet.TestSpecificationsId.0">T 0715-2025 Asphalt bending test</sys:String>
+  <sys:String x:Key="Field.Sheet.MixtureType">Mixture *</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleSizeId">Size (mm) *</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleSizeId.Desc">Record only; the analysis uses the per-specimen b/h/span</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleSizeId.0">(250×30x35)mm</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleSizeId.1">(250×40x40)mm</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleSizeId.2">(250×50x50)mm</sys:String>
+  <sys:String x:Key="Field.Sheet.TestObjectiveId">Objective *</sys:String>
+  <sys:String x:Key="Field.Sheet.TestObjectiveId.0">Normal temp.</sys:String>
+  <sys:String x:Key="Field.Sheet.TestObjectiveId.1">Low temp.</sys:String>
+  <sys:String x:Key="Field.Sheet.CreatedOn">Test time</sys:String>
+  <sys:String x:Key="Field.Sheet.CreatedOn.Desc">Set to now on create</sys:String>
+  <sys:String x:Key="Field.Sheet.TestTemperature">Temp. *</sys:String>
+  <sys:String x:Key="Field.Sheet.LoadRate">Load rate *</sys:String>
+  <sys:String x:Key="Field.Sheet.AcceptanceDate">Received</sys:String>
+  <sys:String x:Key="Field.Sheet.Operator">Operator</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleDensity">Density</sys:String>
+  <sys:String x:Key="Field.Sheet.VoidRatio">Air voids</sys:String>
+  <sys:String x:Key="Field.Sheet.AsphaltUsage">Asphalt cont.</sys:String>
+  <sys:String x:Key="Field.Sheet.ContentByVolume">Asphalt vol. %</sys:String>
+  <sys:String x:Key="Field.Sheet.AsphaltSaturation">VFA</sys:String>
+  <sys:String x:Key="Field.Sheet.MineralAggregateVoidRatio">VMA</sys:String>
+  <!-- Messages raised by the method layer (keys live in BendingMessageKeys; args carry field-name keys) -->
+  <sys:String x:Key="Method.T0715.Name">Asphalt bending test</sys:String>
+  <sys:String x:Key="Msg.FieldRequired">{0} is required</sys:String>
+  <sys:String x:Key="Msg.FieldChoose">Choose {0}</sys:String>
+  <sys:String x:Key="Msg.FieldFormat">{0}: bad format</sys:String>
+  <sys:String x:Key="Msg.FieldOutOfRange">{0} must be between {1} and {2}</sys:String>
+  <sys:String x:Key="Msg.T0715.CurveTooFewPoints">Curve has too few points for origin correction (3+ needed)</sys:String>
+  <sys:String x:Key="Msg.T0715.FitFailed">Cannot fit the tangent line (peak not positive or rising part too short)</sys:String>
+  <sys:String x:Key="Msg.T0715.GroupEmpty">A group needs at least 1 specimen</sys:String>
 
   <!-- Method-declared metric names and curve text: the method supplies the key (IAP style), the wording lives here -->
   <sys:String x:Key="Method.T0715.Load">Load</sys:String>

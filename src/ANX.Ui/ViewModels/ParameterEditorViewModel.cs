@@ -218,7 +218,7 @@ public sealed partial class MachineSettingsViewModel : ParameterEditorViewModel
         Description = string.Format(
             System.Globalization.CultureInfo.CurrentCulture,
             L("Mach.CurrentMethod"),
-            execution.MethodName,
+            L(execution.MethodNameKey),
             execution.MethodCode
         );
     }

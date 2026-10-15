@@ -94,7 +94,7 @@ public sealed partial class PrintPreviewViewModel : ViewModelBase, IModalDialogV
         }
         catch (Exception ex)
         {
-            SetStatus($"{L("Preview.Failed")}: {ex.Message}", isError: true);
+            SetStatus($"{L("Preview.Failed")}: {Text(ex)}", isError: true);
         }
     }
 
@@ -119,7 +119,7 @@ public sealed partial class PrintPreviewViewModel : ViewModelBase, IModalDialogV
         }
         catch (Exception ex)
         {
-            SetStatus($"{L("Preview.PrintFailed")}: {ex.Message}", isError: true);
+            SetStatus($"{L("Preview.PrintFailed")}: {Text(ex)}", isError: true);
         }
     }
 
@@ -144,7 +144,7 @@ public sealed partial class PrintPreviewViewModel : ViewModelBase, IModalDialogV
         }
         catch (Exception ex)
         {
-            SetStatus($"{L("Preview.LocateFailed")}: {ex.Message}", isError: true);
+            SetStatus($"{L("Preview.LocateFailed")}: {Text(ex)}", isError: true);
         }
     }
 

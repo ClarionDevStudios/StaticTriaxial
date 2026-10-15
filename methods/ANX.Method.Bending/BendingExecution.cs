@@ -25,7 +25,11 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
 
     public string MethodCode => "T0715";
 
+    /// <summary>方法名（中文兜底；界面按 <see cref="MethodNameKey"/> 取当前语言）。</summary>
     public string MethodName => "沥青混合料弯曲试验";
+
+    /// <inheritdoc />
+    public string MethodNameKey => BendingMessageKeys.MethodName;
 
     public string StandardReference => "JTG 3410-2025 T 0715-2025";
 
@@ -192,24 +196,40 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
     /// 混合料类型、试验温度、加载速率；体积指标 6 项**不校验**（用户 2026-10-14：允许留空）。
     /// **改已有单也走同一套校验**（用户 2026-10-14：保存前要做输入值验证）—— 比现役严，是用户要的。
     /// </summary>
+    private static readonly HashSet<string> RequiredSheetFields = new(StringComparer.Ordinal)
+    {
+        BendingSheetFields.ProjectNameKey,
+        BendingSheetFields.SpecificationKey,
+        BendingSheetFields.ObjectiveKey,
+        BendingSheetFields.SampleSizeKey,
+        BendingSheetFields.MixtureTypeKey,
+        BendingSheetFields.TemperatureKey,
+        BendingSheetFields.LoadRateKey,
+    };
+
+    private static bool IsRequired(string key) => RequiredSheetFields.Contains(key);
+
     private static void ValidateSheetFields(IReadOnlyDictionary<string, string> fields)
     {
-        var required = new (string Key, string Message)[]
+        // 一条一条**带资源键**抛出（中文只作日志兜底）：界面按当前语言取译文，
+        // 字段名嵌在参数里（"哪一项"与"什么毛病"各自跟语言走）
+        foreach (var definition in BendingSheetFields.Definitions)
         {
-            (BendingSheetFields.ProjectNameKey, "项目名称不能为空"),
-            (BendingSheetFields.SpecificationKey, "请选择试验规范"),
-            (BendingSheetFields.ObjectiveKey, "请选择试验目的"),
-            (BendingSheetFields.SampleSizeKey, "请选择试件尺寸"),
-            (BendingSheetFields.MixtureTypeKey, "混合料类型不能为空"),
-            (BendingSheetFields.TemperatureKey, "试验温度不能为空"),
-            (BendingSheetFields.LoadRateKey, "加载速率不能为空"),
-        };
-
-        foreach (var (key, message) in required)
-        {
-            if (string.IsNullOrWhiteSpace(fields.GetValueOrDefault(key)))
+            if (
+                IsRequired(definition.Key)
+                && string.IsNullOrWhiteSpace(fields.GetValueOrDefault(definition.Key))
+            )
             {
-                throw new InvalidOperationException(message);
+                // 下拉项（试验规范 / 试验目的 / 试件尺寸）是"没选"，其余是"没填" —— 与现役措辞一致
+                var key = definition.Kind == ParameterKind.Choice
+                    ? BendingMessageKeys.FieldChoose
+                    : BendingMessageKeys.FieldRequired;
+
+                throw LocalizedException.Single(
+                    key,
+                    $"{definition.DisplayName.TrimEnd(' ', '*')}不能为空",
+                    BendingMessageKeys.FieldName(definition.DisplayNameKey)
+                );
             }
         }
 
@@ -235,7 +255,11 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
                         )
                     )
                     {
-                        throw new InvalidOperationException($"{definition.DisplayName.TrimEnd(' ', '*')}格式不对");
+                        throw LocalizedException.Single(
+                            BendingMessageKeys.FieldFormat,
+                            $"{definition.DisplayName.TrimEnd(' ', '*')}格式不对",
+                            BendingMessageKeys.FieldName(definition.DisplayNameKey)
+                        );
                     }
 
                     if (
@@ -243,11 +267,21 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
                         || (definition.Maximum is { } max && number > max)
                     )
                     {
-                        throw new InvalidOperationException(
-                            $"{definition.DisplayName.TrimEnd(' ', '*')}必须在 "
-                                + $"{definition.Minimum?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "−∞"}~"
-                                + $"{definition.Maximum?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "+∞"}"
-                                + $" 之间"
+                        var minimum =
+                            definition.Minimum?.ToString(
+                                System.Globalization.CultureInfo.InvariantCulture
+                            ) ?? "−∞";
+                        var maximum =
+                            definition.Maximum?.ToString(
+                                System.Globalization.CultureInfo.InvariantCulture
+                            ) ?? "+∞";
+
+                        throw LocalizedException.Single(
+                            BendingMessageKeys.FieldOutOfRange,
+                            $"{definition.DisplayName.TrimEnd(' ', '*')}必须在 {minimum}~{maximum} 之间",
+                            BendingMessageKeys.FieldName(definition.DisplayNameKey),
+                            minimum,
+                            maximum
                         );
                     }
 
@@ -266,7 +300,11 @@ public sealed class BendingExecution(TestSheetService sheets, BendingParameters?
                         || choice >= options.Count
                     )
                     {
-                        throw new InvalidOperationException($"请选择{definition.DisplayName.TrimEnd(' ', '*')}");
+                        throw LocalizedException.Single(
+                            BendingMessageKeys.FieldChoose,
+                            $"请选择{definition.DisplayName.TrimEnd(' ', '*')}",
+                            BendingMessageKeys.FieldName(definition.DisplayNameKey)
+                        );
                     }
 
                     break;

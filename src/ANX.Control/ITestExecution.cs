@@ -51,6 +51,12 @@ public interface ITestExecution : ICurveAxisSource
     /// <summary>方法显示名。</summary>
     string MethodName { get; }
 
+    /// <summary>
+    /// 方法名的**资源键**（界面按当前语言取；用户 2026-10-15：语言切换要把方法名也盖住）。
+    /// <see cref="MethodName"/> 是中文兜底（日志与没有译文时用）。
+    /// </summary>
+    string MethodNameKey { get; }
+
     /// <summary>依据的规范条款。</summary>
     string StandardReference { get; }
 

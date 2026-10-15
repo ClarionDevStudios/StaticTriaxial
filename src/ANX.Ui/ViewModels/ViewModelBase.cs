@@ -37,6 +37,12 @@ public abstract partial class ViewModelBase : ObservableObject, INavigationAware
     /// <summary>取本地化文案。</summary>
     protected string L(string key) => Localization.GetString(key);
 
+    /// <summary>
+    /// 把异常渲染成当前语言的文字（带资源键的异常走键，其余退回 <c>Message</c>）——
+    /// 凡是把异常消息拼进界面的地方一律用这个，别再直接拼 <c>Message</c>。
+    /// </summary>
+    protected string Text(Exception exception) => UiText.Describe(Localization, exception);
+
     public Task OnNavigatedToAsync()
     {
         OnNavigatedTo();

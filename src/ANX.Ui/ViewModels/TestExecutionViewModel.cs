@@ -261,8 +261,8 @@ public partial class TestExecutionViewModel : ViewModelBase
         PhaseText = L("Exec.PhaseIdle");
     }
 
-    /// <summary>方法名（标题栏用）。</summary>
-    public string HeaderText => $"{_execution.MethodName}（{_execution.MethodCode}）";
+    /// <summary>方法名（标题栏用）—— 按当前语言取（<c>MethodName</c> 只是中文兜底）。</summary>
+    public string HeaderText => $"{L(_execution.MethodNameKey)}（{_execution.MethodCode}）";
 
     /// <summary>
     /// 试样信息列表的**表头**（用户 2026-10-13）：第一列试件号，其余按方法声明的试样信息字段
@@ -554,8 +554,8 @@ public partial class TestExecutionViewModel : ViewModelBase
             {
                 Append(
                     automatic
-                        ? $"{L("Exec.ReconnectFailed")}: {ex.Message}"
-                        : $"{L("Exec.ConnectFailed")}: {ex.Message}"
+                        ? $"{L("Exec.ReconnectFailed")}: {Text(ex)}"
+                        : $"{L("Exec.ConnectFailed")}: {Text(ex)}"
                 );
             }
 
@@ -767,7 +767,7 @@ public partial class TestExecutionViewModel : ViewModelBase
                 }
                 catch (Exception ex)
                 {
-                    Dispatch(() => Append($"{L("Exec.LinkStopBestEffort")}（{ex.Message}）"));
+                    Dispatch(() => Append($"{L("Exec.LinkStopBestEffort")}（{Text(ex)}）"));
                 }
             });
         }
@@ -889,7 +889,7 @@ public partial class TestExecutionViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Append($"{L("Exec.JogFailed")}: {ex.Message}");
+            Append($"{L("Exec.JogFailed")}: {Text(ex)}");
         }
     }
 
@@ -908,7 +908,7 @@ public partial class TestExecutionViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Append($"{L("Exec.JogFailed")}: {ex.Message}");
+            Append($"{L("Exec.JogFailed")}: {Text(ex)}");
         }
     }
 
@@ -1068,7 +1068,7 @@ public partial class TestExecutionViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Append($"{L("Exec.Failed")}: {ex.Message}");
+            Append($"{L("Exec.Failed")}: {Text(ex)}");
         }
     }
 
@@ -1166,7 +1166,7 @@ public partial class TestExecutionViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Append($"{L("Exec.Failed")}: {ex.Message}");
+            Append($"{L("Exec.Failed")}: {Text(ex)}");
         }
     }
 
@@ -1250,7 +1250,7 @@ public partial class TestExecutionViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Append($"{L("Exec.DeleteSampleFailed")}: {ex.Message}");
+            Append($"{L("Exec.DeleteSampleFailed")}: {Text(ex)}");
         }
 
         await ReloadSampleRowsAsync();
@@ -1295,7 +1295,7 @@ public partial class TestExecutionViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Append($"{L("History.ExportFailed")}: {ex.Message}");
+            Append($"{L("History.ExportFailed")}: {Text(ex)}");
         }
     }
 
@@ -1562,7 +1562,7 @@ public partial class TestExecutionViewModel : ViewModelBase
             }
             catch (Exception ex)
             {
-                stopError = ex.Message;
+                stopError = Text(ex);
             }
 
             IsRunning = false;
@@ -1690,7 +1690,7 @@ public partial class TestExecutionViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Append($"{L("Exec.CurveImageSaveFailed")}: {ex.Message}");
+            Append($"{L("Exec.CurveImageSaveFailed")}: {Text(ex)}");
         }
     }
 

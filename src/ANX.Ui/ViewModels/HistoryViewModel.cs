@@ -195,7 +195,7 @@ public partial class HistoryViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            SetStatus($"{L("History.RecomputeFailed")}: {ex.Message}", isError: true);
+            SetStatus($"{L("History.RecomputeFailed")}: {Text(ex)}", isError: true);
         }
     }
 

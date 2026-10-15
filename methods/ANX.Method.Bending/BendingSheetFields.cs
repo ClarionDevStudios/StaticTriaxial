@@ -62,8 +62,33 @@ public static class BendingSheetFields
     /// <summary>试验规范选项（现役弯曲只有一条）。</summary>
     public const string SpecificationLabel = "T 0715-2025 沥青混合料弯曲试验";
 
-    /// <summary>字段声明（顺序 = 界面顺序）。</summary>
+    /// <summary>
+    /// 试验单字段的显示文本资源键前缀。**自成一组**（不复用 <see cref="ParameterTextKeys"/> 的
+    /// <c>Field.&lt;参数键&gt;</c>）：试验单上的名字带 <c> *</c> 标必填、"加载速率"这类名字与参数表里的
+    /// 同一项措辞也不同，混用键就会互相牵扯。
+    /// </summary>
+    private const string TextKeyPrefix = "Field.Sheet.";
+
+    /// <summary>字段声明（顺序 = 界面顺序）。显示名 / 说明 / 选项按 <see cref="TextKeyPrefix"/> 挂键。</summary>
     public static IReadOnlyList<ParameterDefinition> Definitions { get; } =
+    [
+        .. RawDefinitions().Select(definition => definition with
+        {
+            DisplayNameKey = TextKeyPrefix + definition.Key,
+            DescriptionKey = string.IsNullOrWhiteSpace(definition.Description)
+                ? string.Empty
+                : $"{TextKeyPrefix}{definition.Key}.Desc",
+            Options = definition.Options?
+                .Select(option => option with
+                {
+                    LabelKey = $"{TextKeyPrefix}{definition.Key}.{option.Value}",
+                })
+                .ToArray(),
+        }),
+    ];
+
+    /// <summary>中文兜底的原始声明（键由上面那段按约定补）。</summary>
+    private static IReadOnlyList<ParameterDefinition> RawDefinitions() =>
     [
         // 次序照现役窗体 `uEditBendingTestForm` 的**版面**（不是 DFM 里的声明次序）：
         // 现役是一个两列网格，左列 = 工程与试验条件、右列 = 体积指标 6 项 + 接样日期 / 试验时间 / 试验员，
