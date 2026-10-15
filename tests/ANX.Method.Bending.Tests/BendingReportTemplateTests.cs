@@ -3,6 +3,7 @@ namespace ANX.Method.Bending.Tests;
 using ANX.Core;
 using ANX.Core.Reporting;
 using ANX.Storage;
+using FlexCel.Core;
 using FlexCel.XlsAdapter;
 using Microsoft.Data.Sqlite;
 
@@ -114,6 +115,57 @@ public sealed class BendingReportTemplateTests : IDisposable
         var staged = path + ".staged";
         workbook.Save(staged);
         File.Move(staged, path, overwrite: true);
+    }
+
+    /// <summary>
+    /// **样式**也要照现役逐格对齐 —— 2026-10-15 补的用例。
+    /// 起因：用户看过实物报表后说"用代码生成的模板很丑"。查下来上一轮的用例只断言"单元格文字"，
+    /// 于是"字体抄成宋体、三处底色和全部行高整个没抄"这种错也能全绿通过。
+    /// </summary>
+    [Fact]
+    public void 模板样式应照现役逐格对齐()
+    {
+        var templatesRoot = Path.Combine(_directory, "Report", "Template");
+        var path = BendingTemplates.Resolve(templatesRoot, "zh-CN");
+
+        var zh = new XlsFile();
+        zh.Open(path);
+
+        // 注意：`GetCellFormat(row, col)` 返回的是 **XF 索引**（int），要拿 TFlxFormat 得再 `GetFormat(xf)`
+        TFlxFormat At(int row, int col) => zh.GetFormat(zh.GetCellFormat(row, col));
+
+        // 主标题：微软雅黑 16pt 粗体白字 + 深藏蓝底
+        var title = At(1, 1);
+        Assert.Equal("微软雅黑", title.Font.Name);
+        Assert.Equal(16 * 20, title.Font.Size20);
+        Assert.Equal(TFlxFontStyles.Bold, title.Font.Style);
+        // `RGB` 是 **Int64** 且带 alpha（0xFFFFFFFF），不是裸 RGB
+        Assert.Equal(0xFFFFFFFFL, title.Font.Color.RGB);
+        Assert.Equal(TFlxPatternStyle.Solid, title.FillPattern.Pattern);
+        Assert.Equal(0xFF003366L, title.FillPattern.FgColor.RGB);
+
+        // 分节标题浅蓝底、明细表头蓝底白粗体
+        Assert.Equal(0xFFD9E1F2L, At(9, 1).FillPattern.FgColor.RGB);
+        Assert.Equal(0xFF0070C0L, At(10, 1).FillPattern.FgColor.RGB);
+        Assert.Equal(0xFFFFFFFFL, At(10, 1).Font.Color.RGB);
+        Assert.Equal(TFlxFontStyles.Bold, At(10, 1).Font.Style);
+
+        // 行高：标题 38.1、分节 24、表头 33.9、其余 15（FlexCel 单位 = 1/20 磅）
+        Assert.Equal(762, zh.GetRowHeight(1));
+        Assert.Equal(300, zh.GetRowHeight(2));
+        Assert.Equal(480, zh.GetRowHeight(9));
+        Assert.Equal(678, zh.GetRowHeight(10));
+        Assert.Equal(300, zh.GetRowHeight(25));
+
+        // 明细区（含表头与最后一行）四边细边框
+        foreach (var row in new[] { 10, 11, 25 })
+        {
+            var format = At(row, 1);
+            Assert.Equal(TFlxBorderStyle.Thin, format.Borders.Left.Style);
+            Assert.Equal(TFlxBorderStyle.Thin, format.Borders.Right.Style);
+            Assert.Equal(TFlxBorderStyle.Thin, format.Borders.Top.Style);
+            Assert.Equal(TFlxBorderStyle.Thin, format.Borders.Bottom.Style);
+        }
     }
 
     [Fact]

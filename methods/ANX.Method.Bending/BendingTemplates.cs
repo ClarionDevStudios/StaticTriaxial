@@ -40,9 +40,12 @@ public static class BendingTemplates
     /// <list type="bullet">
     ///   <item>v1（无戳，2026-10-11）：旧版式 —— "试验单号 / 有效试件数 / 弯拉强度平均值"那套横向排布；</item>
     ///   <item>v2（2026-10-15）：表单式 A1:I32（照现役）+ 执行标准改正为 `JTG3410-2025`。**没有戳的旧文件一律当要换代。**</item>
+    ///   <item>v3（2026-10-15，用户："模板很丑，我不满意"）：把**样式逐格照现役抄全** ——
+    ///         字体改回**微软雅黑**（v2 误写成宋体）、补上三处底色（标题 #003366 / 分节 #D9E1F2 / 表头 #0070C0）、
+    ///         标题与表头白字、以及**全部显式行高**（38.1 / 24 / 33.9 / 15）。</item>
     /// </list>
     /// </summary>
-    public const int TemplateVersion = 2;
+    public const int TemplateVersion = 3;
 
     /// <summary>明细数据行数上限：模板的明细区是第 11~25 行，即**最多 15 件**（照现役版式）。</summary>
     public const int MaxDetailRows = 15;
@@ -53,6 +56,29 @@ public static class BendingTemplates
     private const int StampColumn = 11;
 
     private static string VersionStamp => $"ANX-TEMPLATE-V{TemplateVersion}";
+
+    /// <summary>
+    /// 字体：现役整套用的是**微软雅黑**（2026-10-15 逐格读出来的；此前误抄成"宋体"）。
+    /// 中英两套都用它 —— 英文也用雅黑渲染，两套报表的观感才一致。
+    /// </summary>
+    private const string TemplateFontName = "微软雅黑";
+
+    /// <summary>主标题底色：现役 A1 是深藏蓝 `#003366` + 16pt 白色粗体。</summary>
+    private static readonly TExcelColor TitleFill = TExcelColor.FromArgb(0x00, 0x33, 0x66);
+
+    /// <summary>分节标题底色：现役 A9 是浅蓝 `#D9E1F2`。</summary>
+    private static readonly TExcelColor SectionFill = TExcelColor.FromArgb(0xD9, 0xE1, 0xF2);
+
+    /// <summary>明细表头底色：现役 R10 是蓝 `#0070C0` + 白色粗体。</summary>
+    private static readonly TExcelColor HeaderFill = TExcelColor.FromArgb(0x00, 0x70, 0xC0);
+
+    private static readonly TExcelColor White = TExcelColor.FromArgb(0xFF, 0xFF, 0xFF);
+
+    /// <summary>
+    /// 行高换算：FlexCel 的行高单位是 **1/20 磅**（现役 ht 值就是磅，15 磅 → 300）。
+    /// 现役的行高：标题 38.1、分节标题 24、明细表头 33.9、其余 15。
+    /// </summary>
+    private static int RowHeight(double points) => (int)Math.Round(points * 20);
 
     /// <summary>
     /// 执行标准：规范正式名称为 `JTG 3410-2025`。
@@ -143,18 +169,23 @@ public static class BendingTemplates
         var workbook = new XlsFile();
         workbook.NewFile();
 
-        // ── 格式（照现役模板读出来的：标签粗体右对齐、值左对齐、表格居中+细边框、标题 16pt 粗体居中）──
+        // ── 格式：全部照现役 `T0715-2025Template.xlsx` **逐格读出来**的
+        //    （字体 / 底色 / 字色 / 对齐 / 边框；行高在下面单独设）──
+        //    2026-10-15 更正：上一轮只抄了字体名（还抄错了：写成"宋体"，现役是**微软雅黑**）、
+        //    对齐与边框，**底色和行高根本没抄** —— 所以生成的模板跟现役完全不是一回事。
         var titleFormat = AddFormat(
             workbook,
-            T("宋体", "Calibri"),
+            TemplateFontName,
             16,
             bold: true,
             THFlxAlignment.center,
-            TVFlxAlignment.center
+            TVFlxAlignment.center,
+            fontColor: White,
+            fillColor: TitleFill
         );
         var labelFormat = AddFormat(
             workbook,
-            "宋体",
+            TemplateFontName,
             11,
             bold: true,
             THFlxAlignment.right,
@@ -162,7 +193,7 @@ public static class BendingTemplates
         );
         var valueFormat = AddFormat(
             workbook,
-            "宋体",
+            TemplateFontName,
             11,
             bold: false,
             THFlxAlignment.left,
@@ -170,7 +201,7 @@ public static class BendingTemplates
         );
         var standardFormat = AddFormat(
             workbook,
-            "宋体",
+            TemplateFontName,
             11,
             bold: true,
             THFlxAlignment.left,
@@ -178,24 +209,27 @@ public static class BendingTemplates
         );
         var sectionFormat = AddFormat(
             workbook,
-            "宋体",
+            TemplateFontName,
             11,
             bold: true,
             THFlxAlignment.left,
-            TVFlxAlignment.center
+            TVFlxAlignment.center,
+            fillColor: SectionFill
         );
         var headerFormat = AddFormat(
             workbook,
-            "宋体",
+            TemplateFontName,
             11,
             bold: true,
             THFlxAlignment.center,
             TVFlxAlignment.center,
-            tableBorder: true
+            tableBorder: true,
+            fontColor: White,
+            fillColor: HeaderFill
         );
         var cellFormat = AddFormat(
             workbook,
-            "宋体",
+            TemplateFontName,
             11,
             bold: false,
             THFlxAlignment.center,
@@ -204,7 +238,7 @@ public static class BendingTemplates
         );
         var noteFormat = AddFormat(
             workbook,
-            "宋体",
+            TemplateFontName,
             11,
             bold: false,
             THFlxAlignment.left,
@@ -213,7 +247,7 @@ public static class BendingTemplates
         );
         var signValueFormat = AddFormat(
             workbook,
-            "宋体",
+            TemplateFontName,
             11,
             bold: false,
             THFlxAlignment.general,
@@ -225,6 +259,20 @@ public static class BendingTemplates
         foreach (var (col, width) in ColumnWidths())
         {
             workbook.SetColWidth(col, (int)Math.Round(width * 256));
+        }
+
+        // ── 行高（照现役模板：标题 38.1、分节标题 24、明细表头 33.9，其余一律 15）──
+        //    不设行高时 Excel 用默认的 14.25 左右，标题与表头会"扁"，是看着不像现役的一大原因。
+        workbook.SetRowHeight(1, RowHeight(38.1));
+        for (var row = 2; row <= 8; row++)
+        {
+            workbook.SetRowHeight(row, RowHeight(15));
+        }
+        workbook.SetRowHeight(9, RowHeight(24));
+        workbook.SetRowHeight(10, RowHeight(33.9));
+        for (var row = 11; row <= 32; row++)
+        {
+            workbook.SetRowHeight(row, RowHeight(15));
         }
 
         // ── 标题（合并 A1:I1）──
@@ -471,7 +519,9 @@ public static class BendingTemplates
         THFlxAlignment horizontal,
         TVFlxAlignment vertical,
         bool tableBorder = false,
-        bool bottomLine = false
+        bool bottomLine = false,
+        TExcelColor? fontColor = null,
+        TExcelColor? fillColor = null
     )
     {
         var format = workbook.GetDefaultFormat;
@@ -481,6 +531,19 @@ public static class BendingTemplates
         format.HAlignment = horizontal;
         format.VAlignment = vertical;
         format.WrapText = true;
+
+        if (fontColor is not null)
+        {
+            format.Font.Color = fontColor.Value;
+        }
+
+        if (fillColor is not null)
+        {
+            // 实心填充：`FillPattern` 是 TFlxFormat 的**公共字段**（不是属性，反射按属性名找会找不到）。
+            // 实心填充的可见色在 FgColor 上（BgColor 只在图案填充里有意义）。
+            format.FillPattern.Pattern = TFlxPatternStyle.Solid;
+            format.FillPattern.FgColor = fillColor.Value;
+        }
 
         if (tableBorder)
         {
