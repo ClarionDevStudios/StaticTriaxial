@@ -32,17 +32,30 @@ public sealed partial class PrintPreviewViewModel : ViewModelBase, IModalDialogV
         _exporter = exporter;
         _renderer = renderer;
 
+        RefreshTexts();
+
+        // 换语言：页级文字跟着变（ViewModel 是单例，构造时算的那份会过期）
+        localization.LanguageChanged += (_, _) => RefreshTexts();
+    }
+
+    public string Title { get; private set; } = string.Empty;
+
+    public string Description { get; private set; } = string.Empty;
+
+    /// <summary>「导出PDF」置灰时挂在按钮上的说明（用户 2026-10-15：先置灰、暂不实现）。</summary>
+    public string ExportPdfHint { get; private set; } = string.Empty;
+
+    /// <summary>按当前语言重建页级文字（标题 / 描述 / 置灰说明）。</summary>
+    public void RefreshTexts()
+    {
         Title = L("Preview.Title");
         Description = L("Preview.Description");
         ExportPdfHint = L("Preview.ExportPdfPending");
+
+        OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(Description));
+        OnPropertyChanged(nameof(ExportPdfHint));
     }
-
-    public string Title { get; }
-
-    public string Description { get; }
-
-    /// <summary>「导出PDF」置灰时挂在按钮上的说明（用户 2026-10-15：先置灰、暂不实现）。</summary>
-    public string ExportPdfHint { get; }
 
     /// <summary>整张表渲出来的图；没生成好之前是 null（界面那里就是空的）。</summary>
     [ObservableProperty]
@@ -58,7 +71,11 @@ public sealed partial class PrintPreviewViewModel : ViewModelBase, IModalDialogV
     /// <summary>打开前定死"预览哪张试验单"（历史页知道用户选了哪一行）。</summary>
     public void PrepareFor(string sheetId) => _sheetId = sheetId;
 
-    public override void OnOpened() => _ = BuildAsync();
+    public override void OnOpened()
+    {
+        RefreshTexts();
+        _ = BuildAsync();
+    }
 
     /// <summary>关窗（页面宿主转发给弹窗）。</summary>
     [RelayCommand]

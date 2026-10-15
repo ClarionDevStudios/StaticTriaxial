@@ -219,15 +219,6 @@ public partial class TestExecutionViewModel : ViewModelBase
 
         // 试样信息列表的表头：试件号 + 方法声明的各试样信息字段（带单位），列序与 BuildSampleCells 一致
         _sampleFieldKeys = [.. execution.SampleFields.Select(field => field.Key)];
-        SampleColumnHeaders =
-        [
-            L("Exec.SampleListId"),
-            .. execution.SampleFields.Select(field =>
-                string.IsNullOrWhiteSpace(field.Unit)
-                    ? field.DisplayName
-                    : $"{field.DisplayName} ({field.Unit})"
-            ),
-        ];
 
         // 试验单弹窗确定后当前试验单会变 —— 立即把单号显示刷过来（用户 2026-10-13：
         // 试验单改成弹窗后不再有"确定即导航回来"的那次刷新）
@@ -243,7 +234,7 @@ public partial class TestExecutionViewModel : ViewModelBase
 
         if (device is null)
         {
-            ConnectionText = L("Exec.NoDevice");
+        ConnectionText = L("Exec.NoDevice");
         }
         else
         {
@@ -259,7 +250,31 @@ public partial class TestExecutionViewModel : ViewModelBase
         }
 
         PhaseText = L("Exec.PhaseIdle");
+
+        // 换语言：本页自己算出来的那几处文字重刷一遍（状态栏的连接文案、阶段文案；
+        // 表头与轴名由页面重建，卡片自己会通知）。
+        // 用户 2026-10-15：切换语言后"页标题/页签/卡片标题"还是旧语言，这里一起补上。
+        localization.LanguageChanged += (_, _) =>
+        {
+            RefreshConnectionText();
+            RefreshPhaseText();
+            OnPropertyChanged(nameof(HeaderText));
+        };
     }
+
+    /// <summary>最近一次结束原因（重刷阶段文案时要用）。</summary>
+    private TestStopReason _lastStopReason = TestStopReason.None;
+
+    /// <summary>按当前语言重刷阶段文案（正常结束时会被 <see cref="_lastStopReason"/> 覆盖）。</summary>
+    private void RefreshPhaseText() =>
+        PhaseText = _lastStopReason switch
+        {
+            TestStopReason.Completed => L("Exec.PhaseCompleted"),
+            TestStopReason.None => L("Exec.PhaseIdle"),
+            TestStopReason.LoadRangeExceeded or TestStopReason.DisplacementRangeExceeded =>
+                $"{L("Exec.PhaseRangeStopped")}（{_lastStopReason}）",
+            _ => $"{L("Exec.PhaseAborted")}（{_lastStopReason}）",
+        };
 
     /// <summary>方法名（标题栏用）—— 按当前语言取（<c>MethodName</c> 只是中文兜底）。</summary>
     public string HeaderText => $"{L(_execution.MethodNameKey)}（{_execution.MethodCode}）";
@@ -267,8 +282,27 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// <summary>
     /// 试样信息列表的**表头**（用户 2026-10-13）：第一列试件号，其余按方法声明的试样信息字段
     /// （跨径 / 试件宽度 / 试件高度…）。方法不同表头不同，界面按它生成列。
+    ///
+    /// **每次读都按当前语言重算**：换语言后由页面重建列（用户 2026-10-15：切换语言后表头还是旧语言）。
     /// </summary>
-    public IReadOnlyList<string> SampleColumnHeaders { get; }
+    public IReadOnlyList<string> SampleColumnHeaders =>
+    [
+        L("Exec.SampleListId"),
+        // 注意：属性访问器里 `field` 是 C# 14 的关键字，lambda 参数不能叫这个名字
+        .. _execution.SampleFields.Select(
+            sampleField =>
+            {
+                // 没接键的字段（将来别的方法）回落声明里的名字，不会冒出 ⚠ 键名
+                var name = string.IsNullOrEmpty(sampleField.DisplayNameKey)
+                    ? sampleField.DisplayName
+                    : L(sampleField.DisplayNameKey);
+
+                return string.IsNullOrWhiteSpace(sampleField.Unit)
+                    ? name
+                    : $"{name} ({sampleField.Unit})";
+            }
+        ),
+    ];
 
     /// <summary>试样信息字段的键（列序与表头一致：表头第 0 列是试件号，其余对应这里的字段）。</summary>
     private readonly IReadOnlyList<string> _sampleFieldKeys;
@@ -1609,14 +1643,8 @@ public partial class TestExecutionViewModel : ViewModelBase
             }
         }
 
-        PhaseText = sequencer.StopReason switch
-        {
-            TestStopReason.Completed => L("Exec.PhaseCompleted"),
-            TestStopReason.None => L("Exec.PhaseIdle"),
-            TestStopReason.LoadRangeExceeded or TestStopReason.DisplacementRangeExceeded =>
-                $"{L("Exec.PhaseRangeStopped")}（{sequencer.StopReason}）",
-            _ => $"{L("Exec.PhaseAborted")}（{sequencer.StopReason}）",
-        };
+        _lastStopReason = sequencer.StopReason;
+        RefreshPhaseText();
 
         if (!sequencer.CanSettle)
         {

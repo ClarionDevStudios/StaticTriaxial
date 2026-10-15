@@ -72,7 +72,12 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
 
         // 换主题 → 配色变；换语言 → 轴名变。两者都要重画一次。
         themeService.ThemeChanged += (_, themeName) => ApplyChartStyle(themeName);
-        localizationService.LanguageChanged += (_, _) => ApplyChartStyle(_theme.CurrentTheme);
+        localizationService.LanguageChanged += (_, _) =>
+        {
+            // 试样列表的表头也是文字（试件号 / 跨径 L …）：换语言要整列重建一遍
+            BuildSampleColumns();
+            ApplyChartStyle(_theme.CurrentTheme);
+        };
 
         // 本页不在前台时切了语言/主题，控件不会重绘（WpfPlot 留着旧位图）——
         // 每次重新显示都重刷一次，免得回来看到的是旧字。
@@ -155,6 +160,9 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
     /// </summary>
     private void BuildSampleColumns()
     {
+        // 换语言时整列重建，所以先清空（表头文字按当前语言现取，见 SampleColumnHeaders）
+        SampleGrid.Columns.Clear();
+
         var headers = ViewModel.SampleColumnHeaders;
         for (var i = 0; i < headers.Count; i++)
         {

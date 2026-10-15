@@ -27,10 +27,19 @@ public sealed partial class SampleInfoViewModel : EditableRowsViewModel, IModalD
     {
         _execution = execution;
         _currentSheet = currentSheet;
-        Title = L("Sample.Title");
-        Description = L("Sample.Description");
 
         InitializeRows(execution.SampleFields);
+        RefreshTexts();
+
+        // 换语言：页标题与描述跟着变（参数行由基类通知）—— ViewModel 是单例，构造时算的那份会过期
+        localization.LanguageChanged += (_, _) => RefreshTexts();
+    }
+
+    /// <summary>按当前语言重建页标题与描述。</summary>
+    public void RefreshTexts()
+    {
+        Title = L("Sample.Title");
+        Description = L("Sample.Description");
     }
 
     /// <summary>试件号（单内顺序号）：默认取"下一个可用的号"，也可手改去编辑已存的某件。</summary>
@@ -48,8 +57,15 @@ public sealed partial class SampleInfoViewModel : EditableRowsViewModel, IModalD
     /// <inheritdoc />
     public event EventHandler<bool>? CloseRequested;
 
-    /// <summary>打开时把"这一件"读出来（导航页与弹窗都走这里，用户 2026-10-13）。</summary>
-    public override void OnOpened() => _ = InitializeAsync();
+    /// <summary>
+    /// 打开时把"这一件"读出来（导航页与弹窗都走这里，用户 2026-10-13）；
+    /// 顺带按当前语言重刷页标题与描述。
+    /// </summary>
+    public override void OnOpened()
+    {
+        RefreshTexts();
+        _ = InitializeAsync();
+    }
 
     /// <summary>关闭弹窗（改动只有点了「保存」才落地，所以这里不给"确定"语义）。</summary>
     [RelayCommand]

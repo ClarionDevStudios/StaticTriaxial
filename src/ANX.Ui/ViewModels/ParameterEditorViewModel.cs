@@ -36,6 +36,8 @@ public partial class ParameterTabView(string title, IReadOnlyList<ParameterGroup
 public abstract partial class ParameterEditorViewModel : EditableRowsViewModel, IModalDialogViewModel
 {
     private readonly ITestParameters _parameters;
+    private readonly string _titleKey;
+    private readonly string _descriptionKey;
 
     protected ParameterEditorViewModel(
         ILocalizationService localization,
@@ -48,32 +50,57 @@ public abstract partial class ParameterEditorViewModel : EditableRowsViewModel, 
         : base(localization)
     {
         _parameters = parameters;
-        Title = L(titleKey);
-        Description = L(descriptionKey);
+        _titleKey = titleKey;
+        _descriptionKey = descriptionKey;
 
         InitializeRows(definitions.Where(d => d.Group == group));
 
-        // 页签 1：通道设置（采集口径）
-        var channelGroups = BuildGroups([ParameterScope.Acquisition]);
-        if (channelGroups.Count > 0)
-        {
-            Tabs.Add(new ParameterTabView(L("Mach.Tab.Channels"), channelGroups));
-        }
+        RefreshTexts();
 
-        // 页签 2：试验参数（运行期 / 计算期 / 记录与显示）
-        var testGroups = BuildGroups(
-            [ParameterScope.Runtime, ParameterScope.Computation, ParameterScope.Presentation]
-        );
-        if (testGroups.Count > 0)
-        {
-            Tabs.Add(new ParameterTabView(L("Mach.Tab.Parameters"), testGroups));
-        }
-
-        SelectTab(Tabs.FirstOrDefault());
+        // 换语言：**页级文字也要跟着变**（用户 2026-10-15：切换语言后参数行变了，
+        // 但页标题/页签/分区标题还是旧语言）。它们是构造时算一次就定下来的，得整个重建。
+        localization.LanguageChanged += (_, _) => RefreshTexts();
     }
 
     /// <summary>页签（比照现役配置窗体）：通道设置 + 试验参数。</summary>
     public ObservableCollection<ParameterTabView> Tabs { get; } = [];
+
+    /// <summary>
+    /// 按当前语言重建页级文字：页标题、页描述、页签标题、分区（卡片）标题与说明。
+    /// 参数行由 <see cref="EditableRowsViewModel"/> 自己通知，这里不管。
+    /// </summary>
+    public void RefreshTexts()
+    {
+        var selected = SelectedTab is null ? 0 : Tabs.IndexOf(SelectedTab);
+
+        Title = L(_titleKey);
+        Description = BuildDescription();
+
+        Tabs.Clear();
+        // 页签 1：通道设置（采集口径）
+        AddTab("Mach.Tab.Channels", [ParameterScope.Acquisition]);
+        // 页签 2：试验参数（运行期 / 计算期 / 记录与显示）
+        AddTab(
+            "Mach.Tab.Parameters",
+            [ParameterScope.Runtime, ParameterScope.Computation, ParameterScope.Presentation]
+        );
+
+        SelectTab(
+            Tabs.Count == 0 ? null : Tabs[Math.Clamp(selected, 0, Tabs.Count - 1)]
+        );
+    }
+
+    /// <summary>页描述：默认取声明给的键；子类可覆盖成"带方法名"的那种（见 <see cref="MachineSettingsViewModel"/>）。</summary>
+    protected virtual string BuildDescription() => L(_descriptionKey);
+
+    private void AddTab(string titleKey, IReadOnlyList<ParameterScope> scopes)
+    {
+        var groups = BuildGroups(scopes);
+        if (groups.Count > 0)
+        {
+            Tabs.Add(new ParameterTabView(L(titleKey), groups));
+        }
+    }
 
     /// <inheritdoc />
     public event EventHandler<bool>? CloseRequested;
@@ -154,8 +181,16 @@ public abstract partial class ParameterEditorViewModel : EditableRowsViewModel, 
         ];
     }
 
-    /// <summary>打开时自动载入当前值（导航页与弹窗都走这里，用户 2026-10-13）。</summary>
-    public override void OnOpened() => _ = ReloadFromStoreAsync();
+    /// <summary>
+    /// 打开时自动载入当前值（导航页与弹窗都走这里，用户 2026-10-13）。
+    /// 同时**按当前语言重刷一遍页级文字** —— ViewModel 是单例，上次打开时算好的标题/页签
+    /// 在换过语言之后还是旧语言（用户 2026-10-15）。
+    /// </summary>
+    public override void OnOpened()
+    {
+        RefreshTexts();
+        _ = ReloadFromStoreAsync();
+    }
 
     private async Task ReloadFromStoreAsync()
     {
@@ -196,6 +231,7 @@ public abstract partial class ParameterEditorViewModel : EditableRowsViewModel, 
 public sealed partial class MachineSettingsViewModel : ParameterEditorViewModel
 {
     private readonly ITestDeviceController? _device;
+    private readonly ITestExecution _execution;
 
     public MachineSettingsViewModel(
         ILocalizationService localization,
@@ -213,15 +249,20 @@ public sealed partial class MachineSettingsViewModel : ParameterEditorViewModel
         )
     {
         _device = device;
+        _execution = execution;
+    }
 
-        // 通用界面：打开时按**当前试验方法**取参数（同名窗体、值按方法代号存）
-        Description = string.Format(
+    /// <summary>
+    /// 通用界面：描述里写明**当前试验方法**（同名窗体、值按方法代号存）。
+    /// 做成方法而不是构造里赋一次 —— 换语言时要能按新语言重新拼一遍（含方法名）。
+    /// </summary>
+    protected override string BuildDescription() =>
+        string.Format(
             System.Globalization.CultureInfo.CurrentCulture,
             L("Mach.CurrentMethod"),
-            L(execution.MethodNameKey),
-            execution.MethodCode
+            L(_execution.MethodNameKey),
+            _execution.MethodCode
         );
-    }
 
     /// <summary>通用目录在前、方法声明在后 → 同键最后取到的是方法声明（方法优先）。</summary>
     private static IEnumerable<ParameterDefinition> MergeDefinitions(ITestParameters parameters) =>
