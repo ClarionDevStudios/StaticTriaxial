@@ -59,18 +59,13 @@
 
       <ui:Card Grid.Column="0" Margin="0,0,8,0" Padding="8" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch">
         <DataGrid
+          x:Name="SheetGrid"
           AutoGenerateColumns="False"
           IsReadOnly="True"
           ItemsSource="{Binding ViewModel.Sheets}"
           SelectedItem="{Binding ViewModel.SelectedSheet, Mode=TwoWay}"
           VerticalAlignment="Stretch"
         >
-          <DataGrid.Columns>
-            <DataGridTextColumn Binding="{Binding SheetId}" Header="{DynamicResource History.ColSheetId}" />
-            <DataGridTextColumn Binding="{Binding ProjectName}" Header="{DynamicResource History.ColProject}" />
-            <DataGridTextColumn Binding="{Binding CreatedOn}" Header="{DynamicResource History.ColDate}" />
-            <DataGridTextColumn Binding="{Binding SampleCount}" Header="{DynamicResource History.ColSamples}" />
-          </DataGrid.Columns>
         </DataGrid>
       </ui:Card>
 

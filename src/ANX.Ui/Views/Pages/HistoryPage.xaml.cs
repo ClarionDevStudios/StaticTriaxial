@@ -29,10 +29,18 @@ public partial class HistoryPage : INavigableView<HistoryViewModel>
 
         InitializeComponent();
 
+        // 试验单列表的四列：列头按当前语言现建（DataGridColumn 不在可视化树里，
+        // XAML 上的 DynamicResource 换语言后不会刷新）
+        SheetListColumns.Build(SheetGrid, localizationService.GetString);
+
         viewModel.CurveLoaded += OnCurveLoaded;
 
         themeService.ThemeChanged += (_, themeName) => ApplyChartStyle(themeName);
-        localizationService.LanguageChanged += (_, _) => ApplyChartStyle(_theme.CurrentTheme);
+        localizationService.LanguageChanged += (_, _) =>
+        {
+            SheetListColumns.Build(SheetGrid, localizationService.GetString);
+            ApplyChartStyle(_theme.CurrentTheme);
+        };
 
         // 同上（原因见 TestExecutionPage）：重新显示时重刷一次
         Loaded += (_, _) => ApplyChartStyle(_theme.CurrentTheme);
