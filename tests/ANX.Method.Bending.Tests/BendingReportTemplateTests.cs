@@ -418,6 +418,13 @@ public sealed class BendingReportTemplateTests : IDisposable
         Assert.Equal("试验人员：", zh.GetCellValue(31 + inserted, 1));
         Assert.Equal("二、试验曲线图", zh.GetCellValue(34 + inserted, 1));
 
+        // 曲线区：**每排图之后**插一个分页符（插在行下方那种）—— 浮动图片一旦跨页边界，前后两页会各画
+        // 一遍（2026-10-15 实测），所以要让每排图完整落在它自己那一页里（打印/Excel 里也不被切开）
+        var titleRow = 34 + inserted;
+        // 每排图占 14 行 + 1 行间隙 → 第 1 排最后一行 = titleRow + 1 + 13 = titleRow + 14
+        Assert.True(zh.HasHPageBreak(titleRow + 14), "第 1 排图之后应有分页符");
+        Assert.True(zh.HasHPageBreak(titleRow + 29), "第 2 排图之后应有分页符");
+
         // 曲线图：18 张全嵌进来，两张一行、竖向往下
         Assert.Equal(count, zh.ImageCount);
         // 图片索引是 **1 基**（1..ImageCount），写 0 会抛 "ImageIndex: 0 is not on the range 1 - 18"

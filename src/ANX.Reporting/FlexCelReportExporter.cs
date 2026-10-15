@@ -282,6 +282,18 @@ public sealed class FlexCelReportExporter : IReportExporter
                 new TImageProperties(anchor, images[index]) { Print = true }
             );
         }
+
+        // ── 让每排曲线图完整落在一页里（用户 2026-10-15：按打印设置分页渲染）──
+        //    自动分页是按行数硬切的，而浮动图片一旦跨过页边界，**前后两页会各画一遍**（实测确认），
+        //    所以要在每排图的**最后一行之下**插分页符（`aGoesAfter: true` 那个重载）。
+        //    曲线区也从新一页开始，表格页干净。
+        var pitch = ImageRows + ImageGapRows;
+        var pairCount = (images.Length + ImagesPerRow - 1) / ImagesPerRow;
+        for (var pair = 1; pair < pairCount; pair++)
+        {
+            var lastRowOfPair = firstImageRow + ((pair - 1) * pitch) + ImageRows - 1;
+            workbook.InsertHPageBreak(lastRowOfPair, aGoesAfter: true);
+        }
     }
 
     /// <summary>从单元格文本里取出标签名；不是标签返回 null。</summary>

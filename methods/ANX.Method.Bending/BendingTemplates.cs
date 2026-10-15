@@ -53,9 +53,13 @@ public static class BendingTemplates
     ///         标题行 R34 + `{{Images}}` 标记，图从 R35 起两张一行往下排。</item>
     ///   <item>v5（2026-10-15，用户问"报表纸张方向是横向吗"）：补上**页面设置** —— 照现役 8 份模板的实物
     ///         （A4 横向 + 水平/垂直居中 + 压小的页边距）；此前我们的模板没设，默认是纵向 A4。</item>
+    ///   <item>v6（2026-10-15，做"按打印设置分页渲染"时量出来的缺陷）：**J 列要隐藏成隔离列**。
+    ///         版本戳在 K 列，于是"用了 A~K"里夹着的空 J 列也被算进打印宽度（A~I 25.6cm + J ≈1.5cm
+    ///         就超过 A4 横向可打印的 28.5cm）→ 整张表被**横切成两页**（在 Excel 里直接打印同样会犯）。
+    ///         把 J 隐藏掉，打印宽度就回到 A~I。</item>
     /// </list>
     /// </summary>
-    public const int TemplateVersion = 5;
+    public const int TemplateVersion = 6;
 
     /// <summary>出厂模板管理（版本戳 / 换代备份 / 按语种确保最新）—— 通用件，各方法共用同一条口径。</summary>
     private static FactoryTemplateStore Store(string templatesRoot) =>
@@ -341,6 +345,11 @@ public static class BendingTemplates
 
         // ── 出厂版本戳：写在隐藏的 K 列（报表本身只占 A~I），导出前据此判断要不要换代 ──
         FactoryTemplateStore.ApplyStamp(workbook, TemplateVersion);
+
+        // J 列也要隐藏：版本戳占了 K 列，于是"用到的列"一直连到 K，夹在中间的空 J 列就被算进打印宽度
+        // （A~I 25.6cm + J ≈1.5cm > A4 横向可打印的 28.5cm）→ 整张表会被横切成两页。
+        // 留一个隐藏列当隔离带，打印宽度就只算 A~I。（2026-10-15 做分页渲染时量出来的）
+        workbook.SetColHidden(FactoryTemplateStore.StampColumn - 1, true);
 
         // ── 页面设置：照现役实物 ──
         //    现役 **8 份**报表模板（T0709 / 0715 / 0716 / 0744 / 0746 / 0747 / 0767 / 0772）

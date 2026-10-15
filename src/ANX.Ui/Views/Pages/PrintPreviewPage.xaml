@@ -96,11 +96,17 @@
         HorizontalScrollBarVisibility="Disabled"
         VerticalScrollBarVisibility="Auto"
       >
-        <!-- 宽度绑宿主 Grid 的实际宽度：图按宽度铺满、不动横向滚动条 -->
-        <Grid x:Name="PreviewHost">
+        <!--
+          报表整张渲成一张图（用户 2026-10-15：**不做分页**），**在预览区里居中**显示：
+          MaxWidth 兜住"窗口很宽时报表被拉到满屏"，HorizontalAlignment=Center 让它在宽窗口里居中；
+          图宽绑宿主 Grid 的实际宽度 → 按宽度缩放、不出现横向滚动条，纵向滚动看完整张。
+        -->
+        <Grid
+          x:Name="PreviewHost"
+          MaxWidth="1000"
+          HorizontalAlignment="Center"
+        >
           <Image
-            HorizontalAlignment="Left"
-            VerticalAlignment="Top"
             Source="{Binding ViewModel.Preview}"
             Stretch="Uniform"
             Width="{Binding ActualWidth, ElementName=PreviewHost}"

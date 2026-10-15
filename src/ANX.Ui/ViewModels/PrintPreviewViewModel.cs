@@ -10,7 +10,8 @@ using ANX.Ui.Services;
 
 /// <summary>
 /// **打印预览**窗体（用户 2026-10-15）：打开时**按当前界面语言**生成报表文件（同名静默覆盖），
-/// 再用 FlexCel 自带渲染把整张表渲成图显示；上方三个按钮：打印报表 / 定位文件 / 导出PDF（暂置灰）。
+/// 再把整张表渲成一张图**居中**显示；上方三个按钮：打印报表 / 定位文件 / 导出PDF（暂置灰）。
+/// （**不做分页**是用户 2026-10-15 的决定。）
 ///
 /// 与执行页那个「打印报表」按钮的分工：那个只生成文件、不预览；这里把"生成 → 看 → 打印"串成一条。
 /// 历史页原来的"导出报表（中文）/（英文）"两个按钮合并成了这一个入口。
@@ -84,7 +85,7 @@ public sealed partial class PrintPreviewViewModel : ViewModelBase, IModalDialogV
             var path = await _exporter.ExportAsync(_sheetId, Localization.CurrentCulture);
             ReportPath = path;
 
-            // 渲一张 1500×5000 量级的位图是重活，扔线程池跑；**不能在这里 ConfigureAwait(false)** ——
+            // 渲一张一千多像素宽、几千像素高的位图是重活，扔线程池跑；**不能在这里 ConfigureAwait(false)** ——
             // 回来要写绑定属性，必须在 UI 线程上（2026-10-14 踩过：断言后集合直接打挂界面）
             var png = await Task.Run(() => _renderer.RenderPng(path));
             Preview = ToImageSource(png);
@@ -97,7 +98,7 @@ public sealed partial class PrintPreviewViewModel : ViewModelBase, IModalDialogV
         }
     }
 
-    /// <summary>打印：把预览图按宽度铺满可打印区、纵向切页交给打印队列（见 <see cref="ReportPrinter"/>）。</summary>
+    /// <summary>打印：把整张图按宽度铺满可打印区、纵向切页交给打印队列（见 <see cref="ReportPrinter"/>）。</summary>
     [RelayCommand]
     private void Print()
     {
