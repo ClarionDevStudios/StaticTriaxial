@@ -1,5 +1,6 @@
 namespace ANX.Method.Bending;
 
+using ANX.Reporting;
 using FlexCel.Core;
 using FlexCel.XlsAdapter;
 
@@ -54,12 +55,9 @@ public static class BendingTemplates
     /// </summary>
     public const int TemplateVersion = 4;
 
-    /// <summary>版本戳的存放位置：第 1 行 K 列（报表本身只占 A~I，该列隐藏）。</summary>
-    private const int StampRow = 1;
-
-    private const int StampColumn = 11;
-
-    private static string VersionStamp => $"ANX-TEMPLATE-V{TemplateVersion}";
+    /// <summary>出厂模板管理（版本戳 / 换代备份 / 按语种确保最新）—— 通用件，各方法共用同一条口径。</summary>
+    private static FactoryTemplateStore Store(string templatesRoot) =>
+        new(templatesRoot, "Bending", TemplateVersion, [ChineseCulture, EnglishCulture], Write);
 
     /// <summary>
     /// 字体：现役整套用的是**微软雅黑**（2026-10-15 逐格读出来的；此前误抄成"宋体"）。
@@ -104,55 +102,14 @@ public static class BendingTemplates
 
     /// <summary>
     /// 确保两套模板都是**本版出厂模板**；返回中文模板路径。
-    ///
-    /// 三条规则：缺 → 写出厂模板；戳落后 → 把旧文件改名备份（**不删**）再写出厂模板；
-    /// 戳一致 → 原样保留（站点改过的模板继续生效）。
+    /// 规则（缺 → 写、旧 → 备份后重写、本版 → 留着）在 <see cref="FactoryTemplateStore"/> 里，各方法共用。
     /// </summary>
     public static string EnsureDefaultTemplates(string templatesRoot)
     {
-        Directory.CreateDirectory(templatesRoot);
-
-        foreach (var culture in new[] { ChineseCulture, EnglishCulture })
-        {
-            var path = Path.Combine(templatesRoot, $"Bending.{culture}.xlsx");
-            if (File.Exists(path) && !IsCurrentVersion(path))
-            {
-                File.Move(path, BackupPath(path));
-            }
-
-            if (!File.Exists(path))
-            {
-                Write(path, culture);
-            }
-        }
+        Store(templatesRoot).EnsureAll();
 
         return Path.Combine(templatesRoot, $"Bending.{ChineseCulture}.xlsx");
     }
-
-    /// <summary>
-    /// 磁盘上这份模板是不是本版（读隐藏列 K 的版本戳）。
-    ///
-    /// 读不出来（旧版式没有戳 / 文件损坏 / 根本不是本软件产出的表）一律按"要换代"处理 ——
-    /// 换代会先备份原文，所以这里可以放心判"旧"，不必为了保险留着旧模板不换。
-    /// </summary>
-    private static bool IsCurrentVersion(string path)
-    {
-        try
-        {
-            var workbook = new XlsFile();
-            workbook.Open(path);
-
-            return workbook.GetCellValue(StampRow, StampColumn) is string stamp
-                && string.Equals(stamp, VersionStamp, StringComparison.Ordinal);
-        }
-        catch (Exception)
-        {
-            return false;
-        }
-    }
-
-    /// <summary>备份文件名：原名 + 时间戳 + `.bak.xlsx`，与原文件同目录（便于用户找回自己改过的那份）。</summary>
-    private static string BackupPath(string path) => $"{path}.{DateTime.Now:yyyyMMddHHmmss}.bak.xlsx";
 
     /// <summary>取指定语种的模板路径（不存在则先写出）。</summary>
     public static string Resolve(string templatesRoot, string culture)
@@ -381,8 +338,7 @@ public static class BendingTemplates
         Style(workbook, sectionFormat, 34, 1, 34, 9);
 
         // ── 出厂版本戳：写在隐藏的 K 列（报表本身只占 A~I），导出前据此判断要不要换代 ──
-        workbook.SetCellValue(StampRow, StampColumn, VersionStamp);
-        workbook.SetColHidden(StampColumn, true);
+        FactoryTemplateStore.ApplyStamp(workbook, TemplateVersion);
 
         workbook.Save(path);
 
