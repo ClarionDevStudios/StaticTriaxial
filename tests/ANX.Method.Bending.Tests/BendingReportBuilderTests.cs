@@ -141,6 +141,55 @@ public sealed class BendingReportBuilderTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// 明细件数超出模板版式的行数时**明确拒导**，而不是把第 16 件写到说明区去（那是静默改数据）。
+    /// 消息按资源键取，所以这里给一个带占位符的假解析器，验证"键 + 参数 + 格式化"整条链路。
+    /// </summary>
+    [Fact]
+    public async Task 明细件数超出报表版式应拒导且不产出报表()
+    {
+        var service = CreateService();
+        var sheetId = await service.CreateAsync("T0715", "G15 高速 K12+300", "WT");
+
+        var overLimit = BendingTemplates.MaxDetailRows + 1;
+        for (var index = 1; index <= overLimit; index++)
+        {
+            await service.AppendSampleAsync(
+                sheetId,
+                index.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                [new CurvePoint(0, 0), new CurvePoint(1, 1), new CurvePoint(2, 2)],
+                new Dictionary<string, double>(StringComparer.Ordinal)
+                {
+                    ["SampleWidth"] = 30,
+                    ["SampleHeight"] = 35,
+                    ["PeakLoadValue"] = 9.0,
+                    ["CorrectedDeflection"] = 4.5,
+                    ["FlexuralStrength"] = 73.47,
+                    ["MaxBendingTensileStrain"] = 23625,
+                }
+            );
+        }
+
+        var templatePath = Path.Combine(_directory, "template.xlsx");
+        BuildTemplate(templatePath);
+
+        var outputRoot = Path.Combine(_directory, "out");
+        var builder = new BendingReportBuilder(service, new FlexCelReportExporter());
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => builder.BuildAsync(sheetId, templatePath, outputRoot, "zh-CN", new DetailLimitTexts())
+        );
+
+        Assert.Equal($"明细 {overLimit} 件 > {BendingTemplates.MaxDetailRows} 行", error.Message);
+        Assert.False(File.Exists(Path.Combine(outputRoot, "弯曲", sheetId, "实验报告.zh-CN.xlsx")));
+    }
+
+    private sealed class DetailLimitTexts : ITextResolver
+    {
+        public string Get(string key, string culture) =>
+            key == BendingMetricKeys.ReportTooManyDetails ? "明细 {0} 件 > {1} 行" : key;
+    }
+
     private static void BuildTemplate(string path)
     {
         var template = new XlsFile();

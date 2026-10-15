@@ -17,6 +17,11 @@ using FlexCel.XlsAdapter;
 /// 现场改模板不影响代码。**曲线图不嵌在报表里**（现役同样是把 PNG 放在报表同目录，见 SaveCurveImage）。
 ///
 /// 固定文本（执行标准 / 仪器设备名称 / 型号 / 设备编号）与本文件里的常量一致，可在模板文件里直接改。
+///
+/// **模板换代**（2026-10-15 补的机制）：模板文件里藏在隐藏列 K 的版本戳（见 <see cref="TemplateVersion"/>）
+/// 与本文件不一致时，会把磁盘上那份**改名备份**再重写出厂模板；戳一致就原样保留（站点改过的模板继续生效）。
+/// 踩过的坑：原先只判"文件在不在" —— 于是 10-14 改了版式之后，装机那份 10-11 的旧模板一直没被换掉，
+/// 软件照旧导出旧版式的报表，改动看着"没生效"。
 /// </summary>
 public static class BendingTemplates
 {
@@ -25,10 +30,38 @@ public static class BendingTemplates
 
     public const string EnglishCulture = "en-US";
 
-    /// <summary>执行标准：照现役模板的原文（现役写的是 `JTC3410-2025`，疑似 `JTG` 的笔误，原样照抄）。</summary>
-    private const string StandardTextZh = "JTC3410-2025 / T0715-2025 沥青混合料弯曲试验";
+    /// <summary>
+    /// **出厂模板版本号**：改了模板的单元格结构、固定文本或版式就得 +1。
+    ///
+    /// 用法：导出前比对模板里隐藏列 K 的戳 —— 落后就"备份旧的 + 重写出厂模板"，一致就原样保留
+    /// （站点手工改过的模板不会被无声覆盖；真换代时改动在那份 `.bak.xlsx` 里）。
+    ///
+    /// 版本沿革：
+    /// <list type="bullet">
+    ///   <item>v1（无戳，2026-10-11）：旧版式 —— "试验单号 / 有效试件数 / 弯拉强度平均值"那套横向排布；</item>
+    ///   <item>v2（2026-10-15）：表单式 A1:I32（照现役）+ 执行标准改正为 `JTG3410-2025`。**没有戳的旧文件一律当要换代。**</item>
+    /// </list>
+    /// </summary>
+    public const int TemplateVersion = 2;
 
-    private const string StandardTextEn = "JTC3410-2025 / T0715-2025 Asphalt Mixture Bending Test";
+    /// <summary>明细数据行数上限：模板的明细区是第 11~25 行，即**最多 15 件**（照现役版式）。</summary>
+    public const int MaxDetailRows = 15;
+
+    /// <summary>版本戳的存放位置：第 1 行 K 列（报表本身只占 A~I，该列隐藏）。</summary>
+    private const int StampRow = 1;
+
+    private const int StampColumn = 11;
+
+    private static string VersionStamp => $"ANX-TEMPLATE-V{TemplateVersion}";
+
+    /// <summary>
+    /// 执行标准：规范正式名称为 `JTG 3410-2025`。
+    /// 现役模板写的是 `JTC3410-2025`（笔误），按用户 2026-10-15 的裁定**改正**，不照抄笔误
+    /// —— 这是与现役版式的唯一一处**文字**差异（版式仍逐格一致）。
+    /// </summary>
+    private const string StandardTextZh = "JTG3410-2025 / T0715-2025 沥青混合料弯曲试验";
+
+    private const string StandardTextEn = "JTG3410-2025 / T0715-2025 Asphalt Mixture Bending Test";
 
     /// <summary>仪器设备信息：现役在报表代码里写死的常量（用户现场那台设备）。</summary>
     private const string InstrumentNameZh = "沥青综合性能试验仪";
@@ -39,7 +72,12 @@ public static class BendingTemplates
 
     private const string InstrumentNo = "JLMS-2024-001";
 
-    /// <summary>确保两套模板存在；返回中文模板路径。</summary>
+    /// <summary>
+    /// 确保两套模板都是**本版出厂模板**；返回中文模板路径。
+    ///
+    /// 三条规则：缺 → 写出厂模板；戳落后 → 把旧文件改名备份（**不删**）再写出厂模板；
+    /// 戳一致 → 原样保留（站点改过的模板继续生效）。
+    /// </summary>
     public static string EnsureDefaultTemplates(string templatesRoot)
     {
         Directory.CreateDirectory(templatesRoot);
@@ -47,6 +85,11 @@ public static class BendingTemplates
         foreach (var culture in new[] { ChineseCulture, EnglishCulture })
         {
             var path = Path.Combine(templatesRoot, $"Bending.{culture}.xlsx");
+            if (File.Exists(path) && !IsCurrentVersion(path))
+            {
+                File.Move(path, BackupPath(path));
+            }
+
             if (!File.Exists(path))
             {
                 Write(path, culture);
@@ -55,6 +98,31 @@ public static class BendingTemplates
 
         return Path.Combine(templatesRoot, $"Bending.{ChineseCulture}.xlsx");
     }
+
+    /// <summary>
+    /// 磁盘上这份模板是不是本版（读隐藏列 K 的版本戳）。
+    ///
+    /// 读不出来（旧版式没有戳 / 文件损坏 / 根本不是本软件产出的表）一律按"要换代"处理 ——
+    /// 换代会先备份原文，所以这里可以放心判"旧"，不必为了保险留着旧模板不换。
+    /// </summary>
+    private static bool IsCurrentVersion(string path)
+    {
+        try
+        {
+            var workbook = new XlsFile();
+            workbook.Open(path);
+
+            return workbook.GetCellValue(StampRow, StampColumn) is string stamp
+                && string.Equals(stamp, VersionStamp, StringComparison.Ordinal);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>备份文件名：原名 + 时间戳 + `.bak.xlsx`，与原文件同目录（便于用户找回自己改过的那份）。</summary>
+    private static string BackupPath(string path) => $"{path}.{DateTime.Now:yyyyMMddHHmmss}.bak.xlsx";
 
     /// <summary>取指定语种的模板路径（不存在则先写出）。</summary>
     public static string Resolve(string templatesRoot, string culture)
@@ -251,6 +319,10 @@ public static class BendingTemplates
             Style(workbook, signValueFormat, 31, col);
             Style(workbook, signValueFormat, 32, col);
         }
+
+        // ── 出厂版本戳：写在隐藏的 K 列（报表本身只占 A~I），导出前据此判断要不要换代 ──
+        workbook.SetCellValue(StampRow, StampColumn, VersionStamp);
+        workbook.SetColHidden(StampColumn, true);
 
         workbook.Save(path);
 

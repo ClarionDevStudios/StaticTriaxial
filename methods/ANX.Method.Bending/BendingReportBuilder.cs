@@ -71,6 +71,22 @@ public sealed class BendingReportBuilder(
         var main = sheets.ReadMainRow(sheetId, MainColumns);
         var details = sheets.ReadDetailRows(sheetId, DetailColumns);
 
+        // 明细行数上界：模板的明细区只有第 11~25 行（15 件）。超了**不截断、不硬塞** ——
+        // 导出器是按"明细模板行 + i"往下写的，第 16 件会写到第 26 行、再往下就把
+        // "其他需要说明的情况"（C27:I30）整块覆盖掉，等于静默改数据。宁可明确拒导。
+        if (details.Count > BendingTemplates.MaxDetailRows)
+        {
+            throw new InvalidOperationException(
+                Text(
+                    BendingMetricKeys.ReportTooManyDetails,
+                    culture,
+                    texts,
+                    details.Count,
+                    BendingTemplates.MaxDetailRows
+                )
+            );
+        }
+
         var sheetDirectory = Path.Combine(outputRoot, "弯曲", sheetId);
         Directory.CreateDirectory(sheetDirectory);
 

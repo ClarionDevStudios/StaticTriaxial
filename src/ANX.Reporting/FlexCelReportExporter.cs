@@ -82,7 +82,24 @@ public sealed class FlexCelReportExporter : IReportExporter
             Directory.CreateDirectory(directory);
         }
 
-        workbook.Save(request.OutputPath);
+        // 落盘走"临时文件 + 原子替换"：**FlexCel 的 `Save(路径)` 不允许覆盖已存在的文件**
+        //（对已存在的目标会抛 IOException: The file ... already exists）—— 直接保存的话，
+        // 同一张单导出第二次就会失败（用户会反复点"导出报表 / 打印报表"）。
+        // 临时名带 Guid：上一次异常残留的 `.tmp` 也不会把它自己顶掉；Save 失败时不留半份报表。
+        var temporary = $"{request.OutputPath}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            workbook.Save(temporary);
+            File.Move(temporary, request.OutputPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporary))
+            {
+                File.Delete(temporary);
+            }
+        }
+
         return Task.CompletedTask;
     }
 

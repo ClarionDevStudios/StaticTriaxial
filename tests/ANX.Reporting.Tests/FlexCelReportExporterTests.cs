@@ -81,6 +81,42 @@ public sealed class FlexCelReportExporterTests : IDisposable
     }
 
     [Fact]
+    public async Task 目标文件已存在时应覆盖而不是报错()
+    {
+        var templatePath = Path.Combine(_directory, "t3.xlsx");
+        var outputPath = Path.Combine(_directory, "o3.xlsx");
+
+        var template = new XlsFile();
+        template.NewFile();
+        template.SetCellValue(1, 1, "{{Sheet.ProjectName}}");
+        template.Save(templatePath);
+
+        // 用户会反复导同一张单（执行页"打印报表"、历史页"导出"）：第二次必须覆盖，不能报"文件已存在"
+        var exporter = new FlexCelReportExporter();
+        await exporter.ExportAsync(Request(templatePath, outputPath, "第一次"));
+        await exporter.ExportAsync(Request(templatePath, outputPath, "第二次"));
+
+        var result = new XlsFile();
+        result.Open(outputPath);
+        Assert.Equal("第二次", result.GetCellValue(1, 1));
+
+        // 落盘走"临时文件 + 原子替换"，收尾不留 .tmp
+        Assert.Empty(Directory.GetFiles(_directory, "*.tmp"));
+    }
+
+    private static ReportRequest Request(string templatePath, string outputPath, string projectName) =>
+        new(
+            "T0715",
+            templatePath,
+            outputPath,
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["Sheet.ProjectName"] = projectName,
+            },
+            []
+        );
+
+    [Fact]
     public void 没有对应标签的单元格应原样保留()
     {
         var templatePath = Path.Combine(_directory, "t2.xlsx");

@@ -51,6 +51,71 @@ public sealed class BendingReportTemplateTests : IDisposable
         );
     }
 
+    /// <summary>
+    /// 装机里那份模板落后于本版时必须**自动换代**：备份旧的、写出新的。
+    /// 这条是 2026-10-15 补的机制 —— 原先只判"文件在不在"，于是 10-14 改了版式之后，
+    /// 装机那份 10-11 的旧模板一直没被换掉，软件照旧导出旧版式的报表。
+    /// </summary>
+    [Fact]
+    public void 版本戳落后的模板应在导出前换代并备份()
+    {
+        var templatesRoot = Path.Combine(_directory, "Report", "Template");
+        BendingTemplates.EnsureDefaultTemplates(templatesRoot);
+
+        var path = Path.Combine(templatesRoot, "Bending.zh-CN.xlsx");
+
+        // 模拟装机里那份"没有戳的旧模板"（旧版式就没有这个戳）
+        OverwriteAfterEdit(path, workbook => workbook.SetCellValue(1, 11, string.Empty));
+
+        BendingTemplates.EnsureDefaultTemplates(templatesRoot);
+
+        // 换代了：文件回来带本版戳
+        var refreshed = new XlsFile();
+        refreshed.Open(path);
+        Assert.Equal($"ANX-TEMPLATE-V{BendingTemplates.TemplateVersion}", refreshed.GetCellValue(1, 11));
+
+        // 旧的那份**没被删**，改名备份在同目录
+        var backups = Directory.GetFiles(templatesRoot, "Bending.zh-CN.xlsx.*.bak.xlsx");
+        Assert.Single(backups);
+        var backup = new XlsFile();
+        backup.Open(backups[0]);
+        Assert.Equal(string.Empty, Convert.ToString(backup.GetCellValue(1, 11)));
+    }
+
+    /// <summary>戳一致时**不覆盖**：站点手工改过的模板继续生效（换代才让位，且会先备份）。</summary>
+    [Fact]
+    public void 版本戳一致时手工改过的模板不应被覆盖()
+    {
+        var templatesRoot = Path.Combine(_directory, "Report", "Template");
+        BendingTemplates.EnsureDefaultTemplates(templatesRoot);
+
+        var path = Path.Combine(templatesRoot, "Bending.zh-CN.xlsx");
+        OverwriteAfterEdit(path, workbook => workbook.SetCellValue(27, 3, "现场备注：本机试验室编号 A-12"));
+
+        BendingTemplates.EnsureDefaultTemplates(templatesRoot);
+
+        var reopened = new XlsFile();
+        reopened.Open(path);
+        Assert.Equal("现场备注：本机试验室编号 A-12", reopened.GetCellValue(27, 3));
+        Assert.Empty(Directory.GetFiles(templatesRoot, "Bending.zh-CN.xlsx.*.bak.xlsx"));
+    }
+
+    /// <summary>
+    /// 把模板改一处再顶上（模拟"装机里那份旧模板"或"用户手工改过模板"）。
+    /// 走"另存 + 换名"而不是就地 Save：**FlexCel 的 <c>Save(路径)</c> 不允许覆盖已存在的文件**
+    /// （会抛 <c>IOException: The file ... already exists</c>）。
+    /// </summary>
+    private static void OverwriteAfterEdit(string path, Action<XlsFile> edit)
+    {
+        var workbook = new XlsFile();
+        workbook.Open(path);
+        edit(workbook);
+
+        var staged = path + ".staged";
+        workbook.Save(staged);
+        File.Move(staged, path, overwrite: true);
+    }
+
     [Fact]
     public void 模板版式照现役报表()
     {
@@ -65,7 +130,8 @@ public sealed class BendingReportTemplateTests : IDisposable
         Assert.Equal("试验项目名称：", zh.GetCellValue(2, 1));
         Assert.Equal("{{Sheet.ProjectName}}", zh.GetCellValue(2, 3));
         Assert.Equal("执行标准：", zh.GetCellValue(2, 5));
-        Assert.Equal("JTC3410-2025 / T0715-2025 沥青混合料弯曲试验", zh.GetCellValue(2, 6));
+        // 规范正式名称是 JTG3410-2025（现役模板里的 JTC 是笔误，用户 2026-10-15 定为改正）
+        Assert.Equal("JTG3410-2025 / T0715-2025 沥青混合料弯曲试验", zh.GetCellValue(2, 6));
         Assert.Equal("委托单位：", zh.GetCellValue(3, 1));
         Assert.Equal("试验方法：", zh.GetCellValue(3, 5));
         Assert.Equal("沥青混合料类型：", zh.GetCellValue(4, 1));
@@ -200,6 +266,36 @@ public sealed class BendingReportTemplateTests : IDisposable
         Assert.Equal("G15 高速 K12+300", en.GetCellValue(2, 3));
         Assert.Equal("2", en.GetCellValue(12, 1));
         Assert.Equal("Normal", en.GetCellValue(11, 9));
+    }
+
+    /// <summary>
+    /// 同一张单、同一语种导出第二次必须成功（覆盖上一次的产物）—— 用户会反复导
+    ///（执行页「打印报表」、历史页「导出」都可能点第二次）。这条是探针式的回归：
+    /// **FlexCel 的 <c>Save(路径)</c> 对已存在的文件是"拒绝"而不是"覆盖"**（抛 <c>IOException</c>）。
+    /// </summary>
+    [Fact]
+    public async Task 同一张单重复导出应覆盖上一次的产物()
+    {
+        var sheets = CreateService();
+        var sheetId = await sheets.CreateAsync("T0715", "G15 高速 K12+300", "WT");
+        await sheets.AppendSampleAsync(
+            sheetId,
+            "1",
+            [new CurvePoint(0, 0), new CurvePoint(1, 1), new CurvePoint(2, 2)],
+            new Dictionary<string, double>(StringComparer.Ordinal) { ["SampleWidth"] = 30 }
+        );
+
+        var export = new BendingReportExportService(
+            sheets,
+            Path.Combine(_directory, "Report"),
+            new FakeTexts()
+        );
+
+        var first = await export.ExportAsync(sheetId, "zh-CN");
+        var second = await export.ExportAsync(sheetId, "zh-CN");
+
+        Assert.Equal(first, second);
+        Assert.True(File.Exists(second));
     }
 
     /// <summary>最小文案解析器（只给报表用到的那两个键）。</summary>
