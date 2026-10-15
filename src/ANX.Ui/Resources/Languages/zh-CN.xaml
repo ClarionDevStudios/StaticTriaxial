@@ -255,6 +255,11 @@
   <sys:String x:Key="Method.T0715.CorrectedDeflection">跨中挠度</sys:String>
   <sys:String x:Key="Method.T0715.Elapsed">试验持续时间</sys:String>
   <sys:String x:Key="Method.T0715.CurveTitle">试件 {0}</sys:String>
+  <!-- 历史数据页「试件」列表与字段表的列名（用户 2026-10-15：要和当前语言一致） -->
+  <sys:String x:Key="Method.T0715.SampleId">试件号</sys:String>
+  <sys:String x:Key="Method.T0715.SampleWidth">试件宽度</sys:String>
+  <sys:String x:Key="Method.T0715.SampleHeight">试件高度</sys:String>
+  <sys:String x:Key="Method.T0715.PeakLoad">峰值荷载</sys:String>
   <sys:String x:Key="Method.T0715.ValidityNormal">正常</sys:String>
   <sys:String x:Key="Method.T0715.ValidityAbnormal">异常</sys:String>
   <!-- 曲线图标注（界面与存盘图共用这三条键，见 ANX.Control.CurveMarkKeys） -->

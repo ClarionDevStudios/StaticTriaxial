@@ -17,15 +17,19 @@ public sealed class BendingSheetBrowser(TestSheetService sheets, ITestParameters
     /// <summary>曲线纵轴：荷载。</summary>
     public string CurveYAxisKey => BendingCurveAxes.Load;
 
-    private static readonly string[] SampleColumns =
+    /// <summary>
+    /// 试件列表要读的明细列 + **列名的显示资源键**（界面按当前语言取；用户 2026-10-15：
+    /// 原来直接把库里的列名（<c>SampleID</c> 这种）显示出来了）。有现成指标名的列复用指标键。
+    /// </summary>
+    private static readonly (string Column, string DisplayKey)[] SampleColumns =
     [
-        "SampleID",
-        "SampleWidth",
-        "SampleHeight",
-        "PeakLoadValue",
-        "CorrectedDeflection",
-        "FlexuralStrength",
-        "MaxBendingTensileStrain",
+        ("SampleID", BendingMetricKeys.SampleId),
+        ("SampleWidth", BendingMetricKeys.SampleWidth),
+        ("SampleHeight", BendingMetricKeys.SampleHeight),
+        ("PeakLoadValue", BendingMetricKeys.PeakLoad),
+        ("CorrectedDeflection", BendingMetricKeys.CorrectedDeflection),
+        ("FlexuralStrength", BendingMetricKeys.FlexuralStrength),
+        ("MaxBendingTensileStrain", BendingMetricKeys.MaxStrain),
     ];
 
     public Task<IReadOnlyList<TestSheetSummary>> QueryAsync(
@@ -38,13 +42,15 @@ public sealed class BendingSheetBrowser(TestSheetService sheets, ITestParameters
         CancellationToken cancellationToken = default
     )
     {
-        var rows = sheets.ReadDetailRows(sheetId, SampleColumns);
+        var rows = sheets.ReadDetailRows(sheetId, [.. SampleColumns.Select(column => column.Column)]);
         IReadOnlyList<IReadOnlyDictionary<string, string>> result =
         [
             .. rows.Select(row => (IReadOnlyDictionary<string, string>)
                 SampleColumns.ToDictionary(
-                    column => column,
-                    column => Format(row[column]),
+                    // 键给的是**显示名资源键**（不是库里的列名）：界面 L(key) 取当前语言，
+                    // 界面因此仍然不认识任何具体字段（列名只在方法工程里出现）。
+                    column => column.DisplayKey,
+                    column => Format(row[column.Column]),
                     StringComparer.Ordinal
                 )),
         ];

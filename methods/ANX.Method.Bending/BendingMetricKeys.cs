@@ -25,6 +25,21 @@ public static class BendingMetricKeys
     /// <summary>曲线图的图题（带试件号占位符）。</summary>
     public const string CurveTitle = "Method.T0715.CurveTitle";
 
+    /// <summary>
+    /// 历史数据页「试件」列表与字段表的**列名**（用户 2026-10-15："SampleID 及列名信息要和当前语言一致"）。
+    /// 明细表里那几列有现成的指标名就复用（跨中挠度 / 弯拉强度 / 最大弯拉应变），剩下的在这里补。
+    /// </summary>
+    public const string SampleId = "Method.T0715.SampleId";
+
+    /// <summary>试件宽度（明细列 <c>SampleWidth</c>）。</summary>
+    public const string SampleWidth = "Method.T0715.SampleWidth";
+
+    /// <summary>试件高度（明细列 <c>SampleHeight</c>）。</summary>
+    public const string SampleHeight = "Method.T0715.SampleHeight";
+
+    /// <summary>峰值荷载（明细列 <c>PeakLoadValue</c>）。</summary>
+    public const string PeakLoad = "Method.T0715.PeakLoad";
+
     /// <summary>「异常值判断」列：正常（现役报表写「正常」/「异常」）。</summary>
     public const string ValidityNormal = "Method.T0715.ValidityNormal";
 
@@ -48,6 +63,10 @@ public static class BendingMetricKeys
         CurveTitle,
         ValidityNormal,
         ValidityAbnormal,
+        SampleId,
+        SampleWidth,
+        SampleHeight,
+        PeakLoad,
         BendingCurveAxes.Deflection,
         BendingCurveAxes.Load,
         .. CurveMarkKeys.All,

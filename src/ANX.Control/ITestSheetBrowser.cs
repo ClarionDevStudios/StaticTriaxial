@@ -14,7 +14,12 @@ public interface ITestSheetBrowser : ICurveAxisSource
         CancellationToken cancellationToken = default
     );
 
-    /// <summary>读某张试验单的试件明细（每行一个"列名 → 文本"）。</summary>
+    /// <summary>
+    /// 读某张试验单的试件明细（每行一个"**列名的显示资源键** → 文本"）。
+    /// 键是资源键而不是库里的列名（例：<c>Method.T0715.PeakLoad</c>）：界面用 <c>L(key)</c> 取当前语言
+    /// 的列名（用户 2026-10-15：列表里的 <c>SampleID</c>、<c>PeakLoadValue</c> 这种库列名要跟着语言走），
+    /// 这样界面仍然不认识任何具体字段 —— 列名只在方法工程里出现。
+    /// </summary>
     Task<IReadOnlyList<IReadOnlyDictionary<string, string>>> ReadSamplesAsync(
         string sheetId,
         CancellationToken cancellationToken = default

@@ -255,6 +255,11 @@
   <sys:String x:Key="Method.T0715.CorrectedDeflection">Midspan deflection</sys:String>
   <sys:String x:Key="Method.T0715.Elapsed">Elapsed time</sys:String>
   <sys:String x:Key="Method.T0715.CurveTitle">Specimen {0}</sys:String>
+  <!-- Column names of the history page's specimen list / field table -->
+  <sys:String x:Key="Method.T0715.SampleId">Specimen</sys:String>
+  <sys:String x:Key="Method.T0715.SampleWidth">Specimen width</sys:String>
+  <sys:String x:Key="Method.T0715.SampleHeight">Specimen height</sys:String>
+  <sys:String x:Key="Method.T0715.PeakLoad">Peak load</sys:String>
   <sys:String x:Key="Method.T0715.ValidityNormal">Normal</sys:String>
   <sys:String x:Key="Method.T0715.ValidityAbnormal">Abnormal</sys:String>
   <!-- Curve chart annotations (shared by the live chart and the saved PNG, see ANX.Control.CurveMarkKeys) -->

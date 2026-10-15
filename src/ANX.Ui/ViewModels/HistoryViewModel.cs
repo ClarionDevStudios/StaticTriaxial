@@ -6,11 +6,15 @@ using ANX.Core.TestSheets;
 using ANX.Ui.Services;
 
 /// <summary>
-/// 试件行：**试件号** + 显示标题 + 字段表（都是"列名 → 文本"，界面不认识具体含义）。
+/// 试件行：**试件号** + 显示标题 + 字段表（都是"当前语言的列名 → 文本"，界面不认识具体含义
+/// —— 浏览器给的是资源键，见 <see cref="RebuildSamples"/>）。
 ///
 /// 试件号单独拿出来，是因为曲线是按 <c>单号-试件号</c> 存的（<c>BendingTestDetail.SampleKey</c>）。
 /// 之前从显示标题里 <c>Split(' ')[0]</c> 取，取到的是**列名**（"SampleID"）而不是值 ——
 /// 于是历史页的曲线一直读不到（回放图总是空的）。2026-10-13 核对回放标注时发现并修掉。
+///
+/// 列名一度是库里的列名（<c>SampleID</c> / <c>PeakLoadValue</c>…）直接显示，用户 2026-10-15 要求
+/// "和当前语言一致" —— 现在由方法工程给资源键、界面取当前语言。
 /// </summary>
 public sealed record SampleRow(
     string SampleId,
@@ -29,6 +33,15 @@ public partial class HistoryViewModel : ViewModelBase
     private readonly PrintPreviewViewModel? _preview;
     private readonly IModalPageService? _modalPages;
 
+    /// <summary>
+    /// 最近一次读到的试件行（键 = 列名的**显示资源键**）。换语言时按它重算标题与字段标签 ——
+    /// 不再读一次库，也不动用户选中的那一件。
+    /// </summary>
+    private IReadOnlyList<IReadOnlyDictionary<string, string>> _sampleRows = [];
+
+    /// <summary>当前这些试件行属于哪张单（重算标题时要用单号兜底）。</summary>
+    private string _sampleSheetId = string.Empty;
+
     public HistoryViewModel(
         ILocalizationService localization,
         ITestSheetBrowser browser,
@@ -42,6 +55,10 @@ public partial class HistoryViewModel : ViewModelBase
         _execution = execution;
         _preview = preview;
         _modalPages = modalPages;
+
+        // 换语言：试件列表的列名（原来是库里的 SampleID 这种）跟着换，选中的那一件不动
+        localization.LanguageChanged += (_, _) => RebuildSamples();
+
         SetStatus(L("History.Ready"));
     }
 
@@ -204,17 +221,41 @@ public partial class HistoryViewModel : ViewModelBase
             return;
         }
 
-        var rows = await _browser.ReadSamplesAsync(sheet.SheetId);
-        foreach (var row in rows)
+        _sampleRows = await _browser.ReadSamplesAsync(sheet.SheetId);
+        _sampleSheetId = sheet.SheetId;
+        RebuildSamples();
+    }
+
+    /// <summary>
+    /// 按 <see cref="_sampleRows"/> 重算试件列表：**第一列当标题、其余列做字段表**，列名都用
+    /// <see cref="L(string)"/> 取当前语言（浏览器给的是资源键，见 <see cref="SampleRow"/> 的说明）。
+    /// 换语言时重跑一遍，选中的那一件按试件号找回来。
+    /// </summary>
+    private void RebuildSamples()
+    {
+        var previous = SelectedSample?.SampleId;
+
+        Samples.Clear();
+        foreach (var row in _sampleRows)
         {
-            // 第一列当标题，其余列做字段表；界面不认识任何具体字段名
             var fields = row.ToArray();
-            var title = fields.Length > 0 ? $"{fields[0].Key} {fields[0].Value}" : sheet.SheetId;
             var sampleId = fields.Length > 0 ? fields[0].Value : string.Empty;
-            Samples.Add(new SampleRow(sampleId, title, [.. fields.Skip(1)]));
+            var title = fields.Length > 0
+                ? $"{L(fields[0].Key)} {sampleId}"
+                : _sampleSheetId;
+
+            Samples.Add(
+                new SampleRow(
+                    sampleId,
+                    title,
+                    [.. fields.Skip(1).Select(pair => new KeyValuePair<string, string>(L(pair.Key), pair.Value))]
+                )
+            );
         }
 
-        SelectedSample = Samples.FirstOrDefault();
+        SelectedSample =
+            Samples.FirstOrDefault(sample => string.Equals(sample.SampleId, previous, StringComparison.Ordinal))
+            ?? Samples.FirstOrDefault();
     }
 
     private async Task LoadCurveAsync(SampleRow? sample)
