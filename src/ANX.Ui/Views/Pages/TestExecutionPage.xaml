@@ -103,18 +103,21 @@
       </StackPanel>
 
       <!--
-        两组功能按钮，放在工作台按钮右侧：组内上下排列，两组左右并排（组内按钮等宽、两组右边缘对齐）。
+        四个功能按钮，放在工作台按钮右侧：2×2 排布，**四个按钮等宽**
+        （用户 2026-10-15："4个按钮的宽度不一致，History 按钮宽度最小，按标字最长的那个统一"）。
+        用 UniformGrid 而不是两个 StackPanel：UniformGrid 的所有格子取**所有孩子里最宽的那个**，
+        于是四个按钮一样宽；按行填充的顺序正好还是"新建试验 / 打印报表 / 试验参数 / 历史数据"。
       -->
-      <Grid Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Top">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="Auto" />
-        </Grid.ColumnDefinitions>
-
-        <!-- 第一组：新建试验 / 试验参数 -->
-        <StackPanel Grid.Column="0">
+      <UniformGrid
+        Grid.Column="2"
+        Margin="12,0,0,0"
+        Columns="2"
+        Rows="2"
+        VerticalAlignment="Top"
+      >
           <ui:Button
             MinWidth="96"
+            Margin="0,0,4,0"
             Appearance="Primary"
             Command="{Binding ViewModel.OpenSheetSelectionCommand}"
             Content="{DynamicResource Exec.NewSheet}"
@@ -122,18 +125,7 @@
           />
           <ui:Button
             MinWidth="96"
-            Margin="0,6,0,0"
-            Appearance="Primary"
-            Command="{Binding ViewModel.OpenMachineSettingsCommand}"
-            Content="{DynamicResource Exec.TestParams}"
-            Icon="{ui:SymbolIcon Settings24}"
-          />
-        </StackPanel>
-
-        <!-- 第二组：打印报表 / 历史数据 -->
-        <StackPanel Grid.Column="1" Margin="8,0,0,0">
-          <ui:Button
-            MinWidth="96"
+            Margin="4,0,0,0"
             Appearance="Primary"
             Command="{Binding ViewModel.PrintReportCommand}"
             Content="{DynamicResource Exec.Print}"
@@ -141,14 +133,21 @@
           />
           <ui:Button
             MinWidth="96"
-            Margin="0,6,0,0"
+            Margin="0,6,4,0"
+            Appearance="Primary"
+            Command="{Binding ViewModel.OpenMachineSettingsCommand}"
+            Content="{DynamicResource Exec.TestParams}"
+            Icon="{ui:SymbolIcon Settings24}"
+          />
+          <ui:Button
+            MinWidth="96"
+            Margin="4,6,0,0"
             Appearance="Primary"
             Command="{Binding ViewModel.OpenHistoryCommand}"
             Content="{DynamicResource Exec.History}"
             Icon="{ui:SymbolIcon History24}"
           />
-        </StackPanel>
-      </Grid>
+      </UniformGrid>
     </Grid>
 
     <!-- ③ 三栏：左（试样与操作）/ 中（曲线）/ 右（状态与日志） -->
