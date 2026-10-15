@@ -110,28 +110,32 @@ public partial class ShellViewModel : ViewModelBase, INavigationPaneService
         }
     }
 
+    /// <summary>
+    /// 问一句"确定要退出软件吗？"。**导航栏「退出系统」与主窗口右上角的 X 共用这一句**
+    /// （用户 2026-10-15：X 直接关掉、没有提示），所以文案与对话框尺寸只有这一处。
+    /// </summary>
+    /// <returns><c>true</c> = 用户确认退出。</returns>
+    public Task<bool> ConfirmExitAsync() =>
+        AppDialogs.ConfirmAsync(
+            L("Nav.Exit"),
+            L("Common.ExitConfirm"),
+            L("Common.Yes"),
+            L("Common.No")
+        );
+
+    /// <summary>导航栏「退出系统」：问一句，确认了就退出程序。</summary>
     [RelayCommand]
     private async Task ExitAsync()
     {
-        var messageBox = new Wpf.Ui.Controls.MessageBox
+        if (!await ConfirmExitAsync())
         {
-            Title = L("Nav.Exit"),
-            Content = L("Common.ExitConfirm"),
-            PrimaryButtonText = L("Common.Yes"),
-            SecondaryButtonText = L("Common.No"),
-            IsCloseButtonEnabled = false,
-            Owner = Application.Current?.MainWindow,
-        };
-
-        var result = await messageBox.ShowDialogAsync();
-
-        if (result == Wpf.Ui.Controls.MessageBoxResult.Primary)
-        {
-            Application.Current?.Shutdown();
+            // 取消后把选中项还原，避免"退出"这一项一直高亮。
+            _navigationService.Navigate(typeof(Views.Pages.SettingsPage));
             return;
         }
 
-        // 取消后把选中项还原，避免"退出"这一项一直高亮。
-        _navigationService.Navigate(typeof(Views.Pages.SettingsPage));
+        // 已经问过了：立闸门再退，免得主窗口在退出流程里又弹一遍确认
+        ExitGuard.AllowExit();
+        Application.Current?.Shutdown();
     }
 }

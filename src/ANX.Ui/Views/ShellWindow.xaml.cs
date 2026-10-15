@@ -1,5 +1,6 @@
 namespace ANX.Ui.Views;
 
+using System.ComponentModel;
 using ANX.Ui.Services;
 using ANX.Ui.ViewModels;
 using Wpf.Ui;
@@ -9,6 +10,9 @@ using Wpf.Ui.Controls;
 /// <summary>外壳窗口。导航走 WPF-UI 的内建机制（TargetPageType + INavigationService）。</summary>
 public partial class ShellWindow : INavigationWindow
 {
+    /// <summary>正在问"要不要退出"（连点两下 X 不要弹两个框）。</summary>
+    private bool _confirmingExit;
+
     public ShellWindow(
         ShellViewModel viewModel,
         INavigationService navigationService,
@@ -41,9 +45,50 @@ public partial class ShellWindow : INavigationWindow
 
     public void CloseWindow() => Close();
 
+    /// <summary>
+    /// 点标题栏右上角的 X 时先问一句"确定要退出软件吗？"（用户 2026-10-15：原先直接关掉、没有提示）。
+    ///
+    /// 与导航栏「退出系统」共用 <see cref="ShellViewModel.ConfirmExitAsync"/>，文案与尺寸只有一处；
+    /// 谁先问过谁就立起 <see cref="ExitGuard"/>，另一处不再问第二遍。
+    ///
+    /// 确认框是**异步**的（WPF-UI 的 MessageBox 只有 `ShowDialogAsync`），所以这里先 `e.Cancel`
+    /// 拦下这次关闭，等用户答完"是"再自己关一次 —— 那一次闸门已立，走上面那条直接放行的分支。
+    /// </summary>
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        if (ExitGuard.IsAllowed || _confirmingExit)
+        {
+            base.OnClosing(e);
+            return;
+        }
+
+        e.Cancel = true;
+        _ = ConfirmExitAsync();
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         base.OnClosed(e);
         Application.Current?.Shutdown();
+    }
+
+    private async Task ConfirmExitAsync()
+    {
+        _confirmingExit = true;
+
+        try
+        {
+            if (!await ViewModel.ConfirmExitAsync())
+            {
+                return;
+            }
+
+            ExitGuard.AllowExit();
+            Close();
+        }
+        finally
+        {
+            _confirmingExit = false;
+        }
     }
 }

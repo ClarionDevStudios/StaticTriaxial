@@ -326,6 +326,10 @@ public partial class App
     {
         var logger = Services.GetRequiredService<ILogger<App>>();
 
+        // 注销 / 关机：Windows 要结束本进程，别拦着（拦了会变成"此程序阻止关机"）——
+        // 立起退出闸门，主窗口就不会在这条路上弹"确定要退出软件吗？"
+        SessionEnding += (_, _) => ExitGuard.AllowExit();
+
         try
         {
             // 语言与主题从**外部配置文件**读（用户 2026-10-14：改完下次启动要生效）。
@@ -530,6 +534,8 @@ public partial class App
         if (shouldExit)
         {
             Log.Information("界面线程未处理异常：用户选择退出");
+            // 已经问过一遍了（那个框里就是"是否退出程序？"）：立闸门，别让主窗口再问一次
+            ExitGuard.AllowExit();
             Shutdown(1);
             return;
         }
