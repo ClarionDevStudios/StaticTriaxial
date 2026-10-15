@@ -166,6 +166,12 @@ public sealed class BendingReportTemplateTests : IDisposable
             Assert.Equal(TFlxBorderStyle.Thin, format.Borders.Top.Style);
             Assert.Equal(TFlxBorderStyle.Thin, format.Borders.Bottom.Style);
         }
+
+        // 页面设置也照现役：现役 8 份报表模板**全部**是 A4 横向 + 水平/垂直居中（用户 2026-10-15 问到这条）
+        Assert.Equal(TPaperSize.A4, zh.PrintPaperSize);
+        Assert.True(zh.PrintLandscape);
+        Assert.True(zh.PrintHCentered);
+        Assert.True(zh.PrintVCentered);
     }
 
     [Fact]

@@ -51,9 +51,11 @@ public static class BendingTemplates
     ///   <item>v4（2026-10-15，用户："不限制试样信息行数" + "表尾加曲线图"）：明细行数不再有上限
     ///         （导出器按需插行，下面的说明区/签名/图片区跟着下移），并在表尾加**曲线图区**：
     ///         标题行 R34 + `{{Images}}` 标记，图从 R35 起两张一行往下排。</item>
+    ///   <item>v5（2026-10-15，用户问"报表纸张方向是横向吗"）：补上**页面设置** —— 照现役 8 份模板的实物
+    ///         （A4 横向 + 水平/垂直居中 + 压小的页边距）；此前我们的模板没设，默认是纵向 A4。</item>
     /// </list>
     /// </summary>
-    public const int TemplateVersion = 4;
+    public const int TemplateVersion = 5;
 
     /// <summary>出厂模板管理（版本戳 / 换代备份 / 按语种确保最新）—— 通用件，各方法共用同一条口径。</summary>
     private static FactoryTemplateStore Store(string templatesRoot) =>
@@ -339,6 +341,26 @@ public static class BendingTemplates
 
         // ── 出厂版本戳：写在隐藏的 K 列（报表本身只占 A~I），导出前据此判断要不要换代 ──
         FactoryTemplateStore.ApplyStamp(workbook, TemplateVersion);
+
+        // ── 页面设置：照现役实物 ──
+        //    现役 **8 份**报表模板（T0709 / 0715 / 0716 / 0744 / 0746 / 0747 / 0767 / 0772）
+        //    全部是 `paperSize="9"`（A4）+ `orientation="landscape"` + 水平/垂直居中，
+        //    页边距也压得很小（左右 0.236" ≈ 6mm、上下 0.157" ≈ 4mm、页眉页脚 0.118" ≈ 3mm），
+        //    且**不缩放**（没有 fitToWidth）。表宽 A~I ≈ 25.6cm，A4 横向可打印宽 ≈ 28.5cm，100% 排得下。
+        workbook.PrintPaperSize = TPaperSize.A4;
+        workbook.PrintLandscape = true;
+        workbook.PrintHCentered = true;
+        workbook.PrintVCentered = true;
+        workbook.SetPrintMargins(
+            new TXlsMargins(
+                aLeft: 0.23622047244094491,
+                aTop: 0.15748031496062992,
+                aRight: 0.23622047244094491,
+                aBottom: 0.15748031496062992,
+                aHeader: 0.11811023622047245,
+                aFooter: 0.11811023622047245
+            )
+        );
 
         workbook.Save(path);
 
