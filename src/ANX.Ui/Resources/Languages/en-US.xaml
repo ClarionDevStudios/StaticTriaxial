@@ -370,12 +370,16 @@
 
   <!-- Method-declared metric names and curve text: the method supplies the key (IAP style), the wording lives here -->
   <sys:String x:Key="Method.T0715.Load">Load</sys:String>
-  <sys:String x:Key="Method.T0715.Displacement">Displacement</sys:String>
-  <sys:String x:Key="Method.T0715.FlexuralStrength">Flexural strength</sys:String>
-  <sys:String x:Key="Method.T0715.OriginCorrection">Origin correction</sys:String>
-  <sys:String x:Key="Method.T0715.MaxStrain">Max bending strain</sys:String>
-  <sys:String x:Key="Method.T0715.CorrectedDeflection">Midspan deflection</sys:String>
-  <sys:String x:Key="Method.T0715.Elapsed">Elapsed time</sys:String>
+  <!--
+    指标卡上的名字：**一律用缩写**（用户 2026-10-15："卡片中的标题能否使用英文缩写，多个卡片被撑宽，
+    导致最右侧的 4 个按钮被遮挡"）。卡片按内容取宽、不折行，名字一长整排就顶掉右边的按钮。
+  -->
+  <sys:String x:Key="Method.T0715.Displacement">Displ.</sys:String>
+  <sys:String x:Key="Method.T0715.FlexuralStrength">Flex. str.</sys:String>
+  <sys:String x:Key="Method.T0715.OriginCorrection">Origin corr.</sys:String>
+  <sys:String x:Key="Method.T0715.MaxStrain">Max strain</sys:String>
+  <sys:String x:Key="Method.T0715.CorrectedDeflection">Defl.</sys:String>
+  <sys:String x:Key="Method.T0715.Elapsed">Elapsed</sys:String>
   <sys:String x:Key="Method.T0715.CurveTitle">Specimen {0}</sys:String>
   <!-- Column names of the history page's specimen list / field table -->
   <sys:String x:Key="Method.T0715.SampleId">Specimen</sys:String>
