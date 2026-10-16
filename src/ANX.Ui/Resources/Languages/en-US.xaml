@@ -407,4 +407,63 @@
   <sys:String x:Key="Exec.LoadClamped">Load limit set to {0:0.###} kN from the device pressure range</sys:String>
   <sys:String x:Key="Exec.MotorStalled">Device motor stopped (manual stop / limit / servo protection); run aborted</sys:String>
   <sys:String x:Key="Exec.CommunicationLost">No data for over 2 seconds; run aborted</sys:String>
+
+  <!-- ── T 0709 Marshall stability (method / metrics / report / messages) ── -->
+  <sys:String x:Key="Method.T0709.Name">Marshall Stability Test</sys:String>
+  <sys:String x:Key="Method.T0709.Load">Load</sys:String>
+  <sys:String x:Key="Method.T0709.Displacement">Deformation</sys:String>
+  <sys:String x:Key="Method.T0709.Stability">Stability</sys:String>
+  <sys:String x:Key="Method.T0709.FlowValue">Flow</sys:String>
+  <sys:String x:Key="Method.T0709.MarshallModulus">Marshall modulus</sys:String>
+  <sys:String x:Key="Method.T0709.OriginCorrection">Correction origin</sys:String>
+  <sys:String x:Key="Method.T0709.PeakLoad">Peak load</sys:String>
+  <sys:String x:Key="Method.T0709.Elapsed">Duration</sys:String>
+  <sys:String x:Key="Method.T0709.CurveTitle">Sample {0}</sys:String>
+  <sys:String x:Key="Method.T0709.SampleId">Sample</sys:String>
+  <sys:String x:Key="Method.T0709.ValidityNormal">Stable</sys:String>
+  <sys:String x:Key="Method.T0709.ValidityAbnormal">Rejected</sys:String>
+  <sys:String x:Key="Method.T0709.TestTypeStandard">Marshall test</sys:String>
+  <sys:String x:Key="Method.T0709.TestTypeImmersion">Soaked Marshall test</sys:String>
+  <sys:String x:Key="Method.T0709.TestTypeVacuum">Vacuum-soaked Marshall test</sys:String>
+  <sys:String x:Key="Chart.Axis.Deformation">Deformation (mm)</sys:String>
+  <sys:String x:Key="Msg.T0709.CurveTooFewPoints">Not enough curve points to fit the correction line (3 min.)</sys:String>
+  <sys:String x:Key="Msg.T0709.FitFailed">Cannot fit the correction line (peak not positive, too few points in the band, or slope not positive)</sys:String>
+  <sys:String x:Key="Msg.T0709.GroupEmpty">A group needs at least one specimen</sys:String>
+  <sys:String x:Key="Msg.T0709.SuspiciousNoPeak">Suspicious: stopped by disp./load threshold while the load was still rising (no peak found)</sys:String>
+
+  <!-- T 0709 test sheet fields -->
+  <sys:String x:Key="Field.Sheet.T0709.ProjectName">Test project *</sys:String>
+  <sys:String x:Key="Field.Sheet.TestSpecificationsID">Specification *</sys:String>
+  <sys:String x:Key="Field.Sheet.TestSpecificationsID.Desc">T0709 mix and T0710 road core; for road core only the standard Marshall method is available and the sizes switch to φ100/φ150 cores</sys:String>
+  <sys:String x:Key="Field.Sheet.TestSpecificationsID.0">T 0709-2025 Asphalt mixture Marshall stability test</sys:String>
+  <sys:String x:Key="Field.Sheet.TestSpecificationsID.1">T 0710-2011 Asphalt pavement core Marshall stability test</sys:String>
+  <sys:String x:Key="Field.Sheet.TestStandardsID">Test method *</sys:String>
+  <sys:String x:Key="Field.Sheet.TestStandardsID.0">Marshall test</sys:String>
+  <sys:String x:Key="Field.Sheet.TestStandardsID.1">Soaked Marshall test</sys:String>
+  <sys:String x:Key="Field.Sheet.TestStandardsID.2">Vacuum-soaked Marshall test</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleSizeID">Size (mm) *</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleSizeID.0">Φ101.6 × 63.5mm</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleSizeID.1">Φ152.4 × 95.3mm</sys:String>
+  <sys:String x:Key="Field.Sheet.AsphaltMixtureType">Mix type *</sys:String>
+  <sys:String x:Key="Field.Sheet.TestTemperatureDesc">Temp. (℃) *</sys:String>
+  <sys:String x:Key="Field.Sheet.TestTemperatureDesc.Desc">Standard Marshall specimens are cured and tested at 60℃ (spec. T 0709)</sys:String>
+  <sys:String x:Key="Field.Sheet.Tester">Tester</sys:String>
+
+  <!-- T 0709 parameters (keys shared with T0715, description of its own) -->
+  <sys:String x:Key="Field.T0709.LoadRate.Desc">Loading rate of the test. Spec. T0709 requires 50 mm/min ± 5; motor limit is 50 mm/min. The legacy tool is set to 5 in the field.</sys:String>
+  <sys:String x:Key="Field.T0709.ContactLoad.Desc">Load above which the platen is taken as touching the specimen (legacy ZeroDisplacement, N→kN); contact zeroes the displacement and switches to the test rate. Legacy Marshall uses 10 N (0.01 kN); adjust on site.</sys:String>
+  <sys:String x:Key="Field.T0709.BreakDrop.Desc">Load drop from the peak above which the specimen is taken as broken (legacy PressureDrop, N→kN). Legacy Marshall is set to 1000 N = 1.0 kN.</sys:String>
+  <sys:String x:Key="Field.T0709.BreakConfirmSamples.Desc">Consecutive frames required to confirm a break (legacy NumberOfFilters; legacy Marshall uses 5).</sys:String>
+
+  <!-- T 0709 sample info fields -->
+  <sys:String x:Key="Field.GroupID">Group</sys:String>
+  <sys:String x:Key="Field.GroupID.Desc">Group 1 = standard Marshall specimens; for soaked / vacuum-soaked tests group 2 is the soaked set</sys:String>
+  <sys:String x:Key="Field.GroupID.0">Group 1</sys:String>
+  <sys:String x:Key="Field.GroupID.1">Group 2</sys:String>
+  <sys:String x:Key="Field.SampleInitialDiameter">Dia. (mm)</sys:String>
+  <sys:String x:Key="Field.SampleInitialDiameter.Desc">Spec.: φ101.6 ± 0.25 (large φ152.4); road cores are recorded as measured</sys:String>
+  <sys:String x:Key="Field.SampleInitialHeight">Height (mm)</sys:String>
+  <sys:String x:Key="Field.SampleInitialHeight.Desc">Spec.: 63.5 ± 1.3 (large 95.3 ± 2.5); road-core Marshall uses it to look up the height correction factor K</sys:String>
+  <sys:String x:Key="Field.StrainRate">Load rate</sys:String>
+  <sys:String x:Key="Field.StrainRate.Desc">Recorded with the specimen; the test runs at the rate set in the parameter table</sys:String>
 </ResourceDictionary>

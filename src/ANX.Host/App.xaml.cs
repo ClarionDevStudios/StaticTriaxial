@@ -12,10 +12,12 @@ using ANX.Communication.Channels;
 using ANX.Communication;
 using ANX.Communication.NetworkLink;
 using ANX.Control;
+using ANX.Control.Methods;
 using ANX.Core.Control;
 using ANX.Core.Methods;
 using ANX.Core.Settings;
 using ANX.Method.Bending;
+using ANX.Method.Marshall;
 using ANX.Protocol.Gr3;
 using ANX.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -187,6 +189,11 @@ public partial class App
                 // 数据与试验执行（方法工程只在宿主里出现 —— 铁律）
                 _ = services.AddSingleton(new StorageOptions(AppPaths.ResolveDatabasePath()));
                 _ = services.AddSingleton<IMethodPersistenceModule, BendingPersistenceModule>();
+                // 马歇尔三表（T 0709）：**纯新增表**，建表是幂等的 `CREATE TABLE IF NOT EXISTS`，
+                // 不动已有库的任何数据 —— 所以 `SchemaBuilder.CurrentSchemaVersion` 仍是 4
+                //（现框架"版本对不上就拒绝启动、不做迁移"是既定决策；要不要为它升号、以及升号时
+                //  怎么处理你现有开发库，等用户定）。
+                _ = services.AddSingleton<IMethodPersistenceModule, MarshallPersistenceModule>();
                 _ = services.AddSingleton(sp => new DatabaseInitializer(
                     sp.GetRequiredService<StorageOptions>(),
                     sp.GetServices<IMethodPersistenceModule>()
@@ -195,14 +202,67 @@ public partial class App
                 _ = services.AddSingleton<TestSheetService>();
                 _ = services.AddSingleton<ParameterStore>();
                 _ = services.AddSingleton<BendingParameters>();
-                _ = services.AddSingleton<ITestParameters>(sp => sp.GetRequiredService<BendingParameters>());
+                _ = services.AddSingleton<MarshallParameters>();
                 // 同一个方法工程实例同时充当"跑试验"和"编辑试验单"两个角色
                 _ = services.AddSingleton<BendingExecution>();
+                _ = services.AddSingleton<BendingSheetBrowser>();
+                _ = services.AddSingleton<MarshallExecution>();
+                _ = services.AddSingleton<MarshallSheetBrowser>();
+                _ = services.AddSingleton(sp => new BendingReportExportService(
+                    sp.GetRequiredService<TestSheetService>(),
+                    AppPaths.ResolveReportRoot(),
+                    new LocalizationTextResolver(sp.GetRequiredService<ILocalizationService>()),
+                    // 曲线图标注要用拟合区间百分比 —— 这里取**具体类型**，别绕 ITestParameters：
+                    // 那是"当前方法"给的，而当前方法又来自目录、目录里就握着这个报表服务（会成环）。
+                    sp.GetRequiredService<BendingParameters>()
+                ));
+                _ = services.AddSingleton(sp => new MarshallReportExportService(
+                    sp.GetRequiredService<TestSheetService>(),
+                    AppPaths.ResolveReportRoot(),
+                    new LocalizationTextResolver(sp.GetRequiredService<ILocalizationService>()),
+                    sp.GetRequiredService<MarshallParameters>()
+                ));
+
+                // ── 方法目录 + 当前方法（用户 2026-10-16 定的第一步：先铺"目录层"）─────────────
+                // 宿主把**已装方法**登记进来（编译期引用 + 接缝，不做运行时热插拔）。
+                // 加第二个方法 = 往这份清单里再加一项；页面与 ViewModel 一行都不用改。
+                _ = services.AddSingleton<IMethodCatalog>(sp =>
+                    new MethodCatalog(
+                    [
+                        new TestMethodServices(
+                            MethodCode: sp.GetRequiredService<BendingExecution>().MethodCode,
+                            MethodName: sp.GetRequiredService<BendingExecution>().MethodName,
+                            MethodNameKey: sp.GetRequiredService<BendingExecution>().MethodNameKey,
+                            Execution: sp.GetRequiredService<BendingExecution>(),
+                            Editor: sp.GetRequiredService<BendingExecution>(),
+                            Browser: sp.GetRequiredService<BendingSheetBrowser>(),
+                            Parameters: sp.GetRequiredService<BendingParameters>(),
+                            Reports: sp.GetRequiredService<BendingReportExportService>()
+                        ),
+                        new TestMethodServices(
+                            MethodCode: sp.GetRequiredService<MarshallExecution>().MethodCode,
+                            MethodName: sp.GetRequiredService<MarshallExecution>().MethodName,
+                            MethodNameKey: sp.GetRequiredService<MarshallExecution>().MethodNameKey,
+                            Execution: sp.GetRequiredService<MarshallExecution>(),
+                            Editor: sp.GetRequiredService<MarshallExecution>(),
+                            Browser: sp.GetRequiredService<MarshallSheetBrowser>(),
+                            Parameters: sp.GetRequiredService<MarshallParameters>(),
+                            Reports: sp.GetRequiredService<MarshallReportExportService>()
+                        ),
+                    ])
+                );
+                _ = services.AddSingleton<ICurrentMethodContext, CurrentMethodContext>();
+
+                // 界面那几处契约**照旧注入**，只是改成"从当前方法取" —— 行为与改前完全一致
+                //（单方法阶段看不出差别；等马歇尔进来，切换方法只改 CurrentMethodContext）。
+                _ = services.AddSingleton<ITestParameters>(sp =>
+                    sp.GetRequiredService<ICurrentMethodContext>().Current.Parameters
+                );
                 _ = services.AddSingleton<ITestExecution>(sp =>
-                    sp.GetRequiredService<BendingExecution>()
+                    sp.GetRequiredService<ICurrentMethodContext>().Current.Execution
                 );
                 _ = services.AddSingleton<ITestSheetEditor>(sp =>
-                    sp.GetRequiredService<BendingExecution>()
+                    sp.GetRequiredService<ICurrentMethodContext>().Current.Editor
                 );
 
                 // 网口链路监视（用户 2026-10-14）：UDP 无连接，拔网线不报错，只能从系统层读网卡链路状态。
@@ -277,17 +337,15 @@ public partial class App
                 _ = services.AddSingleton<SheetSelectionPage>();
 
                 // 历史数据页（查单 / 读明细 / 读曲线 / 导出报表）
-                _ = services.AddSingleton<ITestSheetBrowser, BendingSheetBrowser>();
+                _ = services.AddSingleton<ITestSheetBrowser>(sp =>
+                    sp.GetRequiredService<ICurrentMethodContext>().Current.Browser
+                );
                 // 报表预览渲染：契约在 Core、实现在 Reporting（界面只引用 Core/Control，不认识 FlexCel）
                 _ = services.AddSingleton<ANX.Core.Reporting.IReportPreviewRenderer,
                     ANX.Reporting.FlexCelReportPreviewRenderer>();
-                _ = services.AddSingleton<IReportExportService>(sp => new BendingReportExportService(
-                    sp.GetRequiredService<TestSheetService>(),
-                    AppPaths.ResolveReportRoot(),
-                    new LocalizationTextResolver(sp.GetRequiredService<ILocalizationService>()),
-                    // 曲线图标注要用拟合区间百分比（出图的数与界面一致）
-                    sp.GetRequiredService<ITestParameters>()
-                ));
+                _ = services.AddSingleton<IReportExportService>(sp =>
+                    sp.GetRequiredService<ICurrentMethodContext>().Current.Reports
+                );
                 _ = services.AddSingleton(sp => new HistoryViewModel(
                     sp.GetRequiredService<ILocalizationService>(),
                     sp.GetRequiredService<ITestSheetBrowser>(),

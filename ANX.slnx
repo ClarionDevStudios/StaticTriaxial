@@ -10,6 +10,7 @@
     <Project Path="src/ANX.Host/ANX.Host.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/ANX.Method.Marshall.Tests/ANX.Method.Marshall.Tests.csproj" />
     <Project Path="tests/ANX.Method.Bending.Tests/ANX.Method.Bending.Tests.csproj" />
     <Project Path="tests/ANX.Storage.Tests/ANX.Storage.Tests.csproj" />
     <Project Path="tests/ANX.Reporting.Tests/ANX.Reporting.Tests.csproj" />
@@ -24,5 +25,6 @@
   </Folder>
   <Folder Name="/methods/">
     <Project Path="methods/ANX.Method.Bending/ANX.Method.Bending.csproj" />
+    <Project Path="methods/ANX.Method.Marshall/ANX.Method.Marshall.csproj" />
   </Folder>
 </Solution>

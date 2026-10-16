@@ -17,6 +17,7 @@
     <ProjectReference Include="..\ANX.Communication\ANX.Communication.csproj" />
     <ProjectReference Include="..\ANX.Protocol\ANX.Protocol.csproj" />
     <ProjectReference Include="..\..\methods\ANX.Method.Bending\ANX.Method.Bending.csproj" />
+    <ProjectReference Include="..\..\methods\ANX.Method.Marshall\ANX.Method.Marshall.csproj" />
     <!-- 铁律：全解决方案只有本工程引用 methods\ 下的方法工程（M3 起） -->
   </ItemGroup>
 
