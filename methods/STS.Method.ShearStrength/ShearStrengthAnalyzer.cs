@@ -89,6 +89,9 @@ public static class ShearStrengthAnalyzer
 
     public const double SpecimenHeightToleranceMM = 5.0;
 
+    /// <summary>规范 T 1227 标准件直径（用户 2026-10-16 确认：100mm）。</summary>
+    public const double NominalSpecimenDiameterMM = 100.0;
+
     /// <summary>规范 4.5：轴向加压应变速率为 1%/min ~ 2%/min。</summary>
     public const double MinStrainRatePercentPerMinute = 1.0;
 
@@ -218,6 +221,56 @@ public static class ShearStrengthAnalyzer
         }
 
         return new ShearStrengthLevelResult(confiningPressureKPa, values.Average(), values.Count);
+    }
+
+    /// <summary>
+    /// 规范 4.5："每 0.5mm 轴向变形测记一次"——把原始帧曲线抽成**记录曲线**：
+    /// 取每一段 0.5mm 区间内**首个越过边界**的点；首点（接触零点）与末点始终保留
+    /// （末点关系到 15% 规则的插值口径）。
+    ///
+    /// 采集口径（用户 2026-10-16 定）：**存原始帧、导出 / 落库按 0.5mm 抽样**。
+    /// </summary>
+    public static IReadOnlyList<CurvePoint> SampleAtInterval(
+        IReadOnlyList<CurvePoint> curve,
+        double intervalMM = 0.5
+    )
+    {
+        ArgumentNullException.ThrowIfNull(curve);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(intervalMM);
+
+        if (curve.Count == 0)
+        {
+            return [];
+        }
+
+        var sampled = new List<CurvePoint> { curve[0] };
+        var nextBoundary = intervalMM;
+
+        for (var i = 1; i < curve.Count; i++)
+        {
+            var point = curve[i];
+
+            if (point.X < nextBoundary)
+            {
+                continue;
+            }
+
+            sampled.Add(point);
+
+            while (nextBoundary <= point.X)
+            {
+                nextBoundary += intervalMM;
+            }
+        }
+
+        var last = curve[^1];
+
+        if (sampled[^1].X != last.X || sampled[^1].Y != last.Y)
+        {
+            sampled.Add(last);
+        }
+
+        return sampled;
     }
 
     /// <summary>

@@ -116,7 +116,7 @@ public sealed class TestSheetServiceTests : IDisposable
             "1",
             new Dictionary<string, double>(StringComparer.Ordinal)
             {
-                ["InitialDiameter"] = 150,
+                ["InitialDiameter"] = 100,
                 ["InitialHeight"] = 306,
             }
         );
@@ -144,7 +144,7 @@ public sealed class TestSheetServiceTests : IDisposable
             new Dictionary<string, object?>(StringComparer.Ordinal)
             {
                 ["SampleDesc"] = "第三批 1 号件（边角有磕碰）",
-                ["InitialDiameter"] = 150.0,
+                ["InitialDiameter"] = 100.0,
                 ["InitialHeight"] = 305.5,
                 ["InvalidReason"] = null, // 空值 = 清掉该列（NULL）
             }
@@ -157,7 +157,7 @@ public sealed class TestSheetServiceTests : IDisposable
         )!;
 
         Assert.Equal("第三批 1 号件（边角有磕碰）", Convert.ToString(row["SampleDesc"]));
-        Assert.Equal(150.0, Convert.ToDouble(row["InitialDiameter"]), 6);
+        Assert.Equal(100.0, Convert.ToDouble(row["InitialDiameter"]), 6);
         Assert.Equal(305.5, Convert.ToDouble(row["InitialHeight"]), 6);
         Assert.True(row["InvalidReason"] is null or DBNull);
 
@@ -168,13 +168,13 @@ public sealed class TestSheetServiceTests : IDisposable
             new Dictionary<string, object?>(StringComparer.Ordinal)
             {
                 ["SampleDesc"] = "第三批 1 号件（复测）",
-                ["InitialDiameter"] = 150.5,
+                ["InitialDiameter"] = 100.5,
             }
         );
 
         var updated = service.ReadDetailRow(sheetId, "S001", ["SampleDesc", "InitialDiameter"])!;
         Assert.Equal("第三批 1 号件（复测）", Convert.ToString(updated["SampleDesc"]));
-        Assert.Equal(150.5, Convert.ToDouble(updated["InitialDiameter"]), 6);
+        Assert.Equal(100.5, Convert.ToDouble(updated["InitialDiameter"]), 6);
     }
 
     /// <summary>
@@ -248,7 +248,7 @@ public sealed class TestSheetServiceTests : IDisposable
         {
             ["ConfiningPressure"] = 30,
             ["InitialHeight"] = 306,
-            ["InitialDiameter"] = 150,
+            ["InitialDiameter"] = 100,
             ["MaxAxialLoad"] = 9600,
             ["PeakDeformation"] = 30.6,
             ["AxialStrain"] = 10,

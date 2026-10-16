@@ -16,8 +16,8 @@ public sealed class ShearStrengthAnalyzerTests
         var strain = ShearStrengthAnalyzer.AxialStrainPercent(30.6, 306);
         Assert.Equal(10.0, strain, Tolerance);
 
-        var area0 = ShearStrengthAnalyzer.InitialAreaMM2(150);
-        Assert.Equal(Math.PI * 150 * 150 / 4.0, area0, Tolerance);
+        var area0 = ShearStrengthAnalyzer.InitialAreaMM2(ShearStrengthAnalyzer.NominalSpecimenDiameterMM);
+        Assert.Equal(Math.PI * 100 * 100 / 4.0, area0, Tolerance);
 
         var area = ShearStrengthAnalyzer.CorrectedAreaMM2(area0, strain);
         Assert.Equal(area0 / 0.9, area, Tolerance);
@@ -26,7 +26,7 @@ public sealed class ShearStrengthAnalyzerTests
     [Fact]
     public void 单件剪切强度应含围压且单位正确()
     {
-        // 306mm 高、Φ150mm 试件，变形 30.6mm（ε=10%）时荷载 1.0kN，围压 30kPa
+        // 306mm 高、Φ100 标准件，变形 30.6mm（ε=10%）时荷载 1.0kN，围压 30kPa
         var curve = new CurvePoint[]
         {
             new(0, 0),
@@ -35,18 +35,18 @@ public sealed class ShearStrengthAnalyzerTests
             new(30.6, 1.0),
         };
 
-        var result = ShearStrengthAnalyzer.AnalyzeSample(curve, 306, 150, 30);
+        var result = ShearStrengthAnalyzer.AnalyzeSample(curve, 306, 100, 30);
 
         Assert.False(result.UsedStrain15Rule);
         Assert.Equal(1.0, result.PeakLoadKN, Tolerance);
         Assert.Equal(30.6, result.PeakDeformationMM, Tolerance);
         Assert.Equal(10.0, result.AxialStrainPercent, Tolerance);
 
-        var area0 = Math.PI * 150 * 150 / 4.0;
+        var area0 = Math.PI * 100 * 100 / 4.0;
         var expected = 1000.0 / (area0 / 0.9) * 1000.0 + 30.0;
 
         Assert.Equal(expected, result.ShearStrengthKPa, 1e-6);
-        Assert.Equal(80.9296, result.ShearStrengthKPa, 1e-3);
+        Assert.Equal(144.5916, result.ShearStrengthKPa, 1e-3);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public sealed class ShearStrengthAnalyzerTests
             new(50, 1.0),
         };
 
-        var result = ShearStrengthAnalyzer.AnalyzeSample(curve, 300, 150, 60);
+        var result = ShearStrengthAnalyzer.AnalyzeSample(curve, 300, 100, 60);
 
         Assert.True(result.UsedStrain15Rule);
         Assert.Equal(45.0, result.PeakDeformationMM, Tolerance);
@@ -81,7 +81,7 @@ public sealed class ShearStrengthAnalyzerTests
             new(45, 1.1),
         };
 
-        var result = ShearStrengthAnalyzer.AnalyzeSample(curve, 300, 150, 60);
+        var result = ShearStrengthAnalyzer.AnalyzeSample(curve, 300, 100, 60);
 
         Assert.False(result.UsedStrain15Rule);
         Assert.Equal(1.2, result.PeakLoadKN, Tolerance);
@@ -149,13 +149,50 @@ public sealed class ShearStrengthAnalyzerTests
     [Fact]
     public void 停止判据原语应可直接使用()
     {
-        var area0 = ShearStrengthAnalyzer.InitialAreaMM2(150);
+        var area0 = ShearStrengthAnalyzer.InitialAreaMM2(ShearStrengthAnalyzer.NominalSpecimenDiameterMM);
 
-        // 1.0kN / 19634.95mm² → 50.9296kPa
-        Assert.Equal(50.9296, ShearStrengthAnalyzer.AxialStressKPa(1.0, area0 / 0.9), 1e-3);
+        // 1.0kN / 8726.65mm² → 114.5916kPa
+        Assert.Equal(114.5916, ShearStrengthAnalyzer.AxialStressKPa(1.0, area0 / 0.9), 1e-3);
 
-        // 0.9→0.95kN（Δσ≈2.55kPa）→ 平台（停止）；0.9→1.0kN（Δσ≈5.09kPa）→ 未达平台
-        Assert.True(ShearStrengthAnalyzer.IsPlateau(0.9, 0.95, area0 / 0.9));
+        // 0.9→0.94kN（Δσ≈4.58kPa）→ 平台（停止）；0.9→1.0kN（Δσ≈11.46kPa）→ 未达平台
+        Assert.True(ShearStrengthAnalyzer.IsPlateau(0.9, 0.94, area0 / 0.9));
         Assert.False(ShearStrengthAnalyzer.IsPlateau(0.9, 1.0, area0 / 0.9));
+    }
+
+    [Fact]
+    public void 按半毫米抽样应取每段首个越过边界的点且保留首末()
+    {
+        var curve = new CurvePoint[]
+        {
+            new(0, 0),
+            new(0.1, 0.1),
+            new(0.4, 0.2),
+            new(0.6, 0.3),
+            new(0.9, 0.4),
+            new(1.1, 0.5),
+            new(1.6, 0.6),
+        };
+
+        var sampled = ShearStrengthAnalyzer.SampleAtInterval(curve);
+
+        Assert.Equal(
+            new double[] { 0.0, 0.6, 1.1, 1.6 },
+            sampled.Select(point => point.X).ToArray()
+        );
+    }
+
+    [Fact]
+    public void 抽样应保留未落在边界上的末点且空曲线回空()
+    {
+        var curve = new CurvePoint[] { new(0, 0), new(0.6, 1), new(0.8, 2) };
+
+        var sampled = ShearStrengthAnalyzer.SampleAtInterval(curve);
+
+        Assert.Equal(
+            new double[] { 0.0, 0.6, 0.8 },
+            sampled.Select(point => point.X).ToArray()
+        );
+
+        Assert.Empty(ShearStrengthAnalyzer.SampleAtInterval(Array.Empty<CurvePoint>()));
     }
 }

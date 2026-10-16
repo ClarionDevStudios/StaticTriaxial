@@ -72,8 +72,10 @@ public sealed class CurrentMethodServicesTests
 
         public IReadOnlyList<ParameterDefinition> SheetInfoFields => [new(code, code, "", "0")];
 
-        public Task<TestRunProfile> LoadProfileAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(Profile);
+        public Task<TestRunProfile> LoadProfileAsync(
+            TestStartContext? context = null,
+            CancellationToken cancellationToken = default
+        ) => Task.FromResult(Profile);
 
         Task<IReadOnlyDictionary<string, string>> ITestExecution.LoadSampleInfoAsync(
             string sheetId,

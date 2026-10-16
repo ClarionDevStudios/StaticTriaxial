@@ -117,4 +117,12 @@ public sealed record TestRunProfile
     /// 平台升降与试验过程分成两个速率）。由方法从参数表装配，受电机上限 50mm/min 约束。
     /// </summary>
     public double JogSpeedMillimetersPerMinute { get; init; } = 50.0;
+
+    /// <summary>
+    /// 方法级停止判据工厂：每次 <c>TestSequencer.Start()</c> 现调一次生成**新的**判据实例
+    /// （判据是有状态的状态机，例如 T 1236 的 0.5mm 增量窗口，不能跨轮复用）。
+    /// 未配置（null）= 走内建的"峰值跌落 + 连续确认帧"口径（过渡期保留给既有控制层用例；
+    /// 新方法一律走判据接缝）。
+    /// </summary>
+    public Func<ITestStopCriteria>? StopCriteriaFactory { get; init; }
 }

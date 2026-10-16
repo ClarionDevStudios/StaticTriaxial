@@ -46,6 +46,13 @@ public sealed record SampleRowInfo(
 );
 
 /// <summary>
+/// 一轮试验的起点上下文：方法按它去取"逐件"的东西（试件尺寸、参数…）。
+/// </summary>
+/// <param name="SheetId">当前试验单号。</param>
+/// <param name="SampleId">本次要做的试件号（形如 S001）。</param>
+public sealed record TestStartContext(string SheetId, string SampleId);
+
+/// <summary>
 /// 试验执行契约：界面靠它跑一轮试验，**不认识任何具体方法的算法与字段**
 /// （具体方法的判定公式、库表、报表装配都留在方法工程里）。
 /// </summary>
@@ -72,8 +79,15 @@ public interface ITestExecution : ICurveAxisSource
     /// <summary>
     /// 按**当前存下来的方法参数**装配一次运行的参数与保护阈值
     /// （接触阈值 / 破坏判据 / 确认帧数 / 加载速率都从参数表来，不再用写死的默认值）。
+    ///
+    /// **开始一轮试验时传 <paramref name="context"/>**（方法据此取逐件信息，
+    /// 例如 T 1236 的试件尺寸 → 停止判据）；页面级"取一次当前口径"
+    /// （联机时推通道设置等）可传 null。
     /// </summary>
-    Task<TestRunProfile> LoadProfileAsync(CancellationToken cancellationToken = default);
+    Task<TestRunProfile> LoadProfileAsync(
+        TestStartContext? context = null,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>实时指标卡。</summary>
     IReadOnlyList<MetricDefinition> Metrics { get; }

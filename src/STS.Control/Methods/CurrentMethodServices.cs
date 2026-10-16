@@ -46,8 +46,10 @@ public sealed class CurrentMethodExecution(Func<ICurrentMethodContext> methods)
 
     public IReadOnlyList<ParameterDefinition> SampleFields => Execution.SampleFields;
 
-    public Task<TestRunProfile> LoadProfileAsync(CancellationToken cancellationToken = default) =>
-        Execution.LoadProfileAsync(cancellationToken);
+    public Task<TestRunProfile> LoadProfileAsync(
+        TestStartContext? context = null,
+        CancellationToken cancellationToken = default
+    ) => Execution.LoadProfileAsync(context, cancellationToken);
 
     public Task<IReadOnlyDictionary<string, string>> LoadSampleInfoAsync(
         string sheetId,

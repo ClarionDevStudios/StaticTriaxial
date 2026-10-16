@@ -87,7 +87,7 @@ public sealed class ShearStrengthPersistenceModule : IMethodPersistenceModule
                 new("ChartData", ColumnType.Text, Comment: "曲线 JSON（X=轴向变形 mm，Y=轴向荷载 kN）"),
                 new("ConfiningPressure", ColumnType.Real, Comment: "试验围压 σ3（kPa；本方法 30 / 60 / 100，每级 3 件；单件只做一级）"),
                 new("InitialHeight", ColumnType.Real, Comment: "试件初始高度 h0（mm；3 次 120° 测量均值，合格窗 306±5）"),
-                new("InitialDiameter", ColumnType.Real, Comment: "试件初始直径 d0（mm；上 / 中 / 下各测 3 次取均值）"),
+                new("InitialDiameter", ColumnType.Real, Comment: "试件初始直径 d0（mm；标准件 Φ100，上 / 中 / 下各测 3 次取均值）"),
                 new("Mass", ColumnType.Real, Comment: "试件总质量（g；试验后称量，规范 4.7）"),
                 new("WaterContent", ColumnType.Real, Comment: "含水率 w（%；按本规程 T 1206 测定，精确至 0.1%）"),
                 new("DryDensity", ColumnType.Real, Comment: "干密度（g/cm³；报告 6.7）"),

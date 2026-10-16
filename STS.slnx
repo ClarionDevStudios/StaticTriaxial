@@ -11,6 +11,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/STS.Method.ShearStrength.Tests/STS.Method.ShearStrength.Tests.csproj" />
+    <Project Path="tests/STS.Protocol.Tests/STS.Protocol.Tests.csproj" />
     <Project Path="tests/STS.Storage.Tests/STS.Storage.Tests.csproj" />
     <Project Path="tests/STS.Reporting.Tests/STS.Reporting.Tests.csproj" />
     <Project Path="tests/STS.Core.Tests/STS.Core.Tests.csproj" />

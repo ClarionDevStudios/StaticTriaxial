@@ -20,6 +20,7 @@ public sealed class TestSequencer(TestRunProfile? profile = null)
     private double _resetElapsedSeconds;
     private double? _lastSampleSeconds;
     private TestSample _peak;
+    private ITestStopCriteria? _criteria;
 
     /// <summary>当前阶段。</summary>
     public TestPhase Phase { get; private set; } = TestPhase.Idle;
@@ -68,6 +69,7 @@ public sealed class TestSequencer(TestRunProfile? profile = null)
         _resetElapsedSeconds = 0;
         _lastSampleSeconds = null;
         _peak = default;
+        _criteria = _profile.StopCriteriaFactory?.Invoke();
     }
 
     /// <summary>人工停止。</summary>
@@ -149,7 +151,24 @@ public sealed class TestSequencer(TestRunProfile? profile = null)
                     _peak = sample;
                     _breakConfirmCount = 0;
                 }
-                else if (
+
+                // 方法级判据（新方法一律走这条）：判据说停 → 走"继续加载 / 归位 / 直接完成"收尾
+                if (_criteria is not null)
+                {
+                    if (
+                        _criteria
+                            .Evaluate(sample.Displacement, sample.Load, sample.ElapsedSeconds)
+                            .ShouldStop
+                    )
+                    {
+                        return AfterCriteriaStop();
+                    }
+
+                    break;
+                }
+
+                // 未配置判据 = 内建的"峰值跌落 + 连续确认帧"口径（过渡期保留）
+                if (
                     _peak.Load >= _profile.MinBreakLoadKN
                     && _peak.Load - sample.Load >= _profile.BreakDropKN
                 )
@@ -240,6 +259,32 @@ public sealed class TestSequencer(TestRunProfile? profile = null)
     {
         StopReason = reason;
         Phase = TestPhase.Aborted;
+        return false;
+    }
+
+    /// <summary>
+    /// 方法判据说"停"之后的收尾（与"破坏确认成立"同一条流水线）：
+    /// 配了继续加载 → 先继续加载一段（记曲线）；否则配了归位时间 → 进归位；
+    /// 都没有 → 直接完成（例如 T 1236：一停就结算，归位由人工/后续环节处理）。
+    /// </summary>
+    /// <returns>true = 试验仍在运行；false = 已结束。</returns>
+    private bool AfterCriteriaStop()
+    {
+        if (_profile.ContinueLoadingSeconds > 0)
+        {
+            Phase = TestPhase.ContinueLoading;
+            _continueElapsedSeconds = 0;
+            return true;
+        }
+
+        if (_profile.ResetSeconds > 0)
+        {
+            BeginReset();
+            return true;
+        }
+
+        StopReason = TestStopReason.Completed;
+        Phase = TestPhase.Completed;
         return false;
     }
 

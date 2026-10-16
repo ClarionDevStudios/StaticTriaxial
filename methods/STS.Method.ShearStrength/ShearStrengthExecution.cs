@@ -1,5 +1,6 @@
 namespace STS.Method.ShearStrength;
 
+using System.Globalization;
 using STS.Control;
 using STS.Core;
 
@@ -30,8 +31,84 @@ public sealed class ShearStrengthExecution : ITestExecution, ITestSheetEditor
 
     public TestRunProfile Profile { get; } = new();
 
-    public Task<TestRunProfile> LoadProfileAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult(Profile);
+    /// <summary>默认应变速率（%/min）：规范 4.5 的 1~2 取中值。</summary>
+    public const double DefaultStrainRatePercentPerMinute = 1.5;
+
+    /// <summary>接触应力（kPa）：规范 4.3 的 3~5kPa 取上限。</summary>
+    public const double DefaultContactStressKPa = 5.0;
+
+    public Task<TestRunProfile> LoadProfileAsync(
+        TestStartContext? context = null,
+        CancellationToken cancellationToken = default
+    ) => LoadProfileCoreAsync(context, cancellationToken);
+
+    /// <summary>
+    /// 装配一次运行：T 1236 口径的默认值 + （有起点上下文时）按**逐件**试件尺寸
+    /// 构造停止判据（15% 应变上限、校正面积应力都依赖 h0 / d0）与加载速率（应变速率 × h0）。
+    /// </summary>
+    private async Task<TestRunProfile> LoadProfileCoreAsync(
+        TestStartContext? context,
+        CancellationToken cancellationToken
+    )
+    {
+        var nominalArea = ShearStrengthAnalyzer.InitialAreaMM2(ShearStrengthAnalyzer.NominalSpecimenDiameterMM);
+
+        var profile = new TestRunProfile
+        {
+            // 规范 4.7 的卸压 / 拆室是人工环节：本方法不配"破坏后继续加载"，也不自动归位
+            ContinueLoadingSeconds = 0,
+            ResetSeconds = 0,
+            // 接触 = 3~5kPa（取上限）；按标准件 Φ100 试件面积折算成力（≈0.0393kN）
+            ContactLoadKN = DefaultContactStressKPa * nominalArea / 1_000_000.0,
+            // 规范 4.5：破坏控制在 5~10min 内完成 → 加载阶段兜底超时给足余量
+            LoadingTimeoutSeconds = 30 * 60,
+        };
+
+        if (context is null)
+        {
+            return profile;
+        }
+
+        var info = await LoadSampleInfoAsync(context.SheetId, context.SampleId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (TryReadSpecimenSize(info, out var heightMM, out var diameterMM))
+        {
+            return profile with
+            {
+                StopCriteriaFactory = () => new ShearStrengthStopCriteria(heightMM, diameterMM),
+                // 加载速率 = 应变速率 × 初始高度（例：306mm × 1.5%/min ≈ 4.59mm/min）
+                LoadRateMillimetersPerMinute =
+                    DefaultStrainRatePercentPerMinute * heightMM / 100.0,
+            };
+        }
+
+        // 骨架期：试样信息读取还是桩（回空），先不挂判据（当前只有模拟链路，不影响）；
+        // 真实读取落地后，这里改成"缺尺寸 → 明确报错，提示先填试样信息"
+        //（见 docs\对照\T1236-数据表设计.md 待办①）。
+        return profile;
+    }
+
+    /// <summary>
+    /// 从试样信息字典里读试件尺寸（键 = 明细列名 `InitialHeight` / `InitialDiameter`，单位 mm）。
+    /// 两个键都在、能解析且为正才算有效。
+    /// </summary>
+    public static bool TryReadSpecimenSize(
+        IReadOnlyDictionary<string, string> sampleInfo,
+        out double heightMM,
+        out double diameterMM
+    )
+    {
+        heightMM = 0;
+        diameterMM = 0;
+
+        return sampleInfo.TryGetValue("InitialHeight", out var heightText)
+            && sampleInfo.TryGetValue("InitialDiameter", out var diameterText)
+            && double.TryParse(heightText, NumberStyles.Float, CultureInfo.InvariantCulture, out heightMM)
+            && double.TryParse(diameterText, NumberStyles.Float, CultureInfo.InvariantCulture, out diameterMM)
+            && heightMM > 0
+            && diameterMM > 0;
+    }
 
     public IReadOnlyList<MetricDefinition> Metrics => [];
 

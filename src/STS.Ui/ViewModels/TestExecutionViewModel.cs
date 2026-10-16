@@ -1510,8 +1510,14 @@ public partial class TestExecutionViewModel : ViewModelBase
         var sampleId = pickedSampleId;
         _sampleCounter++;
 
-        // 运行参数从**参数表**来（接触阈值 / 破坏判据 / 确认帧数 / 加载速率），不再用写死的默认值
-        var requested = await _execution.LoadProfileAsync();
+        // 运行参数从**参数表**来（接触阈值 / 破坏判据 / 确认帧数 / 加载速率），不再用写死的默认值；
+        // 带上"一轮试验起点"上下文（单号 + 件号）——方法据此取**逐件**信息
+        //（例如 T 1236 按该件试件尺寸构造停止判据与加载速率）
+        var requested = await _execution.LoadProfileAsync(
+            CurrentSheetId is { Length: > 0 } runSheetId
+                ? new TestStartContext(runSheetId, sampleId)
+                : null
+        );
 
         // 闸门都按**设备量程**算：位移闸门落在量程内（顶过会压坏传感器），荷载闸门 = 量程 × 系数
         //（现场位移量程 25.000mm、压力量程 100.000kN；两者此前都是写死的错值）
