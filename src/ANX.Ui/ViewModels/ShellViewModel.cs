@@ -38,17 +38,18 @@ public partial class ShellViewModel : ViewModelBase, INavigationPaneService
 
         NavigationItems =
         [
-            new NavigationViewItem
-            {
-                Content = L("Nav.Execution"),
-                Icon = new SymbolIcon { Symbol = SymbolRegular.Beaker24 },
-                TargetPageType = typeof(Views.Pages.TestExecutionPage),
-            },
+            // 首页排最上（用户 2026-10-16）—— 它是"选方法 / 进各处"的入口，放第一项最顺手
             new NavigationViewItem
             {
                 Content = L("Nav.Home"),
                 Icon = new SymbolIcon { Symbol = SymbolRegular.Home24 },
                 TargetPageType = typeof(Views.Pages.HomePage),
+            },
+            new NavigationViewItem
+            {
+                Content = L("Nav.Execution"),
+                Icon = new SymbolIcon { Symbol = SymbolRegular.Beaker24 },
+                TargetPageType = typeof(Views.Pages.TestExecutionPage),
             },
         ];
 
