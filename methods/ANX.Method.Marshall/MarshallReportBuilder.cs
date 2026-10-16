@@ -110,10 +110,12 @@ public sealed class MarshallReportBuilder(
                     ["Detail.SampleDiameter"] = Format(row["SampleInitialDiameter"]),
                     ["Detail.SampleHeight"] = Format(row["SampleInitialHeight"]),
                     ["Detail.TestType"] = TestTypeText(standardsId, ReadGroupId(row["GroupID"]), culture, texts),
-                    // 照现役：稳定度一列印**实测值 MSRaw**（芯样同样）
-                    ["Detail.Stability"] = Format(row["MSRaw"]),
-                    ["Detail.FlowValue"] = Format(row["FlowValue"]),
-                    ["Detail.MarshallModulus"] = Format(row["MarshallModulus"]),
+                    // 照现役：稳定度一列印**实测值 MSRaw**（芯样同样）。
+                    // 这三个量按用户 2026-10-16 定的口径显示**两位小数**（取值 / 存储 / 显示一致）；
+                    // 现役报表也是 SetDbl(…, 2)，一致。
+                    ["Detail.Stability"] = Format(row["MSRaw"], "0.00"),
+                    ["Detail.FlowValue"] = Format(row["FlowValue"], "0.00"),
+                    ["Detail.MarshallModulus"] = Format(row["MarshallModulus"], "0.00"),
                     ["Detail.EffectiveText"] = EffectiveText(row["Effective"], culture, texts),
                     ["Detail.Remark"] = string.Empty,
                 }
@@ -139,18 +141,19 @@ public sealed class MarshallReportBuilder(
             ["Sheet.TestTemperature"] = Format(main["TestTemperatureDesc"]),
             ["Sheet.SampleSizeDesc"] = Format(main["SampleSizeDesc"]),
             ["Sheet.Tester"] = Format(main["Tester"]),
-            ["Result.Group1AvgStability"] = Format(main["Group1AvgStability"]),
-            ["Result.Group1StabilityStdDev"] = Format(main["Group1Stability_Std_Dev"]),
-            ["Result.Group1StabilityCvPercent"] = Format(main["Group1Stability_Cv_Percent"]),
-            ["Result.Group1AvgFlowValue"] = Format(main["Group1AvgFlowValue"]),
-            ["Result.Group1FlowStdDev"] = Format(main["Group1Flow_Std_Dev"]),
-            ["Result.Group1FlowCvPercent"] = Format(main["Group1Flow_Cv_Percent"]),
-            ["Result.Group2AvgStability"] = Format(main["Group2AvgStability"]),
-            ["Result.Group2StabilityStdDev"] = Format(main["Group2Stability_Std_Dev"]),
-            ["Result.Group2StabilityCvPercent"] = Format(main["Group2Stability_Cv_Percent"]),
-            ["Result.Group2AvgFlowValue"] = Format(main["Group2AvgFlowValue"]),
-            ["Result.Group2FlowStdDev"] = Format(main["Group2Flow_Std_Dev"]),
-            ["Result.Group2FlowCvPercent"] = Format(main["Group2Flow_Cv_Percent"]),
+            // 汇总区一律两位小数（用户 2026-10-16：马歇尔的这些量比现役多一位）
+            ["Result.Group1AvgStability"] = Format(main["Group1AvgStability"], "0.00"),
+            ["Result.Group1StabilityStdDev"] = Format(main["Group1Stability_Std_Dev"], "0.00"),
+            ["Result.Group1StabilityCvPercent"] = Format(main["Group1Stability_Cv_Percent"], "0.00"),
+            ["Result.Group1AvgFlowValue"] = Format(main["Group1AvgFlowValue"], "0.00"),
+            ["Result.Group1FlowStdDev"] = Format(main["Group1Flow_Std_Dev"], "0.00"),
+            ["Result.Group1FlowCvPercent"] = Format(main["Group1Flow_Cv_Percent"], "0.00"),
+            ["Result.Group2AvgStability"] = Format(main["Group2AvgStability"], "0.00"),
+            ["Result.Group2StabilityStdDev"] = Format(main["Group2Stability_Std_Dev"], "0.00"),
+            ["Result.Group2StabilityCvPercent"] = Format(main["Group2Stability_Cv_Percent"], "0.00"),
+            ["Result.Group2AvgFlowValue"] = Format(main["Group2AvgFlowValue"], "0.00"),
+            ["Result.Group2FlowStdDev"] = Format(main["Group2Flow_Std_Dev"], "0.00"),
+            ["Result.Group2FlowCvPercent"] = Format(main["Group2Flow_Cv_Percent"], "0.00"),
             // 两个比值键**始终要给**：导出器对"没给值的标签"是原样保留（便于发现漏填），
             // 而"本单不做浸水/真空饱水"是**正常的不适用**，所以这里填空串把它印成空格子
             //（现役同样只填对应组那一列，另一列留空）。
@@ -159,7 +162,7 @@ public sealed class MarshallReportBuilder(
         };
 
         // 稳定度比按「本单是哪一种马歇尔」落在对应那一列（现役：H27 = 浸水、I28 = 真空饱水）
-        var ratio = Format(main["StabilityRatio"]);
+        var ratio = Format(main["StabilityRatio"], "0.00");
         if (standardsId == 1)
         {
             fields["Result.ImmersionRatio"] = ratio;
@@ -302,11 +305,11 @@ public sealed class MarshallReportBuilder(
             : Text(MarshallMetricKeys.ValidityNormal, culture, texts);
     }
 
-    private static string Format(object? value) =>
+    private static string Format(object? value, string format = "0.###") =>
         value switch
         {
             null => string.Empty,
-            double number => number.ToString("0.###", CultureInfo.InvariantCulture),
+            double number => number.ToString(format, CultureInfo.InvariantCulture),
             _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty,
         };
 

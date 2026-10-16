@@ -308,14 +308,16 @@ public sealed class MarshallReportTemplateTests : IDisposable
         Assert.Equal("101.6", zh.GetCellValue(11, 2)); // 直径
         Assert.Equal("标准马歇尔试验", zh.GetCellValue(11, 4)); // 第一组的试验类型
         Assert.Equal("9.52", zh.GetCellValue(11, 5)); // 稳定度 = MSRaw（实测值）
-        Assert.Equal("3.1", zh.GetCellValue(11, 6)); // 流值
+        Assert.Equal("3.10", zh.GetCellValue(11, 6)); // 流值（两位小数）
+        Assert.Equal("3.10", zh.GetCellValue(11, 7)); // 马歇尔模数（两位小数）
         Assert.Equal("合格", zh.GetCellValue(11, 8)); // 异常值判断
         Assert.Equal("S002", zh.GetCellValue(12, 1));
         Assert.Equal("浸水马歇尔试验", zh.GetCellValue(12, 4)); // 第二组 = 浸水
         Assert.Equal("剔除", zh.GetCellValue(12, 8)); // Effective = 0
-        Assert.Equal("9.5", zh.GetCellValue(26, 2)); // 标准组稳定度均值
-        Assert.Equal("8.4", zh.GetCellValue(27, 2)); // 浸水组稳定度均值
-        Assert.Equal("88.4", zh.GetCellValue(27, 8)); // 浸水稳定度比落 H27
+        // 汇总区一律两位小数（用户 2026-10-16：马歇尔的这些量比现役多一位）
+        Assert.Equal("9.50", zh.GetCellValue(26, 2)); // 标准组稳定度均值
+        Assert.Equal("8.40", zh.GetCellValue(27, 2)); // 浸水组稳定度均值
+        Assert.Equal("88.40", zh.GetCellValue(27, 8)); // 浸水稳定度比落 H27
         Assert.Equal(string.Empty, Convert.ToString(zh.GetCellValue(28, 9))); // 真空那一格不写
 
         // 试验日期只印日期（用户 2026-10-15 的定例），签名行同样
@@ -376,7 +378,7 @@ public sealed class MarshallReportTemplateTests : IDisposable
         // 明细：第 11 行起 15 件，最后一件落在 11+14 = 25 行（模板只预排到 22 行）
         Assert.Equal("S001", zh.GetCellValue(11, 1));
         Assert.Equal("S015", zh.GetCellValue(25, 1));
-        Assert.Equal("23", zh.GetCellValue(25, 5)); // 稳定度 = 8 + 15
+        Assert.Equal("23.00", zh.GetCellValue(25, 5)); // 稳定度 = 8 + 15（两位小数）
 
         // 插了 3 行 → 汇总表头 25→28、说明区 30→33、签名 34/35→37/38、图片标题 37→40
         Assert.Equal("统计项目", zh.GetCellValue(28, 1));

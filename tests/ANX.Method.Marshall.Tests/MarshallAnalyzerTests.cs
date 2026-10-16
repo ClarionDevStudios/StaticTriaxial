@@ -52,7 +52,7 @@ public sealed class MarshallAnalyzerTests
         Assert.Equal(9.0, result.PeakY, 9);
         Assert.Equal(9.0, result.MSRaw, 9);
 
-        // 流值 = 峰值变形 − O′ = 4.5 − 1.5，一位小数
+        // 流值 = 峰值变形 − O′ = 4.5 − 1.5，两位小数
         Assert.Equal(3.0, result.FLValue, 9);
     }
 
@@ -164,7 +164,7 @@ public sealed class MarshallAnalyzerTests
         Assert.Equal(9.9, result.PeakY, 9);
         Assert.Equal(9.9, result.MSRaw, 9);
 
-        // 流值 = 5.8 − 1.0 = 4.8 → 一位小数
+        // 流值 = 5.8 − 1.0 = 4.8 → 两位小数
         Assert.Equal(4.8, result.FLValue, 9);
     }
 
@@ -200,11 +200,39 @@ public sealed class MarshallAnalyzerTests
         Assert.Equal(10.3, MarshallAnalyzer.CorrectedStability(9.9, 1.04), 9);
         Assert.Equal(10.12, MarshallAnalyzer.CorrectedStability(10.123, 1.0), 9);
 
-        // T = MS / FL，一位小数
-        Assert.Equal(3.5, MarshallAnalyzer.MarshallModulus(9.9, 2.8), 9);
+        // T = MS / FL，两位小数（用户 2026-10-16 定的口径）
+        Assert.Equal(3.54, MarshallAnalyzer.MarshallModulus(9.9, 2.8), 9);
 
         // 流值不大于 0.01 时不计算，记 0
         Assert.Equal(0.0, MarshallAnalyzer.MarshallModulus(10.0, 0.005), 9);
+    }
+
+    /// <summary>
+    /// **流值取两位小数**（用户 2026-10-16 定的口径：取值 / 存储 / 显示三处一致）。
+    /// 造一条峰值落点带第三位小数的曲线：修正直线仍是 y = 2x − 3（O′ = 1.5），
+    /// 峰值在 x = 4.567 → 流值 = 4.567 − 1.5 = 3.067 → **3.07**（一位小数会得 3.1，本用例就是钉这个差别）。
+    /// </summary>
+    [Fact]
+    public void 流值取两位小数()
+    {
+        var points = new List<CurvePoint>();
+        for (var i = 0; i <= 30; i++) // x = 1.5..4.5，y = 2x − 3
+        {
+            var x = 1.5 + (i * 0.1);
+            points.Add(new CurvePoint(x, (2.0 * x) - 3.0));
+        }
+
+        // 峰值点（y 最大）落在 x = 4.567：第三位小数就在这儿
+        points.Add(new CurvePoint(4.567, (2.0 * 4.567) - 3.0));
+        points.Add(new CurvePoint(4.6, 5.5)); // 之后下落
+
+        var result = MarshallAnalyzer.CalcObviousPeak(points);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(1.5, result.OPrime, 9);
+        Assert.Equal(4.57, result.PeakX, 9); // 峰值变形两位
+        Assert.Equal(3.07, result.FLValue, 9); // 流值两位（一位会得 3.1）
+        Assert.Equal(6.13, result.MSRaw, 9); // 峰值荷载两位
     }
 
     // ────────────────────────── 疑似无效判定 ──────────────────────────

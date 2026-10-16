@@ -19,15 +19,17 @@ public sealed class MarshallSheetBrowser(TestSheetService sheets, ITestParameter
 
     /// <summary>
     /// 试件列表要读的明细列 + **列名的显示资源键**（界面按当前语言取，界面不认识库列名）。
+    /// 第三项是**这一列的显示格式**：稳定度 / 流值 / 马歇尔模数按用户 2026-10-16 定的口径显示两位小数
+    ///（取值 / 存储 / 显示三处一致）；直径 / 高度沿用"最多三位、去尾零"。
     /// </summary>
-    private static readonly (string Column, string DisplayKey)[] SampleColumns =
+    private static readonly (string Column, string DisplayKey, string Format)[] SampleColumns =
     [
-        ("SampleID", MarshallMetricKeys.SampleId),
-        ("SampleInitialDiameter", ParameterTextKeys.Name(MarshallSampleFields.SampleInitialDiameterKey)),
-        ("SampleInitialHeight", ParameterTextKeys.Name(MarshallSampleFields.SampleInitialHeightKey)),
-        ("MSRaw", MarshallMetricKeys.Stability),
-        ("FlowValue", MarshallMetricKeys.FlowValue),
-        ("MarshallModulus", MarshallMetricKeys.MarshallModulus),
+        ("SampleID", MarshallMetricKeys.SampleId, ""),
+        ("SampleInitialDiameter", ParameterTextKeys.Name(MarshallSampleFields.SampleInitialDiameterKey), "0.###"),
+        ("SampleInitialHeight", ParameterTextKeys.Name(MarshallSampleFields.SampleInitialHeightKey), "0.###"),
+        ("MSRaw", MarshallMetricKeys.Stability, "0.00"),
+        ("FlowValue", MarshallMetricKeys.FlowValue, "0.00"),
+        ("MarshallModulus", MarshallMetricKeys.MarshallModulus, "0.00"),
     ];
 
     public Task<IReadOnlyList<TestSheetSummary>> QueryAsync(
@@ -46,7 +48,7 @@ public sealed class MarshallSheetBrowser(TestSheetService sheets, ITestParameter
             .. rows.Select(row => (IReadOnlyDictionary<string, string>)
                 SampleColumns.ToDictionary(
                     column => column.DisplayKey,
-                    column => Format(row[column.Column]),
+                    column => Format(row[column.Column], column.Format),
                     StringComparer.Ordinal
                 )),
         ];
@@ -82,11 +84,11 @@ public sealed class MarshallSheetBrowser(TestSheetService sheets, ITestParameter
         );
     }
 
-    private static string Format(object? value) =>
+    private static string Format(object? value, string format) =>
         value switch
         {
             null => string.Empty,
-            double number => number.ToString("0.###", CultureInfo.InvariantCulture),
+            double number when format.Length > 0 => number.ToString(format, CultureInfo.InvariantCulture),
             _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty,
         };
 }

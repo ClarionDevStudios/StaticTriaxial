@@ -109,10 +109,10 @@ public sealed class MarshallPersistenceModule : IMethodPersistenceModule
             new ColumnDefinition("CorrectionFactor", ColumnType.Real, Comment: "试件高度修正系数 K（按 h/D 查表 + 双线性插值）"),
             new ColumnDefinition("LoadPeakValue", ColumnType.Real, Comment: "峰值荷载（kN）"),
             new ColumnDefinition("DeformationPeakValue", ColumnType.Real, Comment: "峰值荷载对应的变形（mm）"),
-            new ColumnDefinition("MSRaw", ColumnType.Real, Comment: "稳定度（未修正，kN）"),
-            new ColumnDefinition("MSCorrected", ColumnType.Real, Comment: "修正后稳定度 = MSRaw × CorrectionFactor（kN）"),
-            new ColumnDefinition("FlowValue", ColumnType.Real, Comment: "流值（0.1mm 为单位，1mm = 10）"),
-            new ColumnDefinition("MarshallModulus", ColumnType.Real, Comment: "马歇尔模数 T = 稳定度 / 流值（kN/mm）"),
+            new ColumnDefinition("MSRaw", ColumnType.Real, Comment: "稳定度（未修正，kN，两位小数）"),
+            new ColumnDefinition("MSCorrected", ColumnType.Real, Comment: "修正后稳定度 = MSRaw × CorrectionFactor（kN，两位小数）"),
+            new ColumnDefinition("FlowValue", ColumnType.Real, Comment: "流值（mm，两位小数；用户 2026-10-16 定的口径，现役是一位小数）"),
+            new ColumnDefinition("MarshallModulus", ColumnType.Real, Comment: "马歇尔模数 T = 稳定度 / 流值（kN/mm，两位小数）"),
 
             // ── 拟合与曲线（列名照现役）──
             new ColumnDefinition("OPrime", ColumnType.Real, Comment: "修正原点 O′ 的横坐标；现役 OPrime"),

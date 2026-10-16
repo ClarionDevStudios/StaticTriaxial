@@ -7,7 +7,10 @@ using ANX.Core;
 /// 中与判定相关的部分一一对应；试验单/试样标识、ChartData、TestStatus 等由上层装配时补。
 ///
 /// 数值口径照现役 `Form\MarshallStabilityTest\MarshallAnalyzer.pas`（JTG 3410-2025 T 0709）：
-/// 稳定度两位小数（kN）；流值一位小数（mm，0.1 精度）；修正原点两位小数（下限 0）。
+/// 稳定度两位小数（kN）；修正原点两位小数（下限 0）。
+///
+/// **流值与马歇尔模数是两位小数**（用户 2026-10-16 定的口径：取值 / 存储 / 显示三处一致）——
+/// 现役这两个量取的是一位小数（`SimpleRoundTo(…, -1)`），这是与现役的**有意差异**（已记进知识库）。
 /// </summary>
 public sealed record MarshallAnalysisResult
 {
@@ -35,7 +38,7 @@ public sealed record MarshallAnalysisResult
     /// <summary>未修正稳定度 MS（kN，两位小数）。</summary>
     public double MSRaw { get; init; }
 
-    /// <summary>流值 FL = PeakX − O′（mm，一位小数）。</summary>
+    /// <summary>流值 FL = PeakX − O′（mm，**两位小数**）。</summary>
     public double FLValue { get; init; }
 
     /// <summary>
@@ -157,7 +160,7 @@ public static class MarshallAnalyzer
             PeakX = SimpleRoundTo(maxX, -2),
             PeakY = SimpleRoundTo(maxY, -2),
             MSRaw = SimpleRoundTo(maxY, -2),
-            FLValue = SimpleRoundTo(maxX - oPrime, -1),
+            FLValue = SimpleRoundTo(maxX - oPrime, -2),
         };
     }
 
@@ -239,7 +242,7 @@ public static class MarshallAnalyzer
             PeakX = peakX,
             PeakY = peakY,
             MSRaw = SimpleRoundTo(peakY, -2),
-            FLValue = SimpleRoundTo(peakX - oPrime, -1),
+            FLValue = SimpleRoundTo(peakX - oPrime, -2),
             UsedFallbackLastPoint = !found,
         };
     }
@@ -373,11 +376,12 @@ public static class MarshallAnalyzer
         SimpleRoundTo(msRawKN * kFactor, -2);
 
     /// <summary>
-    /// 马歇尔模量 T = MS / FL（一位小数，kN/mm）。流值不大于 0.01mm 时不计算，记 0（现役同款）。
+    /// 马歇尔模量 T = MS / FL（**两位小数**，kN/mm；与流值同为用户 2026-10-16 定的口径）。
+    /// 流值不大于 0.01mm 时不计算，记 0（现役同款）。
     /// </summary>
     /// <param name="stabilityKN">明显峰用 MSRaw、芯样分支用修正后的 MS。</param>
     public static double MarshallModulus(double stabilityKN, double flowValueMM) =>
-        flowValueMM > ModulusFlowGuardMM ? SimpleRoundTo(stabilityKN / flowValueMM, -1) : 0.0;
+        flowValueMM > ModulusFlowGuardMM ? SimpleRoundTo(stabilityKN / flowValueMM, -2) : 0.0;
 
     /// <summary>
     /// 现役 `SimpleRoundTo(值, digit)` 的移植：digit 为负表示小数位数（−2 → 两位）。

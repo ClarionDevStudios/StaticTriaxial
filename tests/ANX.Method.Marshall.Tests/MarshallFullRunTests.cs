@@ -138,9 +138,17 @@ public sealed class MarshallFullRunTests : IDisposable
         );
         var average = Convert.ToDouble(stats["Group1AvgStability"]);
         Assert.InRange(average, 8.0, 10.0);
-        Assert.InRange(Convert.ToDouble(stats["Group1Stability_Std_Dev"]), 0.0, 0.01);
+        var deviation = Convert.ToDouble(stats["Group1Stability_Std_Dev"]);
+        Assert.InRange(deviation, 0.0, 0.01);
         Assert.NotNull(stats["Group1AvgFlowValue"]);
         Assert.True(stats["StabilityRatio"] is null or DBNull);
+
+        // 组统计**存储两位小数**（用户 2026-10-16：比现役多一位）——把值放大 100 倍应当是整数
+        foreach (var column in new[] { "Group1AvgStability", "Group1Stability_Std_Dev", "Group1AvgFlowValue" })
+        {
+            var stored = Convert.ToDouble(stats[column]);
+            Assert.Equal(Math.Round(stored * 100), stored * 100, 6);
+        }
 
         // 试样列表：三件都完成、都有判定值
         var rows = await execution.ReadSampleRowsAsync(sheetId);

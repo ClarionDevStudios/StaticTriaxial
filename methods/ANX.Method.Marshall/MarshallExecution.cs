@@ -675,14 +675,21 @@ public sealed class MarshallExecution(TestSheetService sheets, MarshallParameter
     }
 
     /// <summary>实时指标卡：与现役马歇尔执行页的读数卡同构（荷载 / 变形 / 稳定度 / 流值 / 修正原点 / 模数 / 时间）。</summary>
+    /// <remarks>
+    /// 稳定度 / 流值 / 修正原点 / 马歇尔模数四张卡的数值格式写死 <c>0.00</c>：
+    /// 这四个量按用户 2026-10-16 定的口径是**两位小数**（取值 / 存储 / 显示一致），
+    /// 显示不能停留在"最多三位、去尾零"的默认格式上（否则 9.50 会显示成 9.5）。
+    /// 荷载与变形两张实时读数卡也按 <c>0.00</c> —— 现役马歇尔页面的读数是
+    /// <c>Format('%.2f', …)</c>（两位），口径一致。
+    /// </remarks>
     public IReadOnlyList<MetricDefinition> Metrics { get; } =
     [
-        new("load", MarshallMetricKeys.Load, "kN", ShowPeak: true, ValueMinChars: 8),
-        new("displacement", MarshallMetricKeys.Displacement, "mm", ShowPeak: true, ValueMinChars: 8),
-        new("stability", MarshallMetricKeys.Stability, "kN"),
-        new("flowValue", MarshallMetricKeys.FlowValue, "mm"),
-        new("originCorrection", MarshallMetricKeys.OriginCorrection, "mm"),
-        new("marshallModulus", MarshallMetricKeys.MarshallModulus, "kN/mm"),
+        new("load", MarshallMetricKeys.Load, "kN", ShowPeak: true, ValueMinChars: 8, ValueFormat: "0.00"),
+        new("displacement", MarshallMetricKeys.Displacement, "mm", ShowPeak: true, ValueMinChars: 8, ValueFormat: "0.00"),
+        new("stability", MarshallMetricKeys.Stability, "kN", ValueFormat: "0.00"),
+        new("flowValue", MarshallMetricKeys.FlowValue, "mm", ValueFormat: "0.00"),
+        new("originCorrection", MarshallMetricKeys.OriginCorrection, "mm", ValueFormat: "0.00"),
+        new("marshallModulus", MarshallMetricKeys.MarshallModulus, "kN/mm", ValueFormat: "0.00"),
         new("elapsed", MarshallMetricKeys.Elapsed, "s"),
     ];
 
@@ -1239,6 +1246,10 @@ public sealed class MarshallExecution(TestSheetService sheets, MarshallParameter
 
     /// <summary>
     /// 把两组的统计写进主表（现役 `UpdateMainStatsInfo`：一律修约到 1 位小数）。
+    ///
+    /// **我们的口径是两位小数**（用户 2026-10-16：马歇尔的这些量一律"比现役多一位小数"）——
+    /// 均值 / 标准差 / 变异系数 / 残留稳定度比全部 `SimpleRoundTo(…, -2)`；
+    /// 界面（报表汇总区）也按两位显示。
     /// **有效件不足 3 件时不写均值**（写 null，既不下结论、也清掉上一次的陈旧值），
     /// 残留稳定度比照现役 SQLite 触发器：ROUND(二组稳定度均值 / 一组稳定度均值 × 100, 1)，
     /// 一组为空/为 0 时写 null。
@@ -1252,25 +1263,25 @@ public sealed class MarshallExecution(TestSheetService sheets, MarshallParameter
     {
         var columns = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
-            ["Group1AvgStability"] = Round1(first.Stats?.Mean),
-            ["Group1Stability_Std_Dev"] = Round1(first.Stats?.StdDev),
-            ["Group1Stability_Cv_Percent"] = Round1(first.Stats?.CvPercent),
-            ["Group1AvgFlowValue"] = Round1(first.Stats?.FlowMean),
-            ["Group1Flow_Std_Dev"] = Round1(first.Stats?.FlowStdDev),
-            ["Group1Flow_Cv_Percent"] = Round1(first.Stats?.FlowCvPercent),
-            ["Group2AvgStability"] = Round1(second.Stats?.Mean),
-            ["Group2Stability_Std_Dev"] = Round1(second.Stats?.StdDev),
-            ["Group2Stability_Cv_Percent"] = Round1(second.Stats?.CvPercent),
-            ["Group2AvgFlowValue"] = Round1(second.Stats?.FlowMean),
-            ["Group2Flow_Std_Dev"] = Round1(second.Stats?.FlowStdDev),
-            ["Group2Flow_Cv_Percent"] = Round1(second.Stats?.FlowCvPercent),
+            ["Group1AvgStability"] = RoundStats(first.Stats?.Mean),
+            ["Group1Stability_Std_Dev"] = RoundStats(first.Stats?.StdDev),
+            ["Group1Stability_Cv_Percent"] = RoundStats(first.Stats?.CvPercent),
+            ["Group1AvgFlowValue"] = RoundStats(first.Stats?.FlowMean),
+            ["Group1Flow_Std_Dev"] = RoundStats(first.Stats?.FlowStdDev),
+            ["Group1Flow_Cv_Percent"] = RoundStats(first.Stats?.FlowCvPercent),
+            ["Group2AvgStability"] = RoundStats(second.Stats?.Mean),
+            ["Group2Stability_Std_Dev"] = RoundStats(second.Stats?.StdDev),
+            ["Group2Stability_Cv_Percent"] = RoundStats(second.Stats?.CvPercent),
+            ["Group2AvgFlowValue"] = RoundStats(second.Stats?.FlowMean),
+            ["Group2Flow_Std_Dev"] = RoundStats(second.Stats?.FlowStdDev),
+            ["Group2Flow_Cv_Percent"] = RoundStats(second.Stats?.FlowCvPercent),
             ["StabilityRatio"] = StabilityRatio(first, second),
         };
 
         await sheets.UpdateMainFieldsAsync(sheetId, columns, cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>残留稳定度比（%）：二组稳定度均值 / 一组稳定度均值 × 100，一位小数。</summary>
+    /// <summary>残留稳定度比（%）：二组稳定度均值 / 一组稳定度均值 × 100，**两位小数**。</summary>
     private static double? StabilityRatio(GroupOutcome first, GroupOutcome second)
     {
         if (first.Stats is not { } group1 || second.Stats is not { } group2 || group1.Mean == 0.0)
@@ -1278,12 +1289,13 @@ public sealed class MarshallExecution(TestSheetService sheets, MarshallParameter
             return null;
         }
 
-        return MarshallAnalyzer.SimpleRoundTo(group2.Mean / group1.Mean * 100.0, -1);
+        return MarshallAnalyzer.SimpleRoundTo(group2.Mean / group1.Mean * 100.0, -2);
     }
 
-    private static double? Round1(double? value) =>
+    /// <summary>组统计的修约：**两位小数**（用户 2026-10-16 的口径，比现役多一位）。</summary>
+    private static double? RoundStats(double? value) =>
         value is { } number && !double.IsNaN(number)
-            ? MarshallAnalyzer.SimpleRoundTo(number, -1)
+            ? MarshallAnalyzer.SimpleRoundTo(number, -2)
             : null;
 
     /// <summary>从主表行里读一个选项代号（空/异常回兜底）。</summary>
