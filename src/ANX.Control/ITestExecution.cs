@@ -11,12 +11,18 @@ using ANX.Core;
 /// 数值区至少预留多少个字符的宽度。给"会一直跳动、位数会涨"的实时读数用
 /// （荷载、位移），免得卡片宽度随数字位数忽宽忽窄。0 = 不预留。
 /// </param>
+/// <param name="ValueFormat">
+/// 数值的显示格式（<c>double.ToString</c> 的格式串）。默认 <c>0.###</c>（最多三位、去掉尾零），
+/// 规范里规定了小数位数的量（例：马歇尔的稳定度 / 流值 / 马歇尔模数 = 两位）就在声明里写死 ——
+/// 卡片、判完后的读数都按它显示，免得"取值两位、显示一位"这种不一致（用户 2026-10-16）。
+/// </param>
 public sealed record MetricDefinition(
     string Key,
     string DisplayNameKey,
     string Unit,
     bool ShowPeak = false,
-    int ValueMinChars = 0
+    int ValueMinChars = 0,
+    string ValueFormat = "0.###"
 );
 
 /// <summary>

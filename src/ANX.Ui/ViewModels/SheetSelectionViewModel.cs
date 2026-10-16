@@ -105,15 +105,13 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
     private readonly ITestParameters _parameters;
     private readonly ICurrentSheetContext _current;
 
-    /// <summary>单号与前缀：本次沿用工程里的固定前缀（以后接到设置里再改）。</summary>
-    private const string NumberPrefix = "WT";
-
     public SheetSelectionViewModel(
         ILocalizationService localization,
         ITestSheetBrowser browser,
         ITestSheetEditor editor,
         ITestParameters parameters,
-        ICurrentSheetContext current
+        ICurrentSheetContext current,
+        ANX.Control.Methods.ICurrentMethodContext? methods = null
     )
         : base(localization)
     {
@@ -122,21 +120,32 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
         _parameters = parameters;
         _current = current;
 
-        // 取词函数传进去：行里的显示名与下拉选项按当前语言解析（见 SheetFieldRow.Text）
-        Rows =
-        [
-            .. editor.SheetInfoFields.Select(definition => new SheetFieldRow(
-                definition,
-                localization.GetString
-            )),
-        ];
+        RebuildFieldRows();
 
-        foreach (var row in Rows)
+        // 换试验方法：试验单字段整套换掉（键名不同）—— 重开弹窗时看到的就是新方法的字段与联动
+        if (methods is not null)
         {
-            row.PropertyChanged += OnFieldChanged;
+            methods.Changed += (_, _) =>
+            {
+                RebuildFieldRows();
+                SetStatus(L("Sheet.Ready"));
+            };
         }
 
         SetStatus(L("Sheet.Ready"));
+    }
+
+    /// <summary>按**当前方法**的试验单字段声明重建行（取词函数传进去：显示名与下拉选项按当前语言解析）。</summary>
+    private void RebuildFieldRows()
+    {
+        Rows.Clear();
+
+        foreach (var definition in _editor.SheetInfoFields)
+        {
+            var row = new SheetFieldRow(definition, Localization.GetString);
+            row.PropertyChanged += OnFieldChanged;
+            Rows.Add(row);
+        }
     }
 
     /// <inheritdoc />
@@ -146,7 +155,7 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
     /// 全部字段行，**顺序 = 现役版面**：现役窗体是两列网格，左列工程与试验条件、右列体积指标 +
     /// 接样日期 / 试验时间 / 试验员，两列按行配对；界面用两列 UniformGrid 按行填充，直接照这个顺序摆即可。
     /// </summary>
-    public ObservableCollection<SheetFieldRow> Rows { get; }
+    public ObservableCollection<SheetFieldRow> Rows { get; } = [];
 
     /// <summary>"其他试验项目"时用于挑选的已有单列表。</summary>
     public ObservableCollection<TestSheetSummary> Sheets { get; } = [];

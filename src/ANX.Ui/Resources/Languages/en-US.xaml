@@ -20,12 +20,20 @@
   <sys:String x:Key="Home.M1">Skeleton runs: shell + DI/logging + contracts + test pipeline</sys:String>
   <sys:String x:Key="Home.M2">Channels + GR-3 protocol (golden cases included); verified on the real controller</sys:String>
   <sys:String x:Key="Home.M3">T0715 bending, end to end, with report output</sys:String>
-  <sys:String x:Key="Home.M4">On-machine verification + second method (Marshall)</sys:String>
+  <sys:String x:Key="Home.M4">Second method (Marshall stability)</sys:String>
   <sys:String x:Key="Home.StatusDone">Done</sys:String>
   <sys:String x:Key="Home.StatusTodo">Not started</sys:String>
   <sys:String x:Key="Home.CurrentMilestone">Current milestone</sys:String>
   <sys:String x:Key="Home.BoundaryTitle">M1 known boundaries</sys:String>
-  <sys:String x:Key="Home.BoundaryText">M1-M3 have landed: GR-3 framing and the UDP channel (verified on the real controller), uplink parsing, the control engine and simulator, T0715 analysis and group statistics, the three-table schema and write layer, label-based reporting (zh/en factory templates), five UI pages, network-link monitoring with link-loss safeguards, and settings persistence (external config file Config\settings.json). Still open: on-machine check of the motor direction word and reset, and the second method (Marshall) in M4.</sys:String>
+  <sys:String x:Key="Home.BoundaryText">M1-M4 have landed: GR-3 framing and the UDP channel (verified on the real controller), uplink parsing, the control engine and simulator, T0715 bending analysis and group statistics, T0709 Marshall analysis and reporting, the three-table schema and write layer, label-based reporting (zh/en factory templates), five UI pages plus the home-page method entry, network-link monitoring with link-loss safeguards, and settings persistence (external config file Config\settings.json). Still open: on-machine check of the motor direction word and reset, and real-machine verification of Marshall (incl. the T0710 road-core mode).</sys:String>
+
+  <!-- Home: test-method entry cards (option A, user 2026-10-16) -->
+  <sys:String x:Key="Home.MethodsTitle">Test methods</sys:String>
+  <sys:String x:Key="Home.MethodsHint">Pick a method to switch to it and open its test page. The current method also drives history, parameters and reports.</sys:String>
+  <sys:String x:Key="Home.MethodCurrent">Current</sys:String>
+  <sys:String x:Key="Home.MethodEnter">Open</sys:String>
+  <sys:String x:Key="Home.MethodSwitchBlocked">A test is running - stop it (or let the specimen finish) before switching methods.</sys:String>
+  <sys:String x:Key="Exec.MethodSwitched">Test method switched to:</sys:String>
 
   <sys:String x:Key="Settings.Title">Settings</sys:String>
   <sys:String x:Key="Settings.TabPreferences">Preferences</sys:String>

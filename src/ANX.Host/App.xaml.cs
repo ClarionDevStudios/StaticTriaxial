@@ -253,17 +253,32 @@ public partial class App
                 );
                 _ = services.AddSingleton<ICurrentMethodContext, CurrentMethodContext>();
 
-                // 界面那几处契约**照旧注入**，只是改成"从当前方法取" —— 行为与改前完全一致
-                //（单方法阶段看不出差别；等马歇尔进来，切换方法只改 CurrentMethodContext）。
-                _ = services.AddSingleton<ITestParameters>(sp =>
-                    sp.GetRequiredService<ICurrentMethodContext>().Current.Parameters
-                );
+                // 界面那几处契约注入的是**"当前方法"代理**（ANX.Control.Methods）：
+                // 页面持有的实例永远不变、每次调用落到 CurrentMethodContext.Current 上 ——
+                // 于是首页的方法卡片一换方法，执行 / 历史 / 参数 / 报表四条线一起跟着换，
+                // 不用重建页面（页面自己要重建的东西——卡片 / 列 / 单号——由它们订 Changed 处理）。
+                // 注意别退回"注册时取 Current.X"：那写法在 DI 单例解析的那一刻就把方法定死了。
+                _ = services.AddSingleton(sp => new CurrentMethodExecution(
+                    () => sp.GetRequiredService<ICurrentMethodContext>()
+                ));
                 _ = services.AddSingleton<ITestExecution>(sp =>
-                    sp.GetRequiredService<ICurrentMethodContext>().Current.Execution
+                    sp.GetRequiredService<CurrentMethodExecution>()
                 );
                 _ = services.AddSingleton<ITestSheetEditor>(sp =>
-                    sp.GetRequiredService<ICurrentMethodContext>().Current.Editor
+                    sp.GetRequiredService<CurrentMethodExecution>()
                 );
+                _ = services.AddSingleton(sp => new CurrentMethodBrowse(
+                    () => sp.GetRequiredService<ICurrentMethodContext>()
+                ));
+                _ = services.AddSingleton<ITestSheetBrowser>(sp =>
+                    sp.GetRequiredService<CurrentMethodBrowse>()
+                );
+                _ = services.AddSingleton<IReportExportService>(sp =>
+                    sp.GetRequiredService<CurrentMethodBrowse>()
+                );
+                _ = services.AddSingleton<ITestParameters>(sp => new CurrentMethodParameters(
+                    () => sp.GetRequiredService<ICurrentMethodContext>()
+                ));
 
                 // 网口链路监视（用户 2026-10-14）：UDP 无连接，拔网线不报错，只能从系统层读网卡链路状态。
                 // 设备地址可被环境变量 ANX_DEVICE_HOST 顶掉 —— 联机调试 / 自检时指到别处用。
@@ -318,7 +333,9 @@ public partial class App
                     sp.GetRequiredService<INavigationPaneService>(),
                     // 网口链路（拔网线要在状态栏看得见）。**服务一直在**（用户 2026-10-16 起由
                     // SwitchableDeviceController 跟着来源启停），界面按"是不是模拟来源"决定要不要报链路
-                    sp.GetService<INetworkLinkMonitor>()
+                    sp.GetService<INetworkLinkMonitor>(),
+                    // 换试验方法（首页的方法卡片）：本页据此重建指标卡 / 试样列 / 当前单
+                    sp.GetRequiredService<ICurrentMethodContext>()
                 ));
                 _ = services.AddSingleton<TestExecutionPage>();
 
@@ -332,20 +349,17 @@ public partial class App
                     sp.GetRequiredService<ITestSheetBrowser>(),
                     sp.GetRequiredService<ITestSheetEditor>(),
                     sp.GetRequiredService<ITestParameters>(),
-                    sp.GetRequiredService<ICurrentSheetContext>()
+                    sp.GetRequiredService<ICurrentSheetContext>(),
+                    // 换试验方法：试验单字段整套换掉
+                    sp.GetRequiredService<ICurrentMethodContext>()
                 ));
                 _ = services.AddSingleton<SheetSelectionPage>();
 
                 // 历史数据页（查单 / 读明细 / 读曲线 / 导出报表）
-                _ = services.AddSingleton<ITestSheetBrowser>(sp =>
-                    sp.GetRequiredService<ICurrentMethodContext>().Current.Browser
-                );
+                // —— ITestSheetBrowser / IReportExportService 已在上面注册成"当前方法代理"
                 // 报表预览渲染：契约在 Core、实现在 Reporting（界面只引用 Core/Control，不认识 FlexCel）
                 _ = services.AddSingleton<ANX.Core.Reporting.IReportPreviewRenderer,
                     ANX.Reporting.FlexCelReportPreviewRenderer>();
-                _ = services.AddSingleton<IReportExportService>(sp =>
-                    sp.GetRequiredService<ICurrentMethodContext>().Current.Reports
-                );
                 _ = services.AddSingleton(sp => new HistoryViewModel(
                     sp.GetRequiredService<ILocalizationService>(),
                     sp.GetRequiredService<ITestSheetBrowser>(),
@@ -368,13 +382,17 @@ public partial class App
                 _ = services.AddSingleton(sp => new SampleInfoViewModel(
                     sp.GetRequiredService<ILocalizationService>(),
                     sp.GetRequiredService<ITestExecution>(),
-                    sp.GetRequiredService<ICurrentSheetContext>()
+                    sp.GetRequiredService<ICurrentSheetContext>(),
+                    // 换试验方法：试样信息字段整套换掉
+                    sp.GetRequiredService<ICurrentMethodContext>()
                 ));
                 _ = services.AddSingleton(sp => new MachineSettingsViewModel(
                     sp.GetRequiredService<ILocalizationService>(),
                     sp.GetRequiredService<ITestParameters>(),
                     sp.GetRequiredService<ITestExecution>(),
-                    sp.GetService<ITestDeviceController>()
+                    sp.GetService<ITestDeviceController>(),
+                    // 换试验方法：参数声明与值都换一套
+                    sp.GetRequiredService<ICurrentMethodContext>()
                 ));
                 _ = services.AddSingleton<SampleEditorPage>();
                 _ = services.AddSingleton<MachineSettingsPage>();

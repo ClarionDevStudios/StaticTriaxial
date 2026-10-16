@@ -14,6 +14,13 @@ public interface ICurrentSheetContext
     /// <summary>登记当前试验单。</summary>
     void Set(string sheetId, string? projectName);
 
+    /// <summary>
+    /// 清空当前试验单（**换试验方法**时用）：上一方法的单在下一方法里没有意义
+    /// （单号查不到、字段也对不上）。清空同样会触发 <see cref="Changed"/>，
+    /// 各页面据此把单号显示与试样列表一起复位。
+    /// </summary>
+    void Clear();
+
     /// <summary>当前试验单发生变化。</summary>
     event EventHandler? Changed;
 }
@@ -31,6 +38,13 @@ public sealed class CurrentSheetContext : ICurrentSheetContext
     {
         SheetId = sheetId;
         ProjectName = projectName;
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    public void Clear()
+    {
+        SheetId = null;
+        ProjectName = null;
         Changed?.Invoke(this, EventArgs.Empty);
     }
 }

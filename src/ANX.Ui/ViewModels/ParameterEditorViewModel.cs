@@ -1,6 +1,7 @@
 namespace ANX.Ui.ViewModels;
 
 using ANX.Control;
+using ANX.Control.Methods;
 using ANX.Core.Control;
 using ANX.Ui.Services;
 
@@ -38,6 +39,9 @@ public abstract partial class ParameterEditorViewModel : EditableRowsViewModel, 
     private readonly ITestParameters _parameters;
     private readonly string _titleKey;
     private readonly string _descriptionKey;
+
+    /// <summary>参数读写（派生类换方法时要用：重新取声明与当前值）。</summary>
+    protected ITestParameters Parameters => _parameters;
 
     protected ParameterEditorViewModel(
         ILocalizationService localization,
@@ -249,7 +253,8 @@ public sealed partial class MachineSettingsViewModel : ParameterEditorViewModel
         ILocalizationService localization,
         ITestParameters parameters,
         ITestExecution execution,
-        ITestDeviceController? device
+        ITestDeviceController? device,
+        ICurrentMethodContext? methods = null
     )
         : base(
             localization,
@@ -265,6 +270,20 @@ public sealed partial class MachineSettingsViewModel : ParameterEditorViewModel
 
         // 字段都到齐了才刷描述（构造里那次用的是基类兜底描述）
         RefreshTexts();
+
+        // 换试验方法：参数声明（通用目录 ∪ 该方法自己的）与值都换一套 —— 重开弹窗看到的就是新方法的
+        if (methods is not null)
+        {
+            methods.Changed += (_, _) => _ = ReloadForMethodAsync();
+        }
+    }
+
+    /// <summary>换方法后重来：按新方法的声明重建行 → 重刷页级文字 → 载入新方法的值。</summary>
+    private async Task ReloadForMethodAsync()
+    {
+        ResetRows(MergeDefinitions(Parameters));
+        RefreshTexts();
+        ApplyValues(await Parameters.LoadAsync());
     }
 
     /// <summary>

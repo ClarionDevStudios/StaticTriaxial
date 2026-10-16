@@ -166,6 +166,17 @@ public abstract partial class EditableRowsViewModel : ViewModelBase
 
     }
 
+    /// <summary>
+    /// **重建全部行**（换试验方法时用）：按新方法的声明从头来一遍，旧的编辑内容与快照一起丢掉 ——
+    /// 上一方法的字段在新方法里没有意义（键名不同，留着就是一堆"未知字段"）。
+    /// </summary>
+    protected void ResetRows(IEnumerable<ParameterDefinition> definitions)
+    {
+        Rows.Clear();
+        _saved = new Dictionary<string, string>(StringComparer.Ordinal);
+        InitializeRows(definitions);
+    }
+
     /// <summary>把一组值写进行里并记快照（载入完成后调用）。</summary>
     protected void ApplyValues(IReadOnlyDictionary<string, string> values)
     {

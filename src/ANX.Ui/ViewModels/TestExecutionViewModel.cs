@@ -3,6 +3,7 @@ namespace ANX.Ui.ViewModels;
 using System.Globalization;
 using System.Windows.Media;
 using ANX.Control;
+using ANX.Control.Methods;
 using ANX.Core;
 using ANX.Core.Control;
 using ANX.Ui.Services;
@@ -42,6 +43,13 @@ public partial class MetricCard : ObservableObject
 
     /// <summary>单位（不译：IAP 的口径是单位为不译项）。</summary>
     public string Unit => _definition.Unit;
+
+    /// <summary>
+    /// 按**这一张卡的声明格式**格式数值（<see cref="MetricDefinition.ValueFormat"/>；默认 <c>0.###</c>）。
+    /// 规范规定了几位小数的量（马歇尔的稳定度 / 流值 / 模数 = 两位）在声明里写死，显示与取值一致。
+    /// </summary>
+    public string Format(double value) =>
+        value.ToString(_definition.ValueFormat, CultureInfo.InvariantCulture);
 
     /// <summary>数值字体（MonoTextStyle / 22px）一个数字的宽，只量一次。</summary>
     private static readonly double DigitWidth = MeasureDigitWidth();
@@ -124,6 +132,7 @@ public partial class TestExecutionViewModel : ViewModelBase
     private readonly IReportExportService? _exporter;
     private readonly SampleInfoViewModel? _sampleInfo;
     private readonly INavigationPaneService? _pane;
+    private readonly ICurrentMethodContext? _methods;
 
     /// <summary>
     /// 「试验单」弹窗尺寸：字段区照现役是**两列按行配对**（10 行），再加"其他试验项目"时的
@@ -206,7 +215,8 @@ public partial class TestExecutionViewModel : ViewModelBase
         IModalPageService? modalPages = null,
         SampleInfoViewModel? sampleInfo = null,
         INavigationPaneService? pane = null,
-        INetworkLinkMonitor? linkMonitor = null
+        INetworkLinkMonitor? linkMonitor = null,
+        ICurrentMethodContext? methods = null
     )
         : base(localization)
     {
@@ -219,6 +229,7 @@ public partial class TestExecutionViewModel : ViewModelBase
         _modalPages = modalPages;
         _sampleInfo = sampleInfo;
         _pane = pane;
+        _methods = methods;
 
         // 试样信息列表的表头：试件号 + 方法声明的各试样信息字段（带单位），列序与 BuildSampleCells 一致
         _sampleFieldKeys = [.. execution.SampleFields.Select(field => field.Key)];
@@ -228,6 +239,12 @@ public partial class TestExecutionViewModel : ViewModelBase
         if (_currentSheet is not null)
         {
             _currentSheet.Changed += OnCurrentSheetChanged;
+        }
+
+        // 换试验方法（首页的方法卡片）：本页所有"按方法算出来"的东西都要重建 —— 见 OnMethodChanged
+        if (_methods is not null)
+        {
+            _methods.Changed += OnMethodChanged;
         }
 
         foreach (var definition in execution.Metrics)
@@ -311,7 +328,8 @@ public partial class TestExecutionViewModel : ViewModelBase
     ];
 
     /// <summary>试样信息字段的键（列序与表头一致：表头第 0 列是试件号，其余对应这里的字段）。</summary>
-    private readonly IReadOnlyList<string> _sampleFieldKeys;
+    /// <remarks>**不是 readonly**：换试验方法后字段会变（见 <see cref="OnMethodChanged"/>）。</remarks>
+    private IReadOnlyList<string> _sampleFieldKeys;
 
     /// <summary>
     /// 当前试验单里的试样信息（只显示**本单**的，用户 2026-10-13）。
@@ -494,6 +512,52 @@ public partial class TestExecutionViewModel : ViewModelBase
 
         // 换单了：试样信息列表跟着换成新单的（用户 2026-10-13：只显示本试验单的试样）
         _ = ReloadSampleRowsAsync();
+    }
+
+    /// <summary>换试验方法了（首页的方法卡片）——页面订阅它重建试样列与曲线轴名。</summary>
+    public event EventHandler<TestMethodServices>? MethodChanged;
+
+    /// <summary>
+    /// **换了试验方法**：本页按方法算出来的东西全部重建 —— 指标卡、试样列表的列与行、
+    /// 当前试验单、曲线与峰值、阶段文案；页面订阅 <see cref="MethodChanged"/> 重建列与轴名。
+    ///
+    /// 正在跑试验时不允许切方法（首页那边拦着，见 <c>HomeViewModel.EnterMethodAsync</c>）：
+    /// 这里只负责"切完之后的重新来过"。
+    /// </summary>
+    private void OnMethodChanged(object? sender, TestMethodServices method)
+    {
+        _sampleFieldKeys = [.. _execution.SampleFields.Select(field => field.Key)];
+
+        Cards.Clear();
+        foreach (var definition in _execution.Metrics)
+        {
+            Cards.Add(new MetricCard(definition, Localization));
+        }
+
+        // 上一方法的单/试样行/曲线在本方法里都没有意义：全部作废
+        // （`Clear()` 会通知其它页面把单号一起复位）
+        _currentSheet?.Clear();
+        _sheetId = null;
+        SheetText = string.Empty;
+        SampleRows.Clear();
+        SelectedSample = null;
+        _sampleCounter = 0;
+
+        ResetLiveValues();
+        ClearPeaks();
+        CurveCleared?.Invoke(this, EventArgs.Empty);
+        _lastStopReason = TestStopReason.None;
+        RefreshPhaseText();
+
+        // 这几个都是"读 _execution 现算"的展示属性，换方法后要通知界面重读
+        OnPropertyChanged(nameof(HeaderText));
+        OnPropertyChanged(nameof(StandardText));
+        OnPropertyChanged(nameof(SampleColumnHeaders));
+        OnPropertyChanged(nameof(SheetDisplayText));
+        NotifySampleCommands();
+
+        Append($"{L("Exec.MethodSwitched")} {L(method.MethodNameKey)}（{method.MethodCode}）");
+        MethodChanged?.Invoke(this, method);
     }
 
     /// <summary>规范依据。</summary>
@@ -1737,7 +1801,7 @@ public partial class TestExecutionViewModel : ViewModelBase
                 var card = FindCard(key);
                 if (card is not null)
                 {
-                    card.Value = Format(value);
+                    card.Value = card.Format(value);
                 }
             }
 
@@ -1844,7 +1908,7 @@ public partial class TestExecutionViewModel : ViewModelBase
             return;
         }
 
-        card.Value = Format(value);
+        card.Value = card.Format(value);
 
         // 峰值只在**试验过程中**（且已接触试样）有意义：进页面、手动升降、接触前的空走都不该动它。
         // 试验结束后 _contactEstablished 转 false，峰值数值保留（继续显示最后一轮的值）但不再被改写。
@@ -1860,7 +1924,7 @@ public partial class TestExecutionViewModel : ViewModelBase
             _peaks[key] = peak;
         }
 
-        card.Peak = Format(peak);
+        card.Peak = card.Format(peak);
     }
 
     private void ResetLiveValues()
@@ -1906,7 +1970,4 @@ public partial class TestExecutionViewModel : ViewModelBase
 
         _ = dispatcher.BeginInvoke(() => Log.Insert(0, line));
     }
-
-    private static string Format(double value) =>
-        value.ToString("0.###", CultureInfo.InvariantCulture);
 }

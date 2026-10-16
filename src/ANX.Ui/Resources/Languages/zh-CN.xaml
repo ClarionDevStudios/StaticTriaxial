@@ -20,12 +20,20 @@
   <sys:String x:Key="Home.M1">骨架可运行：外壳 + DI/日志 + 契约 + 测试链路</sys:String>
   <sys:String x:Key="Home.M2">通道 + GR-3 协议（含抓帧黄金用例）；已过真机联机</sys:String>
   <sys:String x:Key="Home.M3">T0715 弯曲全链路出报告</sys:String>
-  <sys:String x:Key="Home.M4">真机验证 + 第二个方法（马歇尔）</sys:String>
+  <sys:String x:Key="Home.M4">第二个方法（马歇尔稳定度）</sys:String>
   <sys:String x:Key="Home.StatusDone">已完成</sys:String>
   <sys:String x:Key="Home.StatusTodo">未开始</sys:String>
   <sys:String x:Key="Home.CurrentMilestone">当前里程碑</sys:String>
   <sys:String x:Key="Home.BoundaryTitle">M1 已知边界</sys:String>
-  <sys:String x:Key="Home.BoundaryText">M1~M3 已落地：GR-3 帧编解码与 UDP 通道（过真机）、上行解析、控制引擎与模拟器、T0715 判定与组统计、三表建库与写入层、标签制报表（中英两套出厂模板）、界面五个页面、网口链路监视与断链兜底、系统设置持久化（外部配置文件 Config\settings.json）。仍未做的：真机空载试电机方向字与复位、M4 的第二个方法（马歇尔）。</sys:String>
+  <sys:String x:Key="Home.BoundaryText">M1~M4 已落地：GR-3 帧编解码与 UDP 通道（过真机）、上行解析、控制引擎与模拟器、T0715 弯曲判定与组统计、T0709 马歇尔判定与报表、三表建库与写入层、标签制报表（中英两套出厂模板）、界面五个页面 + 首页方法入口、网口链路监视与断链兜底、系统设置持久化（外部配置文件 Config\settings.json）。仍未做的：真机空载试电机方向字与复位、马歇尔的真机验证（含 T0710 芯样模式）。</sys:String>
+
+  <!-- 首页：试验方法入口卡片（方案 A，用户 2026-10-16） -->
+  <sys:String x:Key="Home.MethodsTitle">试验方法</sys:String>
+  <sys:String x:Key="Home.MethodsHint">点「进入试验」切到该方法并打开试验界面；当前方法同时决定历史数据、参数配置与报表。</sys:String>
+  <sys:String x:Key="Home.MethodCurrent">当前</sys:String>
+  <sys:String x:Key="Home.MethodEnter">进入试验</sys:String>
+  <sys:String x:Key="Home.MethodSwitchBlocked">试验进行中，先停止或等本件做完，再切换试验方法。</sys:String>
+  <sys:String x:Key="Exec.MethodSwitched">已切换试验方法：</sys:String>
 
   <sys:String x:Key="Settings.Title">系统设置</sys:String>
   <sys:String x:Key="Settings.TabPreferences">界面偏好</sys:String>

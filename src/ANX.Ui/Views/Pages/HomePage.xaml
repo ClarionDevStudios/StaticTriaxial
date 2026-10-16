@@ -16,6 +16,68 @@
       <TextBlock Style="{StaticResource PageTitleStyle}" Text="{DynamicResource Home.Title}" />
       <TextBlock Style="{StaticResource PageSubtitleStyle}" Text="{DynamicResource Home.Subtitle}" />
 
+      <!-- 试验方法入口（方案 A：首页当"方法入口"）—— 一张方法一张卡片，点「进入试验」切过去并打开试验界面 -->
+      <ui:Card Margin="0,20,0,0" Padding="20">
+        <StackPanel>
+          <TextBlock Style="{StaticResource CardTitleStyle}" Text="{DynamicResource Home.MethodsTitle}" />
+          <TextBlock
+            Margin="0,6,0,0"
+            Style="{StaticResource PageSubtitleStyle}"
+            Text="{DynamicResource Home.MethodsHint}"
+            TextWrapping="Wrap"
+          />
+
+          <ItemsControl Margin="0,14,0,0" ItemsSource="{Binding ViewModel.MethodCards}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border
+                  Margin="0,0,0,10"
+                  Padding="16,12"
+                  Background="{DynamicResource ControlFillColorDefaultBrush}"
+                  BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                  BorderThickness="1"
+                  CornerRadius="6"
+                >
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                      <TextBlock FontWeight="SemiBold" Text="{Binding Name}" TextWrapping="Wrap" />
+                      <TextBlock
+                        Margin="0,4,0,0"
+                        Style="{StaticResource FieldLabelStyle}"
+                        Text="{Binding StandardReference}"
+                      />
+                    </StackPanel>
+
+                    <!-- "当前"标记：不是当前方法时是空串（不用转换器） -->
+                    <TextBlock
+                      Grid.Column="1"
+                      Margin="12,0"
+                      VerticalAlignment="Center"
+                      Foreground="{DynamicResource SystemFillColorSuccessBrush}"
+                      Text="{Binding MarkerText}"
+                    />
+
+                    <ui:Button
+                      Grid.Column="2"
+                      VerticalAlignment="Center"
+                      Command="{Binding DataContext.ViewModel.EnterMethodCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                      CommandParameter="{Binding}"
+                      Content="{DynamicResource Home.MethodEnter}"
+                    />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ui:Card>
+
       <ui:Card Margin="0,20,0,0" Padding="20">
         <StackPanel>
           <TextBlock Style="{StaticResource CardTitleStyle}" Text="{DynamicResource Home.MilestoneTitle}" />

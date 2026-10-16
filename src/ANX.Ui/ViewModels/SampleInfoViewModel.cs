@@ -2,6 +2,7 @@ namespace ANX.Ui.ViewModels;
 
 using System.Globalization;
 using ANX.Control;
+using ANX.Control.Methods;
 using ANX.Ui.Services;
 
 /// <summary>
@@ -21,7 +22,8 @@ public sealed partial class SampleInfoViewModel : EditableRowsViewModel, IModalD
     public SampleInfoViewModel(
         ILocalizationService localization,
         ITestExecution execution,
-        ICurrentSheetContext? currentSheet
+        ICurrentSheetContext? currentSheet,
+        ICurrentMethodContext? methods = null
     )
         : base(localization)
     {
@@ -30,6 +32,18 @@ public sealed partial class SampleInfoViewModel : EditableRowsViewModel, IModalD
 
         InitializeRows(execution.SampleFields);
         RefreshTexts();
+
+        // 换试验方法：试样信息字段整套换掉（键名不同），行与"上次存了哪件"一起重来
+        // （页面在方法切换后重开弹窗时看到的就是新方法的字段）
+        if (methods is not null)
+        {
+            methods.Changed += (_, _) =>
+            {
+                ResetRows(_execution.SampleFields);
+                SampleId = string.Empty;
+                LastSavedSampleId = string.Empty;
+            };
+        }
 
         // 换语言：页标题与描述跟着变（参数行由基类通知）—— ViewModel 是单例，构造时算的那份会过期
         localization.LanguageChanged += (_, _) => RefreshTexts();

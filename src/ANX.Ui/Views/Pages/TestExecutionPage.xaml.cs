@@ -79,6 +79,14 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
             ApplyChartStyle(_theme.CurrentTheme);
         };
 
+        // 换试验方法（首页的方法卡片）：试样列表的列与曲线轴名都按新方法重建
+        //（指标卡、当前单、曲线由 ViewModel 自己清；页面这里只管它自己建的列与轴）
+        viewModel.MethodChanged += (_, _) =>
+        {
+            BuildSampleColumns();
+            ApplyChartStyle(_theme.CurrentTheme);
+        };
+
         // 本页不在前台时切了语言/主题，控件不会重绘（WpfPlot 留着旧位图）——
         // 每次重新显示都重刷一次，免得回来看到的是旧字。
         Loaded += (_, _) =>
