@@ -60,6 +60,57 @@ public sealed class SwitchableDeviceControllerTests
         Assert.True(device.Connected);
     }
 
+    /// <summary>
+    /// 网口链路监视器**跟着数据来源启停**（用户 2026-10-16）：真机才盯网线、模拟数据停着。
+    /// 以前是"模拟器模式不注册这个服务"，于是启动在模拟数据、运行期切回真机就永远没有插拔检测。
+    /// </summary>
+    [Fact]
+    public async Task 链路监视器跟着数据来源启停()
+    {
+        var source = AppDataSources.Simulator;
+        var monitor = new FakeLinkMonitor();
+
+        await using var switchable = new SwitchableDeviceController(
+            _ => Task.FromResult(source),
+            () => new FakeDevice("真机"),
+            () => new FakeDevice("模拟器"),
+            monitor
+        );
+
+        // 启动在"模拟数据"：连一下（解析来源）→ 监视器必须是停的
+        await switchable.ConnectAsync();
+        Assert.True(switchable.IsSimulating);
+        Assert.False(monitor.Running);
+
+        // 设置里切到"真机试验" → 下次操作解析来源时把监视器起起来
+        source = AppDataSources.Device;
+        await switchable.ConnectAsync();
+        Assert.False(switchable.IsSimulating);
+        Assert.True(monitor.Running);
+
+        // 再切回"模拟数据" → 监视器停掉（假设备不参与，报真网线只会误导）
+        source = AppDataSources.Simulator;
+        await switchable.ConnectAsync();
+        Assert.False(monitor.Running);
+    }
+
+    /// <summary>只记"开着还是停着"的假监视器（幂等语义与真的一致）。</summary>
+    private sealed class FakeLinkMonitor : INetworkLinkMonitor
+    {
+        public bool Running { get; private set; }
+
+        public NetworkLinkState State { get; } =
+            new(NetworkLinkKind.Unknown, string.Empty, "未检测");
+
+        public event EventHandler<NetworkLinkState>? StateChanged;
+
+        public void Start() => Running = true;
+
+        public void Stop() => Running = false;
+
+        public void Check() => StateChanged?.Invoke(this, State);
+    }
+
     [Fact]
     public async Task 采样事件应转发出来_切换后不再收旧来源的()
     {

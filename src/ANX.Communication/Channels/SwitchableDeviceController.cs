@@ -20,6 +20,7 @@ public sealed class SwitchableDeviceController : ITestDeviceController, IDeviceS
     private readonly Func<CancellationToken, Task<string>> _sourceKey;
     private readonly Func<ITestDeviceController> _deviceFactory;
     private readonly Func<ITestDeviceController>? _simulatorFactory;
+    private readonly INetworkLinkMonitor? _linkMonitor;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     private ITestDeviceController? _current;
@@ -28,12 +29,14 @@ public sealed class SwitchableDeviceController : ITestDeviceController, IDeviceS
     public SwitchableDeviceController(
         Func<CancellationToken, Task<string>> sourceKey,
         Func<ITestDeviceController> deviceFactory,
-        Func<ITestDeviceController>? simulatorFactory = null
+        Func<ITestDeviceController>? simulatorFactory = null,
+        INetworkLinkMonitor? linkMonitor = null
     )
     {
         _sourceKey = sourceKey;
         _deviceFactory = deviceFactory;
         _simulatorFactory = simulatorFactory;
+        _linkMonitor = linkMonitor;
     }
 
     /// <inheritdoc />
@@ -255,6 +258,19 @@ public sealed class SwitchableDeviceController : ITestDeviceController, IDeviceS
             _current = factory();
             _currentKey = key;
             _current.SampleReceived += OnInnerSample;
+
+            // 网口链路监视器**跟着来源启停**（用户 2026-10-16）：真机试验才盯网线，模拟数据不盯
+            //（假设备压根不参与，报"真网线断了"只会误导 + 没用的轮询）。Start/Stop 都是幂等的，
+            // 所以放在这里"每次解析来源之后对一遍"最省事，启动与运行期切换都覆盖到。
+            if (IsSimulating)
+            {
+                _linkMonitor?.Stop();
+            }
+            else
+            {
+                _linkMonitor?.Start();
+            }
+
             return _current;
         }
         finally

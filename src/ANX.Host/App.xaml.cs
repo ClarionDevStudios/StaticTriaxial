@@ -207,32 +207,35 @@ public partial class App
 
                 // 网口链路监视（用户 2026-10-14）：UDP 无连接，拔网线不报错，只能从系统层读网卡链路状态。
                 // 设备地址可被环境变量 ANX_DEVICE_HOST 顶掉 —— 联机调试 / 自检时指到别处用。
-                // **模拟器模式不注册**：那时根本没有真设备，报"真网线断了"只会是噪音（VM 取到 null 就不管链路）。
-                if (!UseSimulator)
+                //
+                // **一直注册**（用户 2026-10-16："监视器跟着来源按需启停"）：以前这里是"模拟器模式不注册"，
+                // 于是启动在模拟数据、运行期切回真机就**永远没有**网线插拔检测（监视器根本不存在）。
+                // 现在由 SwitchableDeviceController 在**每次解析来源之后**按来源 Start/Stop（幂等），
+                // 界面那边照旧按"是不是模拟来源"决定要不要报链路。
+                _ = services.AddSingleton<INetworkLinkMonitor>(_ =>
                 {
-                    _ = services.AddSingleton<INetworkLinkMonitor>(_ =>
-                    {
-                        var monitor = new NetworkLinkMonitor(DeviceHost);
+                    var monitor = new NetworkLinkMonitor(DeviceHost);
 
-                        // 链路变化落日志（网线插拔这类现场问题，事后要能查）
-                        monitor.StateChanged += (_, state) =>
-                            Log.Information(
-                                "网口链路 {Kind}：{Detail}（网卡：{Adapter}）",
-                                state.Kind,
-                                state.Detail,
-                                state.AdapterName
-                            );
+                    // 链路变化落日志（网线插拔这类现场问题，事后要能查）
+                    monitor.StateChanged += (_, state) =>
+                        Log.Information(
+                            "网口链路 {Kind}：{Detail}（网卡：{Adapter}）",
+                            state.Kind,
+                            state.Detail,
+                            state.AdapterName
+                        );
 
-                        return monitor;
-                    });
-                }
+                    return monitor;
+                });
 
                 // 设备：按**系统设置的"数据来源"**在真机与模拟器之间切换（用户 2026-10-15：
                 // 没试件时选"模拟数据"跑通流程）。环境变量 ANX_USE_SIMULATOR=1 仍然优先（自检 / 冒烟用）。
                 _ = services.AddSingleton(sp => new SwitchableDeviceController(
                     sourceKey: ct => ResolveDataSourceAsync(sp, ct),
                     deviceFactory: CreateRealDevice,
-                    simulatorFactory: CreateSimulator
+                    simulatorFactory: CreateSimulator,
+                    // 链路监视器跟着来源启停（用户 2026-10-16）：真机才盯网线，模拟数据停着
+                    linkMonitor: sp.GetService<INetworkLinkMonitor>()
                 ));
                 _ = services.AddSingleton<ITestDeviceController>(sp =>
                     sp.GetRequiredService<SwitchableDeviceController>()
@@ -253,7 +256,8 @@ public partial class App
                     sp.GetRequiredService<SampleInfoViewModel>(),
                     // 进执行页要收起导航栏（用户 2026-10-14）
                     sp.GetRequiredService<INavigationPaneService>(),
-                    // 网口链路（拔网线要在状态栏看得见；模拟器模式下没有这个服务 → null）
+                    // 网口链路（拔网线要在状态栏看得见）。**服务一直在**（用户 2026-10-16 起由
+                    // SwitchableDeviceController 跟着来源启停），界面按"是不是模拟来源"决定要不要报链路
                     sp.GetService<INetworkLinkMonitor>()
                 ));
                 _ = services.AddSingleton<TestExecutionPage>();
@@ -343,10 +347,12 @@ public partial class App
             // 启动就盯住网口链路（用户 2026-10-14）：拔网线要在界面上看得见，
             // 不能等到"跑试验才发现数据不来"；这里刻意在联机之前起，联机前拔线也认得出。
             //
-            // **模拟器模式下这个服务没注册**（假设备不该报真网线的状态）→ 必须用 GetService 判空：
-            // 2026-10-14 实机踩过 —— 这里原先写的是 GetRequiredService，一开模拟器就
-            // "No service for type INetworkLinkMonitor has been registered" 直接起不来。
-            Services.GetService<INetworkLinkMonitor>()?.Start();
+            // **真机模式才起**（模拟数据下监视器由 SwitchableDeviceController 停着，见 §76/§96）：
+            // 这里用 GetService 判空是 2026-10-14 踩过的坑留下的（那时模拟器模式不注册这个服务）。
+            if (!UseSimulator)
+            {
+                Services.GetService<INetworkLinkMonitor>()?.Start();
+            }
 
             await AppHost.StartAsync();
 
