@@ -66,8 +66,17 @@ public partial class ParameterRow(
     /// <summary>现役有、本软件还没功能：置灰 + 标注"待接线"。</summary>
     public bool PendingIntegration => definition.PendingIntegration;
 
-    /// <summary>可编辑（待接线的项不能改）。</summary>
-    public bool IsEditable => !definition.PendingIntegration;
+    /// <summary>
+    /// 被场景锁住的行（例：**试验后数据补录**时非补录字段只读；用户 2026-10-16）。
+    /// 界面把编辑控件置灰，值照显示。
+    /// </summary>
+    [ObservableProperty]
+    private bool _isLocked;
+
+    partial void OnIsLockedChanged(bool value) => OnPropertyChanged(nameof(IsEditable));
+
+    /// <summary>可编辑（待接线的项不能改；被锁住的行也不能改）。</summary>
+    public bool IsEditable => !definition.PendingIntegration && !IsLocked;
 
     /// <summary>单位与范围提示（"mm/min  0.1~50"），显示在编辑框右侧。</summary>
     public string Hint { get; } = hint;

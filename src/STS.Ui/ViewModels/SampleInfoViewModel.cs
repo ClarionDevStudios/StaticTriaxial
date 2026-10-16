@@ -18,6 +18,7 @@ public sealed partial class SampleInfoViewModel : EditableRowsViewModel, IModalD
     private readonly ITestExecution _execution;
     private readonly ICurrentSheetContext? _currentSheet;
     private bool _initializing;
+    private bool _backfillMode;
 
     public SampleInfoViewModel(
         ILocalizationService localization,
@@ -52,9 +53,22 @@ public sealed partial class SampleInfoViewModel : EditableRowsViewModel, IModalD
     /// <summary>按当前语言重建页标题与描述。</summary>
     public void RefreshTexts()
     {
-        Title = L("Sample.Title");
-        Description = L("Sample.Description");
+        Title = L(_backfillMode ? "Sample.BackfillTitle" : "Sample.Title");
+        Description = L(_backfillMode ? "Sample.BackfillDescription" : "Sample.Description");
     }
+
+    /// <summary>
+    /// **试验后数据补录模式**（用户 2026-10-16 定的 Q3 口径）：从执行页「补录」进 ——
+    /// 只有标记了 <see cref="ParameterDefinition.PostTest"/> 的字段可写（质量 / 含水率…），
+    /// 其余试样参数只读；试件号也钉死在被补录的那一件上。
+    /// </summary>
+    public bool IsBackfillMode => _backfillMode;
+
+    /// <summary>试件号输入框可用性（补录模式钉死，不允许换件）。</summary>
+    public bool IsSampleIdEditable => !_backfillMode;
+
+    /// <summary>「恢复默认」可用性（补录模式只动试验后字段，恢复默认会误导 —— 直接置灰）。</summary>
+    public bool CanRestoreDefaults => !_backfillMode;
 
     /// <summary>试件号（单内顺序号）：默认取"下一个可用的号"，也可手改去编辑已存的某件。</summary>
     [ObservableProperty]
@@ -97,12 +111,29 @@ public sealed partial class SampleInfoViewModel : EditableRowsViewModel, IModalD
     /// 进弹窗前定死"编辑哪一件"：给了试件号就载回那一件的信息，给 null/空 = 新建
     /// （打开时自己取下一个试件号）。调用方是试验执行页 —— 它知道用户在列表里选了哪行。
     /// </summary>
-    public void PrepareFor(string? sampleId)
+    public void PrepareFor(string? sampleId, bool backfill = false)
     {
+        _backfillMode = backfill;
+        OnPropertyChanged(nameof(IsBackfillMode));
+        OnPropertyChanged(nameof(IsSampleIdEditable));
+        OnPropertyChanged(nameof(CanRestoreDefaults));
+
         SampleId = sampleId ?? string.Empty;
 
         // 新开一次弹窗就清掉"上次存了哪一件"：这一次没保存的话，执行页不该去选中上一次那件
         LastSavedSampleId = string.Empty;
+
+        ApplyBackfillLocks();
+        RefreshTexts();
+    }
+
+    /// <summary>补录模式：非"试验后字段"的行全部锁住（界面按行的 IsEditable 置灰）。</summary>
+    private void ApplyBackfillLocks()
+    {
+        foreach (var row in Rows)
+        {
+            row.IsLocked = _backfillMode && !row.Definition.PostTest;
+        }
     }
 
     [RelayCommand]
@@ -174,7 +205,19 @@ public sealed partial class SampleInfoViewModel : EditableRowsViewModel, IModalD
             throw new InvalidOperationException(L("Sample.NoSampleId"));
         }
 
-        await _execution.SaveSampleInfoAsync(SheetId, SampleId, values);
+        // 补录模式只提交"试验后字段"——界面已只读，这里再收一道口：
+        // 就算别处把值改了，也不会覆盖库里原有的试样参数（用户 2026-10-16 Q3）。
+        var payload = _backfillMode
+            ? values
+                .Where(pair =>
+                    Rows.FirstOrDefault(row =>
+                        string.Equals(row.Key, pair.Key, StringComparison.Ordinal)
+                    )?.Definition.PostTest == true
+                )
+                .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal)
+            : values;
+
+        await _execution.SaveSampleInfoAsync(SheetId, SampleId, payload);
     }
 
     /// <summary>保存成功后记下"刚存的是哪一件"（执行页据此选中列表里的那一行）。</summary>

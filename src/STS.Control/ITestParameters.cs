@@ -104,7 +104,15 @@ public sealed record ParameterDefinition(
     string DisplayNameKey = "",
 
     /// <summary>说明文本的资源键（同上，空串 = 还没接键）。</summary>
-    string DescriptionKey = ""
+    string DescriptionKey = "",
+
+    /// <summary>
+    /// **试验后补录字段**（用户 2026-10-16 定的 Q3 口径）：这些值只有试验做完才有
+    /// （例：试件总质量 / 含水率）。试样做完后常规「编辑试样」会被"已完成不可改"的规则挡住，
+    /// 这些字段由执行页的**「补录」入口**专门填录 —— 补录弹窗里**只有带这个标记的字段可写**，
+    /// 其余试样参数只读。
+    /// </summary>
+    bool PostTest = false
 )
 {
     /// <summary>

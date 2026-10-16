@@ -8,6 +8,12 @@ public enum TestStopReason
     /// <summary>正常完成（破坏确认成立）。</summary>
     Completed,
 
+    /// <summary>
+    /// **接触段完成**（T1236 分段流程的阶段边界，用户 2026-10-16 定）：3~5kPa 正接触成立即停，
+    /// 留给"施加围压 → 稳压 → 开始剪切"两段；这一轮不结算。
+    /// </summary>
+    ContactEstablished,
+
     /// <summary>人工停止。</summary>
     ManualStop,
 

@@ -1,5 +1,6 @@
 namespace STS.Control;
 
+using STS.Core;
 using STS.Core.Control;
 
 /// <summary>
@@ -125,4 +126,10 @@ public sealed record TestRunProfile
     /// 新方法一律走判据接缝）。
     /// </summary>
     public Func<ITestStopCriteria>? StopCriteriaFactory { get; init; }
+
+    /// <summary>
+    /// **运行起点提示**（方法给界面的"继续跑、但要知道"的话；例：T 1236 试件高度超出 306±5 合格窗）。
+    /// 执行页在开始一轮试验时逐条写进操控信息 —— 只是提示，不拦流程（用户 2026-10-16 的 Q5 口径）。
+    /// </summary>
+    public IReadOnlyList<LocalizedText> StartNotes { get; init; } = [];
 }

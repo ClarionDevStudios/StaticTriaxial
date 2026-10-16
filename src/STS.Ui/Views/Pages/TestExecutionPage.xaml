@@ -103,16 +103,17 @@
       </StackPanel>
 
       <!--
-        四个功能按钮，放在工作台按钮右侧：2×2 排布，**四个按钮等宽**
+        功能按钮，放在工作台按钮右侧：2×3 排布，**按钮等宽**
         （用户 2026-10-15："4个按钮的宽度不一致，History 按钮宽度最小，按标字最长的那个统一"）。
         用 UniformGrid 而不是两个 StackPanel：UniformGrid 的所有格子取**所有孩子里最宽的那个**，
-        于是四个按钮一样宽；按行填充的顺序正好还是"新建试验 / 打印报表 / 试验参数 / 历史数据"。
+        于是按钮一样宽；按行填充的顺序是"新建试验 / 打印报表 / 试验参数 / 历史数据 / 完成试验单"。
+        第五个按钮「完成试验单」= 规范 5.4 / 5.5 的收尾（分级均值 + c、φ、r + 完成时间）。
       -->
       <UniformGrid
         Grid.Column="2"
         Margin="12,0,0,0"
         Columns="2"
-        Rows="2"
+        Rows="3"
         VerticalAlignment="Top"
       >
           <ui:Button
@@ -147,6 +148,14 @@
             Content="{DynamicResource Exec.History}"
             Icon="{ui:SymbolIcon History24}"
           />
+          <ui:Button
+            MinWidth="96"
+            Margin="0,6,4,0"
+            Appearance="Primary"
+            Command="{Binding ViewModel.FinishSheetCommand}"
+            Content="{DynamicResource Exec.FinishSheet}"
+            Icon="{ui:SymbolIcon CheckmarkCircle24}"
+          />
       </UniformGrid>
     </Grid>
 
@@ -171,6 +180,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
           </Grid.RowDefinitions>
 
           <!-- ① 单号行：单号 +（点中列表条目时）该条目对应的试样编号（用户 2026-10-13） -->
@@ -188,8 +198,8 @@
             />
           </StackPanel>
 
-          <!-- ② 试样按钮行 -->
-          <UniformGrid Grid.Row="1" Margin="0,12,0,0" Columns="3">
+          <!-- ② 试样按钮行：2×2（新增「补录」——试验后数据专用入口，用户 2026-10-16 Q3） -->
+          <UniformGrid Grid.Row="1" Margin="0,12,0,0" Columns="2">
               <ui:Button
                 Margin="0,0,4,0"
                 Appearance="Primary"
@@ -198,17 +208,24 @@
                 Icon="{ui:SymbolIcon Add24}"
               />
               <ui:Button
-                Margin="0,0,4,0"
                 Appearance="Primary"
                 Command="{Binding ViewModel.EditSampleCommand}"
                 Content="{DynamicResource Exec.EditSample}"
                 Icon="{ui:SymbolIcon Edit24}"
               />
               <ui:Button
+                Margin="0,6,4,0"
                 Appearance="Primary"
                 Command="{Binding ViewModel.DeleteSampleCommand}"
                 Content="{DynamicResource Exec.DeleteSample}"
                 Icon="{ui:SymbolIcon Delete24}"
+              />
+              <ui:Button
+                Margin="0,6,0,0"
+                Appearance="Primary"
+                Command="{Binding ViewModel.BackfillSampleCommand}"
+                Content="{DynamicResource Exec.Backfill}"
+                Icon="{ui:SymbolIcon Edit24}"
               />
           </UniformGrid>
 
@@ -306,6 +323,51 @@
             SelectedItem="{Binding ViewModel.SelectedSample, Mode=TwoWay}"
             SelectionMode="Single"
           />
+
+          <!--
+            分段流程按钮（T1236 三段：接触 → 围压 → 剪切，用户 2026-10-16 定）：
+            上排 = 调零（荷载 / 位移）与卸除围压（手动兜底）；下排 = 施加围压与开始剪切。
+            围压指示（值 + 稳压位）在按钮上方 —— 下位机自己稳压，这里只显示。
+          -->
+          <StackPanel Grid.Row="4" Margin="0,12,0,0">
+            <TextBlock
+              VerticalAlignment="Center"
+              Style="{StaticResource FieldLabelStyle}"
+              Text="{Binding ViewModel.ConfiningText, Mode=OneWay}"
+            />
+            <UniformGrid Margin="0,6,0,0" Columns="3">
+              <ui:Button
+                Margin="0,0,4,0"
+                Appearance="Secondary"
+                Command="{Binding ViewModel.ZeroLoadCommand}"
+                Content="{DynamicResource Exec.ZeroLoad}"
+              />
+              <ui:Button
+                Margin="0,0,4,0"
+                Appearance="Secondary"
+                Command="{Binding ViewModel.ZeroDisplacementCommand}"
+                Content="{DynamicResource Exec.ZeroDisplacement}"
+              />
+              <ui:Button
+                Appearance="Secondary"
+                Command="{Binding ViewModel.ReleaseConfiningCommand}"
+                Content="{DynamicResource Exec.ReleaseConfining}"
+              />
+            </UniformGrid>
+            <UniformGrid Margin="0,6,0,0" Columns="2">
+              <ui:Button
+                Margin="0,0,4,0"
+                Appearance="Primary"
+                Command="{Binding ViewModel.ApplyConfiningCommand}"
+                Content="{DynamicResource Exec.ApplyConfining}"
+              />
+              <ui:Button
+                Appearance="Primary"
+                Command="{Binding ViewModel.StartShearCommand}"
+                Content="{DynamicResource Exec.StartShear}"
+              />
+            </UniformGrid>
+          </StackPanel>
         </Grid>
       </ui:Card>
 

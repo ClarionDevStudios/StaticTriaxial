@@ -294,6 +294,7 @@ public partial class TestExecutionViewModel : ViewModelBase
         {
             TestStopReason.Completed => L("Exec.PhaseCompleted"),
             TestStopReason.None => L("Exec.PhaseIdle"),
+            TestStopReason.ContactEstablished => L("Exec.PhaseContactDone"),
             TestStopReason.LoadRangeExceeded or TestStopReason.DisplacementRangeExceeded =>
                 $"{L("Exec.PhaseRangeStopped")}（{_lastStopReason}）",
             _ => $"{L("Exec.PhaseAborted")}（{_lastStopReason}）",
@@ -359,6 +360,13 @@ public partial class TestExecutionViewModel : ViewModelBase
     public bool CanDeleteSample => SelectedSample is not null;
 
     /// <summary>
+    /// 能不能点「补录」：**选中了一件做完的试样**（用户 2026-10-16 定的 Q3 口径）。
+    /// 试验后数据（质量 / 含水率 / 干密度 / 含水率损失）只有做完才有值 —— 补录入口专管这件事：
+    /// 弹窗里只有"试验后字段"可写，其余试样参数只读，合法性校验与常规编辑一套。
+    /// </summary>
+    public bool CanBackfillSample => SelectedSample is { IsCompleted: true };
+
+    /// <summary>
     /// 能不能**启动试验**（用户 2026-10-13）：**必须选中一件没做完的试样** ——
     /// 启动只跑选中的那件，不会再自动建新件；选中的已做完也不给跑（免得以为在重跑它）。
     /// 另外**链路断了不给启动**（用户 2026-10-14）：那时命令到不了设备，发出去只会让人以为在跑。
@@ -389,6 +397,40 @@ public partial class TestExecutionViewModel : ViewModelBase
         !IsRunning
         && CurrentSheetId is { Length: > 0 }
         && SampleRows.Count(row => row.HasResult) >= MinimumJudgedSamples;
+
+    /// <summary>
+    /// 能不能点「完成试验单」：有当前单、且没在跑试验（收尾要读写整单数据）。
+    /// 件数 / 级数是否够，由方法层在收尾时按规范 4.8 / 5.4 校验并给出明确原因，
+    /// 界面不重复一遍这套规则（方法演进时只改一处）。
+    /// </summary>
+    public bool CanFinishSheet => !IsRunning && CurrentSheetId is { Length: > 0 };
+
+    /// <summary>
+    /// 分段流程按钮（调零 / 施加围压 / 开始剪切 / 卸除围压）的公共前提：**联机着、没在跑试验**。
+    /// （T1236 三段式：接触 → 围压 → 剪切，用户 2026-10-16 定。）
+    /// </summary>
+    public bool CanUseStageCommands => !IsRunning && _device?.IsConnected == true;
+
+    /// <summary>
+    /// 能不能点「施加围压」（阶段 B）：公共前提之外，还要选中一件未完成的试件、
+    /// 且**设备支持围压控制**（<see cref="IConfiningPressureControl"/>）、**方法能给出 σ3**
+    /// （<see cref="IConfiningPressureSource"/>）。
+    /// </summary>
+    public bool CanApplyConfining =>
+        CanUseStageCommands
+        && SelectedSample is { IsCompleted: false }
+        && _device is IConfiningPressureControl
+        && _execution is IConfiningPressureSource;
+
+    /// <summary>能不能点「开始剪切」（阶段 C）：与「启动试验」同门槛（选中未完成件、链路在位、没在跑）。</summary>
+    public bool CanStartShear => !IsRunning && CanStartTest;
+
+    /// <summary>
+    /// 围压指示（阶段 B）：围压值 + 稳压状态，由 A1 上行帧驱动 ——
+    /// **稳压由下位机完成**（用户口径），这里只显示（`SATAE` Bit10 稳压位）。
+    /// </summary>
+    [ObservableProperty]
+    private string _confiningText = "—";
 
     /// <summary>
     /// 启动/停止按钮的可用性：**试验中永远可用**（不然停不下来 —— 用户 2026-10-12 真机踩过），
@@ -422,14 +464,23 @@ public partial class TestExecutionViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanAddSample));
         OnPropertyChanged(nameof(CanEditSample));
         OnPropertyChanged(nameof(CanDeleteSample));
+        OnPropertyChanged(nameof(CanBackfillSample));
         OnPropertyChanged(nameof(CanStartTest));
         OnPropertyChanged(nameof(CanStartOrStop));
         OnPropertyChanged(nameof(CanEvaluateValidity));
+        OnPropertyChanged(nameof(CanFinishSheet));
+        OnPropertyChanged(nameof(CanUseStageCommands));
+        OnPropertyChanged(nameof(CanApplyConfining));
+        OnPropertyChanged(nameof(CanStartShear));
         NewSampleCommand.NotifyCanExecuteChanged();
         EditSampleCommand.NotifyCanExecuteChanged();
         DeleteSampleCommand.NotifyCanExecuteChanged();
+        BackfillSampleCommand.NotifyCanExecuteChanged();
         StartOrStopCommand.NotifyCanExecuteChanged();
         EvaluateValidityCommand.NotifyCanExecuteChanged();
+        FinishSheetCommand.NotifyCanExecuteChanged();
+        ApplyConfiningCommand.NotifyCanExecuteChanged();
+        StartShearCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>重新读当前试验单的试样信息列表（打开页面 / 换单 / 存过试样信息 / 跑完一件都调）。</summary>
@@ -873,6 +924,8 @@ public partial class TestExecutionViewModel : ViewModelBase
                 card.Value = "--";
             }
         }
+
+        ConfiningText = L("Exec.ConfiningNone");
     }
 
     /// <summary>实时读数卡片（与 <see cref="UpdateCards"/> 写的那三张一致）。</summary>
@@ -1074,7 +1127,9 @@ public partial class TestExecutionViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanStartOrStop));
         // 跑起来/停下来都影响"有效性计算"能不能点
         OnPropertyChanged(nameof(CanEvaluateValidity));
+        OnPropertyChanged(nameof(CanFinishSheet));
         EvaluateValidityCommand.NotifyCanExecuteChanged();
+        FinishSheetCommand.NotifyCanExecuteChanged();
         StartOrStopCommand.NotifyCanExecuteChanged();
     }
 
@@ -1100,8 +1155,27 @@ public partial class TestExecutionViewModel : ViewModelBase
     public string RunningHintText => L(IsRunning ? "Exec.RunningHint" : "Exec.IdleHint");
 
     /// <summary>点动可用性：联机中、没在跑试验、且**链路在位**（链路断了点动按钮也点不了）。</summary>
-    private void UpdateCanJog() =>
+    private void UpdateCanJog()
+    {
         CanJog = !IsRunning && _device?.IsConnected == true && LinkAllowsCommand;
+        NotifyStageCommands();
+    }
+
+    /// <summary>
+    /// 分段流程按钮的可用性一起刷新（联机 / 运行 / 链路 任一变化都会走到这里；
+    /// 选件变化走 <see cref="NotifySampleCommands"/>）。
+    /// </summary>
+    private void NotifyStageCommands()
+    {
+        OnPropertyChanged(nameof(CanUseStageCommands));
+        OnPropertyChanged(nameof(CanApplyConfining));
+        OnPropertyChanged(nameof(CanStartShear));
+        ZeroLoadCommand.NotifyCanExecuteChanged();
+        ZeroDisplacementCommand.NotifyCanExecuteChanged();
+        ReleaseConfiningCommand.NotifyCanExecuteChanged();
+        ApplyConfiningCommand.NotifyCanExecuteChanged();
+        StartShearCommand.NotifyCanExecuteChanged();
+    }
 
     /// <summary>链路变化后重算"能不能下发命令"（启动 / 点动 / 有效性计算都受它影响）。</summary>
     private void UpdateCommandAvailability()
@@ -1202,20 +1276,147 @@ public partial class TestExecutionViewModel : ViewModelBase
         _contactEstablished = false; // 接触成立后才开始累计峰值、才显示试验计时
         CurveCleared?.Invoke(this, EventArgs.Empty);
 
+        // 「启动试验」= **接触段**（T1236 分段流程第一段，用户 2026-10-16 定）：
+        // 走到 3~5kPa 正接触即停住，等「施加围压」→ 稳压 → 「开始剪切」。
         // **不能 await 整轮**：命令若等到整轮结束才完成，执行期间按钮会被置灰，
         // 结果是"试验一开始就再也点不到停止"（用户 2026-10-12 真机踩到）。
         // 立刻返回 → 按钮保持可用 → 下一次点击才走到上面的"停止"分支。
-        _ = RunOneSampleSafeAsync();
+        _ = RunOneSampleSafeAsync(contactOnly: true);
     }
 
     /// <summary>跑一轮并把异常报给界面（fire-and-forget：命令必须立刻返回，否则停止按钮被置灰）。</summary>
-    private async Task RunOneSampleSafeAsync()
+    private async Task RunOneSampleSafeAsync(bool contactOnly)
     {
-        _runTask = RunOneSampleAsync();
+        _runTask = RunOneSampleAsync(contactOnly);
 
         try
         {
             await _runTask;
+        }
+        catch (Exception ex)
+        {
+            Append($"{L("Exec.Failed")}: {Text(ex)}");
+        }
+    }
+
+    /// <summary>
+    /// 「开始剪切」（T1236 分段流程第三段，用户 2026-10-16 定）：试件已接触 → 复用"跑一轮" ——
+    /// 接触判定第一帧即成立，照常走 **位移调零 → 切试验速率 → 加载 → 判据停机**；
+    /// 本轮停止（判据停机 / 手动停止）时自动卸除围压（Q2）。
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanStartShear))]
+    private void StartShear()
+    {
+        if (IsRunning || _device is null || !LinkAllowsCommand)
+        {
+            return;
+        }
+
+        ResetLiveValues();
+        _contactEstablished = false;
+        CurveCleared?.Invoke(this, EventArgs.Empty);
+        _ = RunOneSampleSafeAsync(contactOnly: false);
+    }
+
+    /// <summary>
+    /// 「施加围压」（T1236 分段流程第二段）：按该件"试验围压 σ3"发**一条** C2 ——
+    /// **稳压由下位机完成**（用户口径），软件把 A1 的围压值 + 稳压位显示出来（见 <see cref="ConfiningText"/>）。
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanApplyConfining))]
+    private async Task ApplyConfiningAsync()
+    {
+        if (_device is not IConfiningPressureControl confining || SelectedSample is not { } sample)
+        {
+            return;
+        }
+
+        if (CurrentSheetId is not { Length: > 0 } sheetId)
+        {
+            Append(L("Exec.NoSheet"));
+            return;
+        }
+
+        if (_execution is not IConfiningPressureSource source)
+        {
+            Append(L("Exec.ConfiningUnsupported"));
+            return;
+        }
+
+        try
+        {
+            var target = await source.ReadConfiningTargetKPaAsync(sheetId, sample.SampleId);
+            if (target is not { } confiningKPa)
+            {
+                Append(L("Exec.ConfiningNoTarget"));
+                return;
+            }
+
+            await confining.ApplyConfiningPressureAsync(confiningKPa);
+            Append(string.Format(CultureInfo.CurrentCulture, L("Exec.ConfiningApplied"), confiningKPa));
+        }
+        catch (Exception ex)
+        {
+            Append($"{L("Exec.Failed")}: {Text(ex)}");
+        }
+    }
+
+    /// <summary>「卸除围压」（手动兜底）：C2 全 0（目标归零 + 停止位）；正常流程由剪切段停止时自动卸。</summary>
+    [RelayCommand(CanExecute = nameof(CanUseStageCommands))]
+    private async Task ReleaseConfiningAsync()
+    {
+        if (_device is not IConfiningPressureControl confining)
+        {
+            Append(L("Exec.ConfiningUnsupported"));
+            return;
+        }
+
+        try
+        {
+            await confining.ReleaseConfiningPressureAsync();
+            Append(L("Exec.ConfiningReleased"));
+        }
+        catch (Exception ex)
+        {
+            Append($"{L("Exec.ConfiningReleaseFailed")}: {Text(ex)}");
+        }
+    }
+
+    /// <summary>「荷载调零」（规范 4.3）：施加 3~5kPa 接触**之前**，把当前荷载读数记为软件零点。</summary>
+    [RelayCommand(CanExecute = nameof(CanUseStageCommands))]
+    private async Task ZeroLoadAsync()
+    {
+        if (_device is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _device.ZeroLoadAsync();
+            Append(L("Exec.LoadZeroed"));
+        }
+        catch (Exception ex)
+        {
+            Append($"{L("Exec.Failed")}: {Text(ex)}");
+        }
+    }
+
+    /// <summary>
+    /// 「位移调零」（规范 4.4 尾）：稳压后、剪切前把当前位移读数记为软件零点
+    /// （「开始剪切」里也会自动做一次，同口径）。
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanUseStageCommands))]
+    private async Task ZeroDisplacementAsync()
+    {
+        if (_device is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _device.ZeroDisplacementAsync();
+            Append(L("Exec.DisplacementZeroed"));
         }
         catch (Exception ex)
         {
@@ -1326,6 +1527,43 @@ public partial class TestExecutionViewModel : ViewModelBase
     private void ClearLog() => Log.Clear();
 
     /// <summary>
+    /// 「完成试验单」收尾（用户 2026-10-16 定的口径）：按规范 5.4 / 5.5 计算分级均值与 c、φ、r
+    /// （含 r ≥ 0.99 的可信标志），写入主表并写完成时间（`CompletedOn`）。
+    /// 级数 / 件数不足时由方法层带明确原因拒绝（界面照原文提示，不自己复述规则）。
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanFinishSheet))]
+    private async Task FinishSheetAsync()
+    {
+        if (CurrentSheetId is not { Length: > 0 } sheetId)
+        {
+            Append(L("Exec.NoSheet"));
+            return;
+        }
+
+        var confirmed = await AppDialogs.ConfirmAsync(
+            L("Exec.FinishSheet"),
+            string.Format(CultureInfo.CurrentCulture, L("Exec.FinishSheetConfirm"), sheetId),
+            L("Common.Yes"),
+            L("Common.No")
+        );
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        try
+        {
+            await _execution.CompleteSheetAsync(sheetId);
+            Append(string.Format(CultureInfo.CurrentCulture, L("Exec.SheetCompleted"), sheetId));
+        }
+        catch (Exception ex)
+        {
+            Append($"{L("Exec.Failed")}: {Text(ex)}");
+        }
+    }
+
+    /// <summary>
     /// 打开「试验单」弹窗（新建 / 选择已有；用户 2026-10-13 改成**弹出窗体**）。
     /// 确定后当前试验单会变，执行页靠 <see cref="ICurrentSheetContext.Changed"/> 刷新单号，不必再导航一次。
     /// </summary>
@@ -1362,6 +1600,15 @@ public partial class TestExecutionViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanEditSample))]
     private async Task EditSampleAsync() =>
         await ShowSampleEditorDialogAsync(SelectedSample?.SampleId);
+
+    /// <summary>
+    /// **试验后数据补录**（用户 2026-10-16 定的 Q3 口径）：打开试样信息弹窗的**补录模式** ——
+    /// 只有"试验后字段"（质量 / 含水率 / 干密度 / 含水率损失）可录，其余试样参数只读；
+    /// 合法性校验与常规编辑一套（校验不通过保存会被拦下）。
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanBackfillSample))]
+    private async Task BackfillSampleAsync() =>
+        await ShowSampleEditorDialogAsync(SelectedSample?.SampleId, backfill: true);
 
     /// <summary>
     /// 删除选中那件试样（用户 2026-10-13）：先确认，再删明细行，最后刷新列表。
@@ -1411,12 +1658,13 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// <summary>
     /// 开弹窗、关掉后把试样信息列表刷一遍（弹窗里可能刚存了一件），**并把选中落到刚存的那一件**上
     /// （用户 2026-10-16："新建试样信息后，列表中应选中刚新建的那条试样信息"）。
-    /// <paramref name="sampleId"/> 为空 = 新建（弹窗自己取下一个试件号），否则编辑指定那件。
+    /// <paramref name="sampleId"/> 为空 = 新建（弹窗自己取下一个试件号），否则编辑指定那件；
+    /// <paramref name="backfill"/> = 试验后数据补录模式（只有试验后字段可写，用户 2026-10-16 Q3）。
     /// </summary>
-    private async Task ShowSampleEditorDialogAsync(string? sampleId)
+    private async Task ShowSampleEditorDialogAsync(string? sampleId, bool backfill = false)
     {
         // 弹窗的 ViewModel 是单例：进弹窗前先把"要编辑哪一件"定死，免得留下上一次的号
-        _sampleInfo?.PrepareFor(sampleId);
+        _sampleInfo?.PrepareFor(sampleId, backfill);
 
         _modalPages?.Show(
             typeof(Views.Pages.SampleEditorPage),
@@ -1474,7 +1722,12 @@ public partial class TestExecutionViewModel : ViewModelBase
         }
     }
 
-    private async Task RunOneSampleAsync()
+    /// <summary>
+    /// 跑一轮（T1236 分段流程，用户 2026-10-16 定）：
+    /// <paramref name="contactOnly"/> = true → **接触段**（3~5kPa 正接触即停、不调零不提速、不结算）；
+    /// false → **剪切段**（试件已接触：接触判定第一帧即成立 → 位移调零 → 试验速率加载 → 判据停机 → 结算）。
+    /// </summary>
+    private async Task RunOneSampleAsync(bool contactOnly)
     {
         // 列表里选中哪件就跑哪件 —— **必须在任何列表刷新之前**取下来：
         // 下面刷新试样信息列表时会把 SelectedSample 清空（换单/换数据本来就该清），
@@ -1518,6 +1771,12 @@ public partial class TestExecutionViewModel : ViewModelBase
                 ? new TestStartContext(runSheetId, sampleId)
                 : null
         );
+
+        // 方法给的运行起点提示（例：试件高度超出合格窗）——照原样写进操控信息，不拦流程
+        foreach (var note in requested.StartNotes)
+        {
+            Append(UiText.Format(Localization, note));
+        }
 
         // 闸门都按**设备量程**算：位移闸门落在量程内（顶过会压坏传感器），荷载闸门 = 量程 × 系数
         //（现场位移量程 25.000mm、压力量程 100.000kN；两者此前都是写死的错值）
@@ -1648,6 +1907,18 @@ public partial class TestExecutionViewModel : ViewModelBase
                             && sequencer.Phase == TestPhase.Loading
                         )
                         {
+                            if (contactOnly)
+                            {
+                                // T1236 接触段（规范 4.3）：3~5kPa 正接触成立**即停** ——
+                                // 不调零、不提速（规范 4.4：等围压稳定后再做位移调零），
+                                // 停在接触状态等操作员点「施加围压」。
+                                sequencer.Stop(TestStopReason.ContactEstablished);
+
+                                Dispatch(() => Append(L("Exec.ContactDetected")));
+                                finished.TrySetResult(true);
+                                return;
+                            }
+
                             // 接触成立：**上位机软件调零**（存偏移量，不动设备零点）并切到试验速率
                             // —— 与现役线程的"4.4 传感器调零 + 提速"一致（ZeroAxialDisplacement + SetVelocityCmd）
                             await device.ZeroDisplacementAsync(controlToken).ConfigureAwait(false);
@@ -1790,8 +2061,36 @@ public partial class TestExecutionViewModel : ViewModelBase
             }
         }
 
+        // T1236 分段流程的收尾口径（用户 2026-10-16 定）：
+        // - 剪切段：本轮任何停止（判据停机 / 手动停止）都**自动卸除围压**（Q2(a)）；
+        //   卸压失败只记一条，不挡判定结算（压力表这么低，卸不动也出不了危险）。
+        // - 接触段：不卸压、不结算，把"接触完成"留给界面提示。
+        if (!contactOnly && device is IConfiningPressureControl confiningControl)
+        {
+            try
+            {
+                await confiningControl.ReleaseConfiningPressureAsync();
+                Dispatch(() => Append(L("Exec.ConfiningReleased")));
+            }
+            catch (Exception ex)
+            {
+                var message = Text(ex);
+                Dispatch(() => Append($"{L("Exec.ConfiningReleaseFailed")}: {message}"));
+            }
+        }
+
         _lastStopReason = sequencer.StopReason;
         RefreshPhaseText();
+
+        if (contactOnly)
+        {
+            Append(
+                _lastStopReason == TestStopReason.ContactEstablished
+                    ? string.Format(CultureInfo.CurrentCulture, L("Exec.ContactStageDone"), sampleId)
+                    : $"{L("Exec.NotSettleable")}（{_lastStopReason}）"
+            );
+            return;
+        }
 
         if (!sequencer.CanSettle)
         {
@@ -1904,6 +2203,15 @@ public partial class TestExecutionViewModel : ViewModelBase
         {
             SetCard("elapsed", sample.ElapsedSeconds, sample.ElapsedSeconds);
         }
+
+        // 围压 + 稳压状态（分段流程阶段 B 的指示）：C2 下发后**下位机自己稳压**，这里只显示
+        ConfiningText = sample.ConfiningPressureKPa is { } confiningKPa
+            ? string.Format(
+                CultureInfo.CurrentCulture,
+                sample.ConfiningStable == true ? L("Exec.ConfiningStable") : L("Exec.ConfiningRising"),
+                confiningKPa
+            )
+            : L("Exec.ConfiningNone");
     }
 
     private void SetCard(string key, double value, double peakCandidate)
