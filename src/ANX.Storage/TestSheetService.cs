@@ -246,6 +246,33 @@ public sealed class TestSheetService : ITestSheetService
     {
         ArgumentNullException.ThrowIfNull(fields);
 
+        // 全数值的旧签名：转成"任意值"那一版（SQLite 是动态类型，数值照样落进 REAL 列）
+        return UpsertSampleInfoAsync(
+            sheetId,
+            sampleId,
+            fields.ToDictionary(
+                pair => pair.Key,
+                pair => (object?)pair.Value,
+                StringComparer.Ordinal
+            ),
+            cancellationToken
+        );
+    }
+
+    /// <summary>
+    /// 存一件试样的信息（**任意值版**）：数值 / 文本都行 —— 试样信息里本来就有文本字段
+    /// （现役的"试样描述"就是文本，用户 2026-10-16 要求加回来）。列类型由方法声明决定：
+    /// 文本列存字符串、数值列存数值，空串一律存 NULL。
+    /// </summary>
+    public Task UpsertSampleInfoAsync(
+        string sheetId,
+        string sampleId,
+        IReadOnlyDictionary<string, object?> fields,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ArgumentNullException.ThrowIfNull(fields);
+
         var method = ResolveMethodForSheet(sheetId);
         foreach (var name in fields.Keys)
         {
@@ -287,7 +314,7 @@ public sealed class TestSheetService : ITestSheetService
                 var i = 0;
                 foreach (var value in fields.Values)
                 {
-                    update.Parameters.AddWithValue($"$p{i++}", value);
+                    update.Parameters.AddWithValue($"$p{i++}", value ?? DBNull.Value);
                 }
 
                 AddSampleKeyParameters(update, sheetId, sampleId);

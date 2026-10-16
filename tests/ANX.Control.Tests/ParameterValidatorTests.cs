@@ -63,6 +63,29 @@ public sealed class ParameterValidatorTests
         Assert.Equal(ParameterValidationError.Required, ParameterValidator.Validate(definition, " ", out _));
     }
 
+    /// <summary>
+    /// **允许留空**的项（用户 2026-10-16：试样信息「试样描述」这种可选文本）空着就是合法值 ——
+    /// 不写 AllowEmpty 的项照旧按"必填没填"挡住保存。
+    /// </summary>
+    [Fact]
+    public void 声明允许留空的项空值应合法()
+    {
+        var optional = new ParameterDefinition(
+            "Desc",
+            "试样描述",
+            string.Empty,
+            string.Empty,
+            ParameterGroup.Sample,
+            ParameterKind.Text,
+            AllowEmpty: true
+        );
+        var required = optional with { Key = "Name", AllowEmpty = false };
+
+        Assert.Equal(ParameterValidationError.None, ParameterValidator.Validate(optional, "", out _));
+        Assert.Equal(ParameterValidationError.None, ParameterValidator.Validate(optional, "  ", out _));
+        Assert.Equal(ParameterValidationError.Required, ParameterValidator.Validate(required, "", out _));
+    }
+
     [Fact]
     public void 默认值应落在声明范围内()
     {

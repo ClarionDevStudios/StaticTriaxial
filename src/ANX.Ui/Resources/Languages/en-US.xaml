@@ -464,6 +464,7 @@
   <sys:String x:Key="Field.T0709.BreakConfirmSamples.Desc">Consecutive frames required to confirm a break (legacy NumberOfFilters; legacy Marshall uses 5).</sys:String>
 
   <!-- T 0709 sample info fields -->
+  <sys:String x:Key="Field.SampleDesc">Sample description</sys:String>
   <sys:String x:Key="Field.GroupID">Group</sys:String>
   <sys:String x:Key="Field.GroupID.Desc">Group 1 = standard Marshall specimens; for soaked / vacuum-soaked tests group 2 is the soaked set</sys:String>
   <sys:String x:Key="Field.GroupID.0">Group 1</sys:String>

@@ -104,6 +104,7 @@ public sealed class MarshallFullRunTests : IDisposable
                 sampleId,
                 new Dictionary<string, string>(StringComparer.Ordinal)
                 {
+                    ["SampleDesc"] = $"第一组 {index} 号件",
                     ["GroupID"] = "0",
                     ["SampleInitialDiameter"] = "101.6",
                     ["SampleInitialHeight"] = "63.5",
@@ -156,6 +157,9 @@ public sealed class MarshallFullRunTests : IDisposable
         Assert.Equal(["S001", "S002", "S003"], rows.Select(row => row.SampleId));
         Assert.All(rows, row => Assert.True(row.IsCompleted));
         Assert.All(rows, row => Assert.True(row.HasResult));
+
+        // 「试样描述」是**文本**字段（框架扩了"任意值"落库通道，用户 2026-10-16）——存得进、读得回
+        Assert.Equal("第一组 1 号件", rows[0].Fields["SampleDesc"]);
 
         // 报表 + 曲线图
         var templatesRoot = Path.Combine(_directory, "Report", "Template");

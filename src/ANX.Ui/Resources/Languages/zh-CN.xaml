@@ -460,6 +460,7 @@
   <sys:String x:Key="Field.T0709.BreakConfirmSamples.Desc">破坏确认所需的连续帧数（现役 NumberOfFilters；现役马歇尔现场配 5）。</sys:String>
 
   <!-- T 0709 试样信息字段 -->
+  <sys:String x:Key="Field.SampleDesc">试样描述</sys:String>
   <sys:String x:Key="Field.GroupID">试样分组</sys:String>
   <sys:String x:Key="Field.GroupID.Desc">第一组 = 标准马歇尔试件；浸水/真空饱水试验的第二组就是浸水/真空饱水后的那一组</sys:String>
   <sys:String x:Key="Field.GroupID.0">第一组</sys:String>

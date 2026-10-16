@@ -8,16 +8,19 @@ using ANX.Control;
 ///
 /// **键 = 明细表的列名**（框架按列名写库，见 `TestSheetService.UpsertSampleInfoAsync`）。
 /// 字段与次序照现役试样信息窗 `uEditMarshallStabilityTestSampleForm.dfm` 的版面（按 Top 值还原）：
-/// 试样分组 → **初始直径 → 初始高度** → （试验温度）→ 加载速度。
-/// 与现役的**两处有意差异**：
+/// 试样描述 → 试样分组 → **初始直径 → 初始高度** → （试验温度）→ 加载速度。
+/// 与现役的**有意差异**（只剩一处）：
 /// <list type="number">
 ///   <item>不做逐件"试验温度"：它是该试验单的试验条件，留在试验单上（报表与统计用的都是单上的温度）；</item>
-///   <item>不做"试样描述"：本项目框架的试样信息目前**只支持数值 / 选项列**（存库走
-///         <c>IReadOnlyDictionary&lt;string, double&gt;</c>），要加得先扩框架 —— 待用户定。</item>
 /// </list>
+/// 「试样描述」是**文本字段**：框架原来只收数值，用户 2026-10-16 要求扩框架支持文本列后加了回来
+/// （见 `TestSheetService.UpsertSampleInfoAsync` 的"任意值"重载）。
 /// </summary>
 public static class MarshallSampleFields
 {
+    /// <summary>试样描述（现役 SampleDesc；文本）。</summary>
+    public const string SampleDescKey = "SampleDesc";
+
     /// <summary>试样分组：0 = 第一组、1 = 第二组（现役 GroupID；浸水/真空饱水试验的第二组）。</summary>
     public const string GroupIdKey = "GroupID";
 
@@ -44,6 +47,8 @@ public static class MarshallSampleFields
     /// <summary>中文兜底的原始声明（键由 <see cref="ParameterDefinition.WithTextKeys"/> 按约定补）。</summary>
     private static IReadOnlyList<ParameterDefinition> RawDefinitions() =>
     [
+        new(SampleDescKey, "试样描述", "", "",
+            Kind: ParameterKind.Text, Scope: ParameterScope.Computation, AllowEmpty: true),
         new(GroupIdKey, "试样分组", "", "0",
             Kind: ParameterKind.Choice, Scope: ParameterScope.Computation, Options: GroupOptions,
             Description: "第一组 = 标准马歇尔试件；浸水马歇尔与真空饱水马歇尔的第二组就是浸水/真空饱水后的那一组。"),

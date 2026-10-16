@@ -41,7 +41,8 @@ public static class ParameterValidator
 
         if (value.Length == 0)
         {
-            return ParameterValidationError.Required;
+            // 声明里写了"允许留空"的项（可选的文本字段）空着就是合法值
+            return definition.AllowEmpty ? ParameterValidationError.None : ParameterValidationError.Required;
         }
 
         if (definition.Kind == ParameterKind.Text)

@@ -88,6 +88,12 @@ public sealed record ParameterDefinition(
     /// </summary>
     bool PendingIntegration = false,
 
+    /// <summary>
+    /// **允许留空**（例：试样信息里的"试样描述"这种可选文本，用户 2026-10-16）。
+    /// 默认 false = 空值按"必填没填"处理（<see cref="ParameterValidator"/>）。
+    /// </summary>
+    bool AllowEmpty = false,
+
     /// <summary><see cref="ParameterKind.Choice"/> 的选项；其它类型为 null。</summary>
     IReadOnlyList<ParameterOption>? Options = null,
 

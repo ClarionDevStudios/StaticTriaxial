@@ -661,15 +661,28 @@ public sealed class MarshallExecution(TestSheetService sheets, MarshallParameter
         CancellationToken cancellationToken = default
     )
     {
-        // 只送**数值 / 选项**字段：框架的试样信息存库是 `IReadOnlyDictionary<string, double>`，
-        // 文本字段（现役的"试样描述"）目前存不进去（见 MarshallSampleFields 的说明）
-        var values = MarshallSampleFields
-            .Definitions.Where(definition => definition.Kind != ParameterKind.Text)
-            .ToDictionary(
-                definition => definition.Key,
-                definition => MarshallSampleFields.GetDouble(fields, definition.Key),
-                StringComparer.Ordinal
-            );
+        // 按字段类型分别落库（框架已支持"任意值"）：数值 → double、选项 → int、文本 → 字符串
+        // （空文本存 NULL）。"试样描述"就是文本字段那种（用户 2026-10-16 要求加回来）。
+        var values = new Dictionary<string, object?>(StringComparer.Ordinal);
+
+        foreach (var definition in MarshallSampleFields.Definitions)
+        {
+            var text = fields.GetValueOrDefault(definition.Key)?.Trim() ?? string.Empty;
+
+            values[definition.Key] = definition.Kind switch
+            {
+                ParameterKind.Number => MarshallSampleFields.GetDouble(fields, definition.Key),
+                ParameterKind.Choice
+                    when int.TryParse(
+                        text,
+                        System.Globalization.NumberStyles.Integer,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out var choice
+                    ) => choice,
+                ParameterKind.Choice => MarshallSampleFields.GetDouble(fields, definition.Key),
+                _ => text.Length == 0 ? null : text,
+            };
+        }
 
         return sheets.UpsertSampleInfoAsync(sheetId, sampleId, values, cancellationToken);
     }

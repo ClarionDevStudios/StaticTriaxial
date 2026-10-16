@@ -144,7 +144,8 @@ public static class MarshallSheetFields
         Text("CreatedOn", "试验时间", readOnlyHint: "新建时填当前时间"),
 
         // r9：试验温度｜试验员
-        Text(TemperatureKey, "试验温度(℃) *", description: "标准马歇尔试件的养护与试验温度 60℃（规范 T 0709）"),
+        // 温度按**规范值 60℃**预填（现役是空的，用户每单都要手填）；试验员留空
+        Text(TemperatureKey, "试验温度(℃) *", defaultValue: "60", description: "标准马歇尔试件的养护与试验温度 60℃（规范 T 0709）"),
         Text("Tester", "试验员"),
     ];
 
@@ -161,13 +162,14 @@ public static class MarshallSheetFields
         string displayName,
         string description = "",
         string readOnlyHint = "",
-        string displayNameKey = ""
+        string displayNameKey = "",
+        string defaultValue = ""
     ) =>
         new(
             key,
             displayName,
             string.Empty,
-            string.Empty,
+            defaultValue,
             ParameterGroup.Sheet,
             ParameterKind.Text,
             Scope: ParameterScope.Computation,

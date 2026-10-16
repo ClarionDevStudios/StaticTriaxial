@@ -130,6 +130,55 @@ public sealed class TestSheetServiceTests : IDisposable
     }
 
     /// <summary>
+    /// 试样信息**可以带文本字段**（用户 2026-10-16：扩框架支持文本列，现役的"试样描述"要用）——
+    /// 数值照样进数值列、文本进文本列、空串存 NULL；读回来原样。
+    /// </summary>
+    [Fact]
+    public async Task 试样信息支持文本字段()
+    {
+        var service = CreateService();
+        var sheetId = await service.CreateAsync("T0715", "项目", "WT");
+
+        await service.UpsertSampleInfoAsync(
+            sheetId,
+            "S001",
+            new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["SampleDesc"] = "第三批 1 号件（边角有磕碰）",
+                ["SampleWidth"] = 30.0,
+                ["SampleHeight"] = 35.5,
+                ["InvalidReason"] = null, // 空值 = 清掉该列（NULL）
+            }
+        );
+
+        var row = service.ReadDetailRow(
+            sheetId,
+            "S001",
+            ["SampleDesc", "SampleWidth", "SampleHeight", "InvalidReason"]
+        )!;
+
+        Assert.Equal("第三批 1 号件（边角有磕碰）", Convert.ToString(row["SampleDesc"]));
+        Assert.Equal(30.0, Convert.ToDouble(row["SampleWidth"]), 6);
+        Assert.Equal(35.5, Convert.ToDouble(row["SampleHeight"]), 6);
+        Assert.True(row["InvalidReason"] is null or DBNull);
+
+        // 更新路径同样支持（再存一次，文本换掉、数值换掉）
+        await service.UpsertSampleInfoAsync(
+            sheetId,
+            "S001",
+            new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["SampleDesc"] = "第三批 1 号件（复测）",
+                ["SampleWidth"] = 30.5,
+            }
+        );
+
+        var updated = service.ReadDetailRow(sheetId, "S001", ["SampleDesc", "SampleWidth"])!;
+        Assert.Equal("第三批 1 号件（复测）", Convert.ToString(updated["SampleDesc"]));
+        Assert.Equal(30.5, Convert.ToDouble(updated["SampleWidth"]), 6);
+    }
+
+    /// <summary>
     /// 明细按 `(SheetID, SampleID)` 定位（用户 2026-10-13：删掉自造的 SampleKey、与现役一致）——
     /// 两张单里的同号试件必须互不干扰；试件号里的序号要自动回填到 SheetIndex。
     /// </summary>
