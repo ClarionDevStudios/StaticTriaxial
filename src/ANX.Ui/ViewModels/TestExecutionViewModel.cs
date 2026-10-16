@@ -166,6 +166,9 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// <summary>最近一次联机结果（true 已连接 / false 联机失败 / null 没联过）。</summary>
     private bool? _connected;
 
+    /// <summary>上一次"同步来源"时是不是模拟数据（用于判断数据来源有没有在别的页面被换过）。</summary>
+    private bool _dataSourceWasSimulating;
+
     /// <summary>最近一次网口链路结果（没有监视器时为 null）。</summary>
     private NetworkLinkState? _linkState;
 
@@ -234,12 +237,15 @@ public partial class TestExecutionViewModel : ViewModelBase
 
         if (device is null)
         {
-        ConnectionText = L("Exec.NoDevice");
+            ConnectionText = L("Exec.NoDevice");
         }
         else
         {
             SetConnectionState(null); // 还没联机：中性色
         }
+
+        // 记下"建这个 ViewModel 时的数据来源"：以后回到本页要拿它比对（见 SyncDataSourceState）
+        _dataSourceWasSimulating = IsSimulatedSource;
 
         // 网口链路（用户 2026-10-14）：单例 ViewModel 只订一次，之后不管在哪个页面都跟着刷新。
         // 当前值先取一次：监视器是启动时就开始跑的，这里可能已经有结论了。
@@ -448,7 +454,15 @@ public partial class TestExecutionViewModel : ViewModelBase
     }
 
     /// <summary>进页面（导航进来或重新显示）时把列表读一遍。</summary>
-    public override void OnOpened() => _ = ReloadSampleRowsAsync();
+    public override void OnOpened()
+    {
+        _ = ReloadSampleRowsAsync();
+
+        // 数据来源可能在**系统设置页**被换过（设备因此被重新装配、"切换前联机过"的会自动联机）——
+        // 回到本页时把连接状态按当前设备对一遍，并在操控信息里说明（用户 2026-10-16：
+        // "改变数据来源类型后，试验主页面的连接状态及日志信息未同步"）。
+        SyncDataSourceState();
+    }
 
     /// <summary>把一行"字段 → 文本"按表头顺序摊成单元格（字段缺了给空串，不抛）。</summary>
     private SampleListRow BuildSampleCells(SampleRowInfo row)
@@ -649,6 +663,45 @@ public partial class TestExecutionViewModel : ViewModelBase
     {
         _connected = connected;
         RefreshConnectionText();
+    }
+
+    /// <summary>
+    /// 回到本页时把"数据来源 / 联机状态"按**当前设备**对一遍（来源可能在系统设置页被换过）。
+    /// 只在真的变了的时候记操控信息与刷新命令可用性 —— 免得每次回页都塞一行。
+    /// </summary>
+    private void SyncDataSourceState()
+    {
+        var simulating = IsSimulatedSource;
+        var sourceChanged = simulating != _dataSourceWasSimulating;
+        _dataSourceWasSimulating = simulating;
+
+        var connected = _device?.IsConnected == true;
+        var connectionChanged = _connected != connected;
+
+        if (!sourceChanged && !connectionChanged)
+        {
+            return;
+        }
+
+        SetConnectionState(_device is null ? null : connected);
+        UpdateCanJog();
+
+        if (sourceChanged)
+        {
+            Append(
+                $"{L("Exec.DataSourceChanged")}："
+                    + L(simulating ? "Settings.DataSourceSimulator" : "Settings.DataSourceDevice")
+            );
+        }
+
+        if (connected)
+        {
+            Append($"{L("Exec.Connected")} · {DeviceName(_device!)}");
+        }
+
+        // 断链/换来源都会影响"能不能下发命令"（启动 / 点动 / 有效性计算）
+        UpdateCommandAvailability();
+        NotifySampleCommands();
     }
 
     private void RefreshConnectionText()
