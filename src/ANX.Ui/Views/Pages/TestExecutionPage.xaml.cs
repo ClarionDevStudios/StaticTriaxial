@@ -147,6 +147,15 @@ public partial class TestExecutionPage : INavigableView<TestExecutionViewModel>
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        // 选中项变了（例如"新建试样信息"存完后由 ViewModel 选中刚建的那件）→ 把那一行滚进可视区
+        if (
+            string.Equals(e.PropertyName, nameof(TestExecutionViewModel.SelectedSample), StringComparison.Ordinal)
+            && ViewModel.SelectedSample is { } selected
+        )
+        {
+            SampleGrid.ScrollIntoView(selected);
+        }
+
         if (string.Equals(e.PropertyName, nameof(TestExecutionViewModel.IsRunning), StringComparison.Ordinal))
         {
             UpdateRunningAnimation();

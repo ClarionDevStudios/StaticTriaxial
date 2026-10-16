@@ -46,6 +46,14 @@ public sealed partial class SampleInfoViewModel : EditableRowsViewModel, IModalD
     [ObservableProperty]
     private string _sampleId = string.Empty;
 
+    /// <summary>
+    /// **最近一次存成功**的试件号（没存过就是空）。执行页在弹窗关掉后用它把列表**选中到刚存的那一件**
+    /// （用户 2026-10-16："新建试样信息后，列表中应选中刚新建的那条试样信息"）。
+    ///
+    /// 为什么要单独记一个：<see cref="SampleId"/> 在弹窗里可能被改过又没保存，直接读它会选错人。
+    /// </summary>
+    public string LastSavedSampleId { get; private set; } = string.Empty;
+
     /// <summary>所属试验单（没选单时给提示、不让保存）。</summary>
     public string SheetId => _currentSheet?.SheetId ?? string.Empty;
 
@@ -75,7 +83,13 @@ public sealed partial class SampleInfoViewModel : EditableRowsViewModel, IModalD
     /// 进弹窗前定死"编辑哪一件"：给了试件号就载回那一件的信息，给 null/空 = 新建
     /// （打开时自己取下一个试件号）。调用方是试验执行页 —— 它知道用户在列表里选了哪行。
     /// </summary>
-    public void PrepareFor(string? sampleId) => SampleId = sampleId ?? string.Empty;
+    public void PrepareFor(string? sampleId)
+    {
+        SampleId = sampleId ?? string.Empty;
+
+        // 新开一次弹窗就清掉"上次存了哪一件"：这一次没保存的话，执行页不该去选中上一次那件
+        LastSavedSampleId = string.Empty;
+    }
 
     [RelayCommand]
     private async Task InitializeAsync()
@@ -147,5 +161,12 @@ public sealed partial class SampleInfoViewModel : EditableRowsViewModel, IModalD
         }
 
         await _execution.SaveSampleInfoAsync(SheetId, SampleId, values);
+    }
+
+    /// <summary>保存成功后记下"刚存的是哪一件"（执行页据此选中列表里的那一行）。</summary>
+    protected override void AfterSave(IReadOnlyDictionary<string, string> values)
+    {
+        base.AfterSave(values);
+        LastSavedSampleId = SampleId;
     }
 }

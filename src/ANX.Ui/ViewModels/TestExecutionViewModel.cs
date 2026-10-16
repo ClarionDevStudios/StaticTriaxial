@@ -1239,11 +1239,12 @@ public partial class TestExecutionViewModel : ViewModelBase
     /// </summary>
     /// <summary>新建试样信息：弹窗里默认带**下一个**试件号。</summary>
     [RelayCommand(CanExecute = nameof(CanAddSample))]
-    private void NewSample() => ShowSampleEditorDialog(sampleId: null);
+    private async Task NewSampleAsync() => await ShowSampleEditorDialogAsync(sampleId: null);
 
     /// <summary>编辑选中那件试样的信息（选中哪件改哪件）；选中的件已做完 → 置灰。</summary>
     [RelayCommand(CanExecute = nameof(CanEditSample))]
-    private void EditSample() => ShowSampleEditorDialog(SelectedSample?.SampleId);
+    private async Task EditSampleAsync() =>
+        await ShowSampleEditorDialogAsync(SelectedSample?.SampleId);
 
     /// <summary>
     /// 删除选中那件试样（用户 2026-10-13）：先确认，再删明细行，最后刷新列表。
@@ -1291,10 +1292,11 @@ public partial class TestExecutionViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// 开弹窗、关掉后把试样信息列表刷一遍（弹窗里可能刚存了一件）。
+    /// 开弹窗、关掉后把试样信息列表刷一遍（弹窗里可能刚存了一件），**并把选中落到刚存的那一件**上
+    /// （用户 2026-10-16："新建试样信息后，列表中应选中刚新建的那条试样信息"）。
     /// <paramref name="sampleId"/> 为空 = 新建（弹窗自己取下一个试件号），否则编辑指定那件。
     /// </summary>
-    private void ShowSampleEditorDialog(string? sampleId)
+    private async Task ShowSampleEditorDialogAsync(string? sampleId)
     {
         // 弹窗的 ViewModel 是单例：进弹窗前先把"要编辑哪一件"定死，免得留下上一次的号
         _sampleInfo?.PrepareFor(sampleId);
@@ -1305,7 +1307,29 @@ public partial class TestExecutionViewModel : ViewModelBase
             SampleDialogHeight
         );
 
-        _ = ReloadSampleRowsAsync();
+        await ReloadSampleRowsAsync();
+
+        // 刷新会把选中清掉（换单/换数据本来就该清），所以**刷完再选**：
+        // 弹窗存成功了哪一件，就选哪一件（LastSavedSampleId 只在保存成功后赋值）
+        SelectSample(_sampleInfo?.LastSavedSampleId);
+    }
+
+    /// <summary>把选中落到指定试件号那一行（找不到就保持"没选中"）。</summary>
+    private void SelectSample(string? sampleId)
+    {
+        if (sampleId is not { Length: > 0 })
+        {
+            return;
+        }
+
+        if (
+            SampleRows.FirstOrDefault(row =>
+                string.Equals(row.SampleId, sampleId, StringComparison.Ordinal)
+            ) is { } saved
+        )
+        {
+            SelectedSample = saved;
+        }
     }
 
     /// <summary>去历史数据页（报表导出的入口在那里）。</summary>
