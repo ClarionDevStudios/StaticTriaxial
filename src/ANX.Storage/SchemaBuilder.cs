@@ -24,8 +24,10 @@ public static class SchemaBuilder
     /// 2 → 3：T0715 三表按现役结构补齐（工程信息 / 体积指标 / 统计口径等），并给每列加含义注释。
     /// 3 → 4：明细表去掉自造的 `SampleKey`，主键改为现役口径的 `(SheetID, SampleID)`；
     ///        试件号改为现役格式 `S001`（序号落 `SheetIndex`）。
+    /// 4 → 5：装第二个方法（T0709 马歇尔稳定度）—— 新增 `MarshallTestMain` / `MarshallTestDetail` /
+    ///        `MarshallTestTemplate` 三张表（**纯新增**，不动已有表与数据）。
     /// </summary>
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
 
     /// <summary>框架自有表的建表 SQL（幂等）。</summary>
     public static IEnumerable<string> BuildFrameworkTables()

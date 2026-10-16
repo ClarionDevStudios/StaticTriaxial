@@ -190,9 +190,9 @@ public partial class App
                 _ = services.AddSingleton(new StorageOptions(AppPaths.ResolveDatabasePath()));
                 _ = services.AddSingleton<IMethodPersistenceModule, BendingPersistenceModule>();
                 // 马歇尔三表（T 0709）：**纯新增表**，建表是幂等的 `CREATE TABLE IF NOT EXISTS`，
-                // 不动已有库的任何数据 —— 所以 `SchemaBuilder.CurrentSchemaVersion` 仍是 4
-                //（现框架"版本对不上就拒绝启动、不做迁移"是既定决策；要不要为它升号、以及升号时
-                //  怎么处理你现有开发库，等用户定）。
+                // 不动已有库的任何数据；架构版本跟着升到 5（用户 2026-10-16 定：软件还没发布，
+                // 不存在给用户升级的问题，直接改）。老开发库（版本 4）会被拒——备份后重命名即
+                // 由程序新建；现场装机同理。
                 _ = services.AddSingleton<IMethodPersistenceModule, MarshallPersistenceModule>();
                 _ = services.AddSingleton(sp => new DatabaseInitializer(
                     sp.GetRequiredService<StorageOptions>(),
