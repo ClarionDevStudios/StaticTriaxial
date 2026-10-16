@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\STS.Core\STS.Core.csproj" />
+    <!-- 曲线标注的几何与文案在 STS.Control（界面与报表共用同一份，见 CurveAnnotations） -->
+    <ProjectReference Include="..\STS.Control\STS.Control.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 报表唯一路径：TMS FlexCel（本机零售包已作为本地 NuGet 源接入） -->
+    <PackageReference Include="TMS.FlexCel" Version="7.26.0" />
+    <PackageReference Include="ScottPlot" Version="5.1.59" />
+  </ItemGroup>
+</Project>

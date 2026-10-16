@@ -5,6 +5,9 @@ Bins/
 *.user
 *.suo
 
+# Visual Studio 工作区缓存（文件索引等，别入库）
+.vs/
+
 # 真机抓帧日志：仓库根 .gitignore 有 *.log（Visual Studio 规则），
 # 但抓帧是协议的原始证据、要长期保留，这里显式反选回来。
 !docs/抓帧/*.log

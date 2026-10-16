@@ -1,0 +1,392 @@
+<ResourceDictionary
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+>
+  <sys:String x:Key="App.Title">抗剪强度试验软件（静三轴法）</sys:String>
+
+  <sys:String x:Key="Nav.Home">首页</sys:String>
+  <sys:String x:Key="Nav.Settings">系统设置</sys:String>
+  <sys:String x:Key="Nav.Exit">退出系统</sys:String>
+
+  <sys:String x:Key="Common.Yes">确定</sys:String>
+  <sys:String x:Key="Common.No">取消</sys:String>
+  <sys:String x:Key="Common.ExitConfirm">确定要退出软件吗？</sys:String>
+  <sys:String x:Key="Common.ListSeparator">；</sys:String>
+
+  <sys:String x:Key="Home.Title">首页</sys:String>
+  <sys:String x:Key="Home.Subtitle">C# / WPF 上位机软件（自 AsphaltNext 保留全史生成的新项目）。串口通讯，协议按《全自动土工项目通讯协议 V1.7》；现役 Delphi 土工三轴软件继续维护，并扮演"标准答案"。</sys:String>
+  <sys:String x:Key="Home.MilestoneTitle">里程碑</sys:String>
+  <sys:String x:Key="Home.M1">骨架生成：改名 + 清理 + 串口通道（含单测）+ 外壳可启动</sys:String>
+  <sys:String x:Key="Home.M2">模拟下位机：按土工协议应答，撑起全链路验收</sys:String>
+  <sys:String x:Key="Home.M3">土工协议帧层（V1.7）与黄金用例</sys:String>
+  <sys:String x:Key="Home.M4">全链路（联机 → 采集/控制 → 判定 → 落库 → 报表 → 界面）</sys:String>
+  <sys:String x:Key="Home.StatusDone">已完成</sys:String>
+  <sys:String x:Key="Home.StatusTodo">未开始</sys:String>
+  <sys:String x:Key="Home.CurrentMilestone">当前里程碑</sys:String>
+  <sys:String x:Key="Home.BoundaryTitle">当前边界</sys:String>
+  <sys:String x:Key="Home.BoundaryText">骨架已生成：改名与清理完成、串口通道就位（单元测试）、页面外壳可启动。进行中：土工协议帧层（V1.7）与模拟下位机；真机联调待设备到位（验收先走模拟链路）。</sys:String>
+
+  <!-- 首页：试验方法入口卡片（方案 A，用户 2026-10-16） -->
+  <sys:String x:Key="Home.MethodsTitle">试验方法</sys:String>
+  <sys:String x:Key="Home.MethodsHint">点「进入试验」切到该方法并打开试验界面；当前方法同时决定历史数据、参数配置与报表。</sys:String>
+  <sys:String x:Key="Home.MethodCurrent">当前</sys:String>
+  <sys:String x:Key="Home.MethodEnter">进入试验</sys:String>
+  <sys:String x:Key="Home.MethodSwitchBlocked">试验进行中，先停止或等本件做完，再切换试验方法。</sys:String>
+  <sys:String x:Key="Exec.MethodSwitched">已切换试验方法：</sys:String>
+
+  <sys:String x:Key="Settings.Title">系统设置</sys:String>
+  <sys:String x:Key="Settings.TabPreferences">界面偏好</sys:String>
+  <sys:String x:Key="Settings.DataSource">数据来源</sys:String>
+  <sys:String x:Key="Settings.DataSourceDevice">真机试验</sys:String>
+  <sys:String x:Key="Settings.DataSourceSimulator">模拟数据</sys:String>
+  <sys:String x:Key="Settings.DataSourceHint">选"真机试验"时与设备联机、用真实试件做试验；选"模拟数据"时启动试验由模拟器产生数据（没有试件时用来验证流程）。改完立即生效，不必重启。</sys:String>
+  <sys:String x:Key="Settings.DataSourceSwitched">已切换数据来源</sys:String>
+  <sys:String x:Key="Exec.DataSourceChanged">数据来源已切换为</sys:String>
+  <sys:String x:Key="Settings.DataSourceFailed">切换数据来源失败</sys:String>
+  <sys:String x:Key="Settings.Language">语言</sys:String>
+  <sys:String x:Key="Settings.Theme">主题</sys:String>
+  <sys:String x:Key="Settings.ThemeDark">深色</sys:String>
+  <sys:String x:Key="Settings.ThemeLight">浅色</sys:String>
+  <sys:String x:Key="Settings.System">系统</sys:String>
+  <sys:String x:Key="Settings.LogDirectory">日志目录</sys:String>
+  <sys:String x:Key="Settings.OpenLogDir">打开日志目录</sys:String>
+  <sys:String x:Key="Settings.About">关于</sys:String>
+  <sys:String x:Key="Settings.AppVersion">程序版本</sys:String>
+  <sys:String x:Key="Settings.RuntimeVersion">运行时版本</sys:String>
+  <sys:String x:Key="Settings.UiLibraryVersion">控件库版本</sys:String>
+  <sys:String x:Key="Settings.Saved">已写入配置文件</sys:String>
+  <sys:String x:Key="Settings.SavedNextStart">下次启动仍然生效</sys:String>
+  <sys:String x:Key="Settings.SaveFailed">设置保存失败</sys:String>
+  <sys:String x:Key="Exec.CurveImageSaved">曲线图已保存</sys:String>
+  <sys:String x:Key="Exec.CurveImageSaveFailed">曲线图保存失败</sys:String>
+
+  <sys:String x:Key="Nav.Execution">试验执行</sys:String>
+  <sys:String x:Key="Exec.NewSheet">新建试验</sys:String>
+  <sys:String x:Key="Exec.TestParams">试验参数</sys:String>
+  <sys:String x:Key="Exec.Print">打印报表</sys:String>
+  <sys:String x:Key="Exec.History">历史数据</sys:String>
+  <sys:String x:Key="Exec.DataFlow">数据流</sys:String>
+  <sys:String x:Key="Exec.NewSample">新建试样</sys:String>
+  <sys:String x:Key="Exec.EditSample">编辑试样</sys:String>
+  <sys:String x:Key="Exec.DeleteSample">删除试样</sys:String>
+  <sys:String x:Key="Exec.DeleteSampleConfirm">删除试样 {0}？它的曲线、判定值与试样信息会一起删除，不能撤销。继续？</sys:String>
+  <sys:String x:Key="Exec.SampleDeleted">已删除试样</sys:String>
+  <sys:String x:Key="Exec.SampleNotFound">没找到这件试样（可能已被删）</sys:String>
+  <sys:String x:Key="Exec.DeleteSampleFailed">删除试样失败</sys:String>
+  <sys:String x:Key="Exec.StartTest">启动试验</sys:String>
+  <sys:String x:Key="Exec.RunningHint">试验进行中</sys:String>
+  <sys:String x:Key="Exec.SelectSampleFirst">请先在试样信息列表里选中要做的试样（要新建就点「新建试样」）</sys:String>
+  <sys:String x:Key="Exec.IdleHint">待机中</sys:String>
+  <sys:String x:Key="Exec.StopTest">停止试验</sys:String>
+  <sys:String x:Key="Exec.ClearInfo">清空信息</sys:String>
+  <sys:String x:Key="Exec.SheetId">试验单号</sys:String>
+  <sys:String x:Key="Exec.SampleListId">试件号</sys:String>
+  <sys:String x:Key="Exec.Connection">连接状态</sys:String>
+  <sys:String x:Key="Exec.Connect">联机</sys:String>
+  <sys:String x:Key="Exec.NoDevice">未配置设备（Debug 构建使用模拟器）</sys:String>
+  <sys:String x:Key="Exec.NotConnected">未连接</sys:String>
+  <sys:String x:Key="Exec.Connected">已连接</sys:String>
+  <sys:String x:Key="Exec.LinkDown">链路断开</sys:String>
+  <sys:String x:Key="Exec.LinkUp">网口链路正常</sys:String>
+  <sys:String x:Key="Exec.LinkBlocked">链路断开：现在发命令也到不了设备，请先恢复链路（恢复后需人工确认再继续）</sys:String>
+  <sys:String x:Key="Exec.LinkStopBestEffort">已尽力发送停止命令（链路不通，未确认）</sys:String>
+  <sys:String x:Key="Exec.LinkAlarmTitle">通讯报警</sys:String>
+  <sys:String x:Key="Exec.LinkAlarmBodyRunning">网口链路断开（**试验进行中**）：{0}&#10;{1}&#10;&#10;正在跑的那一轮已被中止。软件已尽力发送停止命令，但**链路不通，无法确认设备是否已停**——上位机与控制器走 UDP，无连接：命令可能根本没发出去，发送"成功"也说明不了送达。&#10;&#10;请立即到设备现场确认工作台与试件状态；链路恢复后**不会自动续跑**，需人工确认后再启动。</sys:String>
+  <sys:String x:Key="Exec.LinkUnknownAdapter">（未定位到网卡）</sys:String>
+  <sys:String x:Key="Exec.Reconnected">链路恢复，已自动重新联机（重取设备配置）</sys:String>
+  <sys:String x:Key="Exec.ReconnectFailed">链路恢复后自动联机失败，请点「联机」重试</sys:String>
+  <sys:String x:Key="Exec.NoDeviceConfig">未联机（没取到设备配置 A0）：实时读数暂不显示（显示 --），原始码值不能当测量值看。请点「联机」，或等链路恢复后自动联机。</sys:String>
+  <sys:String x:Key="Exec.StopNotConfirmed">停机未确认：发停止后未收到"电机已停"的状态回帧，请现场确认设备状态</sys:String>
+  <sys:String x:Key="Exec.ForceCleaned">界面已回到待机：上一轮的收尾被中断（停止命令没得到应答），请确认设备状态后再操作</sys:String>
+  <sys:String x:Key="Exec.StopAlarmBody">停机未确认：发出停止命令后，在 2 秒内没有收到下位机"电机已停"的状态回帧。&#10;&#10;链路是通的，所以这通常意味着设备真的没停下来（电机卡住 / 伺服保护 / 下位机不响应）。请到设备现场确认工作台状态。</sys:String>
+  <sys:String x:Key="Exec.ConnectFailed">联机失败</sys:String>
+  <sys:String x:Key="Exec.Stopping">正在停止…</sys:String>
+  <sys:String x:Key="Exec.Failed">运行失败</sys:String>
+  <sys:String x:Key="Exec.PhaseIdle">就绪</sys:String>
+  <sys:String x:Key="Exec.PhaseCompleted">已完成</sys:String>
+  <sys:String x:Key="Exec.PhaseAborted">已中止</sys:String>
+  <sys:String x:Key="Exec.NotSettleable">未能结算，本次不落库</sys:String>
+  <sys:String x:Key="Exec.SampleDone">试件完成</sys:String>
+  <sys:String x:Key="Exec.Points">点</sys:String>
+  <sys:String x:Key="Exec.Validity">有效性计算</sys:String>
+  <sys:String x:Key="Exec.ValidityBusy">试验进行中，不能计算结果</sys:String>
+  <sys:String x:Key="Exec.ValidityNoSheet">没有打开的试验单，先新建或选择试验单</sys:String>
+  <sys:String x:Key="Exec.ValidityNoSamples">本单还没有判定完成的试件，无法做有效性计算</sys:String>
+  <sys:String x:Key="Exec.ValidityNoExclusion">无</sys:String>
+  <sys:String x:Key="Exec.ValidityDone">有效性计算完成：参与 {0} 件，有效 {1} 件，剔除 {2}</sys:String>
+  <sys:String x:Key="Exec.SampleLabel">试件 </sys:String>
+  <sys:String x:Key="Exec.NeedsSupplement">有效试件不足 3 件，请补充试验</sys:String>
+  <sys:String x:Key="Exec.NeedsSupplementPrompt">剔除后有效试件 {0} 个（少于 3 个），按规范 5.6 应补充试验。</sys:String>
+  <sys:String x:Key="Common.Hint">提示</sys:String>
+  <sys:String x:Key="Exec.DefaultProject">默认项目</sys:String>
+  <sys:String x:Key="Exec.WorktableUp">工作台上升</sys:String>
+  <sys:String x:Key="Exec.WorktableDown">工作台下降</sys:String>
+  <sys:String x:Key="Exec.ToDo">待做</sys:String>
+
+  <sys:String x:Key="Nav.History">历史数据</sys:String>
+  <sys:String x:Key="History.Keyword">关键字</sys:String>
+  <sys:String x:Key="History.Query">查询</sys:String>
+  <sys:String x:Key="History.Export">导出报表（中文）</sys:String>
+  <sys:String x:Key="History.ExportEn">导出报表（英文）</sys:String>
+  <sys:String x:Key="History.Ready">就绪</sys:String>
+  <sys:String x:Key="History.Found">找到</sys:String>
+  <sys:String x:Key="History.SheetsUnit">张试验单</sys:String>
+  <sys:String x:Key="History.SelectSheetFirst">请先选中一张试验单</sys:String>
+  <sys:String x:Key="History.Recompute">按当前参数重算</sys:String>
+  <sys:String x:Key="History.RecomputeConfirm">按当前参数重算试验单 {0} 的全部已存曲线？已存结果列与组统计会被覆盖（曲线本身不动）。</sys:String>
+  <sys:String x:Key="History.RecomputeDone">已重算 {0} 件，跳过 {1} 件（曲线不足或判定不了）</sys:String>
+  <sys:String x:Key="History.RecomputeFailed">重算失败</sys:String>
+  <sys:String x:Key="History.PrintPreview">打印预览</sys:String>
+
+  <!-- 打印预览窗体（用户 2026-10-15：报表在窗体打开时按当前界面语言生成、同名静默覆盖） -->
+  <sys:String x:Key="Preview.Title">打印预览</sys:String>
+  <sys:String x:Key="Preview.Description">报表已在打开本窗口时按当前界面语言生成（同名文件直接覆盖）。可以打印、定位文件；导出 PDF 暂未接上。</sys:String>
+  <sys:String x:Key="Preview.Print">打印报表</sys:String>
+  <sys:String x:Key="Preview.Locate">定位文件</sys:String>
+  <sys:String x:Key="Preview.ExportPdf">导出PDF</sys:String>
+  <sys:String x:Key="Preview.ExportPdfPending">导出 PDF 暂未接上（能力已具备：FlexCel 自带 PDF 导出）</sys:String>
+  <sys:String x:Key="Preview.Rendering">正在生成报表并渲染预览…</sys:String>
+  <sys:String x:Key="Preview.Created">报表已生成：{0}</sys:String>
+  <sys:String x:Key="Preview.Failed">报表生成或预览失败</sys:String>
+  <sys:String x:Key="Preview.NoSheet">没有要预览的试验单（请先在列表里选中一张）</sys:String>
+  <sys:String x:Key="Preview.Unavailable">打印预览服务不可用</sys:String>
+  <sys:String x:Key="Preview.Printed">已提交打印：{0}</sys:String>
+  <sys:String x:Key="Preview.PrintFailed">打印失败</sys:String>
+  <sys:String x:Key="Preview.NothingToPrint">预览还没生成好，稍候再试</sys:String>
+  <sys:String x:Key="Preview.NothingToLocate">报表文件还没生成好</sys:String>
+  <sys:String x:Key="Preview.LocateFailed">定位文件失败</sys:String>
+  <sys:String x:Key="History.ColSheetId">试验单号</sys:String>
+  <sys:String x:Key="History.ColProject">项目名称</sys:String>
+  <sys:String x:Key="History.ColDate">日期</sys:String>
+  <sys:String x:Key="History.ColSamples">试件数</sys:String>
+  <sys:String x:Key="History.Samples">试件</sys:String>
+  <sys:String x:Key="History.Fields">试件字段</sys:String>
+
+  <sys:String x:Key="Sheet.New">新建试验单</sys:String>
+  <sys:String x:Key="Sheet.Mode">试验方式</sys:String>
+  <sys:String x:Key="Sheet.ModeNew">新建试验项目</sys:String>
+  <sys:String x:Key="Sheet.ModeLast">上次试验项目</sys:String>
+  <sys:String x:Key="Sheet.ModeExisting">其他试验项目</sys:String>
+  <sys:String x:Key="Sheet.SheetId">试验单号</sys:String>
+  <sys:String x:Key="Sheet.SheetIdAuto">试验单号自动生成、只读；点「确定」时才真正发号</sys:String>
+  <sys:String x:Key="Sheet.SheetIdPicked">沿用所选试验单的单号（只读）</sys:String>
+  <sys:String x:Key="Sheet.SheetIdEdit">单号只读；这里改动的内容会写回该试验单</sys:String>
+  <sys:String x:Key="Sheet.Updated">已更新</sys:String>
+  <sys:String x:Key="Sheet.SectionInfo">试验单信息</sys:String>
+  <sys:String x:Key="Sheet.OptionalHint">带 * 为必填项；以下各项允许留空：</sys:String>
+  <sys:String x:Key="Sheet.ReadTemplate">读取模板</sys:String>
+  <sys:String x:Key="Sheet.SaveTemplate">存为模板</sys:String>
+  <sys:String x:Key="Sheet.TemplateLoaded">已读取模板内容</sys:String>
+  <sys:String x:Key="Sheet.TemplateSaved">已存为模板</sys:String>
+  <sys:String x:Key="Sheet.CreateFailed">保存试验单失败</sys:String>
+  <sys:String x:Key="Sheet.Existing">选择已有试验单</sys:String>
+  <sys:String x:Key="Sheet.Project">项目名称</sys:String>
+  <sys:String x:Key="Sheet.Prefix">单号前缀</sys:String>
+  <sys:String x:Key="Sheet.Confirm">确定</sys:String>
+  <sys:String x:Key="Sheet.Cancel">取消</sys:String>
+  <sys:String x:Key="Sheet.Ready">就绪</sys:String>
+  <sys:String x:Key="Sheet.LoadExisting">刷新列表</sys:String>
+  <sys:String x:Key="Sheet.Loaded">已加载</sys:String>
+  <sys:String x:Key="Sheet.Created">已新建</sys:String>
+  <sys:String x:Key="Sheet.Selected">已选定</sys:String>
+  <sys:String x:Key="Sheet.SelectFirst">请先选择一张试验单</sys:String>
+  <sys:String x:Key="Exec.SheetSelected">已采用试验单</sys:String>
+
+  <sys:String x:Key="Sample.Title">试样信息填录</sys:String>
+  <sys:String x:Key="Sample.Fields">这一件试样的信息</sys:String>
+  <sys:String x:Key="Sample.SampleId">试件号（单内顺序号）</sys:String>
+  <sys:String x:Key="Sample.Loaded">试验单 {0} · 试件 {1}</sys:String>
+  <sys:String x:Key="Sample.NoSheet">请先到试验单页选择一张试验单</sys:String>
+  <sys:String x:Key="Sample.NoSampleId">请先填试件号</sys:String>
+  <sys:String x:Key="Mach.Title">机器与控制参数</sys:String>
+  <sys:String x:Key="Mach.Tab.Channels">通道设置</sys:String>
+  <sys:String x:Key="Mach.Tab.Parameters">试验参数</sys:String>
+  <sys:String x:Key="Param.PendingIntegration">待接线</sys:String>
+  <sys:String x:Key="Param.ChannelNotWired">该位移通道（千分表 / 平均值）暂未接线，读数仍按原通道取</sys:String>
+  <sys:String x:Key="Param.Save">保存</sys:String>
+  <sys:String x:Key="Param.Reload">重新载入</sys:String>
+  <sys:String x:Key="Param.Loaded">已载入当前参数</sys:String>
+  <sys:String x:Key="Param.Saved">已保存</sys:String>
+  <sys:String x:Key="Param.SaveFailed">保存失败</sys:String>
+  <sys:String x:Key="Param.UnsavedChanges">有未保存的修改</sys:String>
+  <sys:String x:Key="Param.ConfirmTitle">确认</sys:String>
+  <sys:String x:Key="Param.ReloadConfirm">「{0}」有未保存的修改，重新载入会丢弃它们。继续？</sys:String>
+  <sys:String x:Key="Param.RestoreDefaults">恢复默认</sys:String>
+  <sys:String x:Key="Common.Close">关闭</sys:String>
+  <sys:String x:Key="Param.RestoreDefaultsConfirm">把「{0}」的参数恢复为默认值？当前编辑内容会被丢弃（恢复后仍需点保存）。</sys:String>
+  <sys:String x:Key="Param.RestoreDefaultsDone">已恢复默认值（尚未保存）</sys:String>
+  <sys:String x:Key="Param.Invalid">有 {0} 项不合法，未保存</sys:String>
+  <sys:String x:Key="Param.RangeHint">范围 {0} ~ {1}</sys:String>
+  <sys:String x:Key="Param.Error.Required">不能为空</sys:String>
+  <sys:String x:Key="Param.Error.NotANumber">请输入数字</sys:String>
+  <sys:String x:Key="Param.Error.OutOfRange">超出范围（{0} ~ {1}）</sys:String>
+  <sys:String x:Key="Param.Error.InvalidSwitch">只能填 0（关闭）或 1（启用）</sys:String>
+  <sys:String x:Key="Param.Scope.Runtime">运行期（试验过程中生效）</sys:String>
+  <sys:String x:Key="Param.Scope.Runtime.Hint">点保存后，在下一次「开始试验」时装载进控制循环。</sys:String>
+  <sys:String x:Key="Param.Scope.Computation">计算期（判定 / 重算时生效）</sys:String>
+  <sys:String x:Key="Param.Scope.Computation.Hint">点保存后，在下一次结算或「按当前参数重算」时生效（历史数据页可重算已存曲线）。</sys:String>
+  <sys:String x:Key="Param.Scope.Acquisition">采集口径（数据从哪里来）</sys:String>
+  <sys:String x:Key="Param.Scope.Acquisition.Hint">点击保存后，立即生效。</sys:String>
+  <sys:String x:Key="Param.Scope.Presentation">记录与显示</sys:String>
+  <sys:String x:Key="Param.Scope.Presentation.Hint">点保存后影响曲线记录策略与界面刷新。</sys:String>
+  <sys:String x:Key="Mach.Description">机器与控制参数：运行期参数在「开始试验」时装载，计算期参数在判定 / 重算时读取。保存后对下一次试验或下一次结算生效，正在跑的那一轮不中途变参数。</sys:String>
+  <sys:String x:Key="Mach.CurrentMethod">当前方法：{0}（{1}）—— 本页是通用界面，参数值按该方法存取；切换到别的方法会加载它自己的那套值。</sys:String>
+  <sys:String x:Key="Sample.Description">这里填的是「这一件」试样的信息（跨径 / 试件尺寸…）：保存后随该试件存进明细，判定时按件取用。用同一个试件号再进来会载回原来填过的值。</sys:String>
+  <sys:String x:Key="Exec.NoSheet">还没有试验单（先"新建试验"或去试验单页选一张）</sys:String>
+
+  <!-- 启动期提示：建库时架构版本对不上，弹框后程序正常退出 -->
+  <sys:String x:Key="Startup.SchemaMismatch.Title">数据库结构不匹配，无法启动</sys:String>
+  <!-- 这三条按行拆开、由代码用 Environment.NewLine 拼：XAML/BAML 会把资源文本里的换行归一化掉，写在资源里留不住 -->
+  <sys:String x:Key="Startup.SchemaMismatch.Summary">数据库结构版本不匹配，程序无法启动。</sys:String>
+  <sys:String x:Key="Startup.SchemaMismatch.Versions">库版本：{0}，程序要求：{1}</sys:String>
+  <sys:String x:Key="Startup.SchemaMismatch.Hint">本项目不做数据迁移。请先备份下面这个文件，再把它删除后重新启动程序（程序会自动重建新库）：</sys:String>
+  <sys:String x:Key="Startup.Failed.Title">启动失败</sys:String>
+  <sys:String x:Key="Startup.Failed.Summary">程序启动时发生错误，无法继续运行。</sys:String>
+  <sys:String x:Key="Startup.Failed.Detail">错误信息：{0}</sys:String>
+  <sys:String x:Key="Startup.Failed.LogHint">详细信息已写入日志文件，请把它提供给开发人员：</sys:String>
+  <sys:String x:Key="Runtime.Error.Title">界面发生未处理异常</sys:String>
+  <sys:String x:Key="Runtime.Error.Summary">界面线程发生未处理异常，刚才的操作可能没有完成。</sys:String>
+  <sys:String x:Key="Runtime.Error.Detail">异常信息：{0}</sys:String>
+  <sys:String x:Key="Runtime.Error.LogHint">详细堆栈已写入日志文件：</sys:String>
+  <sys:String x:Key="Runtime.Error.Question">是否退出程序？点「是」立即退出；点「否」忽略这次异常继续运行（界面可能已处于不一致状态，建议先保存数据）。</sys:String>
+  <sys:String x:Key="Runtime.Error.ThrottleNote">同一异常 {0} 秒内只提示一次，之后相同的异常只写入日志。</sys:String>
+
+  <!-- 曲线轴名：方法给资源键，界面按当前语言解析（按方法声明：当前占位） -->
+  <sys:String x:Key="Chart.Axis.Deflection">跨中挠度 (mm)</sys:String>
+  <sys:String x:Key="Chart.Axis.Load">荷载 (kN)</sys:String>
+
+  <!-- 方法声明的指标名与曲线文字：键由方法给出（IAP 同款），文案在这里 -->
+  <!--
+    参数 / 试样信息字段的显示名与说明（键 = Field.<参数键> / Field.<参数键>.Desc / Field.<参数键>.<选项值>，
+    由 STS.Control 的 ParameterTextKeys 约定出来）。中文与声明里的兜底文本逐字一致，
+    英文尽量用缩写（用户 2026-10-15：「翻译成英文时，能使用缩写的必须使用缩写」）。
+  -->
+  <sys:String x:Key="Field.PressChannel">轴向压力通道</sys:String>
+  <sys:String x:Key="Field.PressChannel.Desc">轴向压力取自哪个通道；保存即时生效，荷载读数立刻按新通道取。现役默认通道 1 = 100.000kN 主传感器（通道 2 是 5kN 小量程）。</sys:String>
+  <sys:String x:Key="Field.PressChannel.0">压力通道1</sys:String>
+  <sys:String x:Key="Field.PressChannel.1">压力通道2</sys:String>
+  <sys:String x:Key="Field.PressChannel.2">压力通道3</sys:String>
+  <sys:String x:Key="Field.PressChannel.3">压力通道4</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel">轴向位移通道</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.Desc">轴向位移取自哪个通道；保存即时生效，位移读数立刻按新通道取。真机两路位移量程都是 25.000mm。</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.0">位移通道1</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.1">位移通道2</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.2">位移通道3</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.3">位移通道4</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.4">千分表1</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.5">千分表2</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.6">千分表3</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.7">千分表4</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.8">位移1+2通道平均值</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.9">位移3+4通道平均值</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.10">千分表1+2通道平均值</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.11">千分表3+4通道平均值</sys:String>
+  <sys:String x:Key="Field.Option.Unused">不用</sys:String>
+  <sys:String x:Key="Field.HorizontalPressChannel">水平压力通道</sys:String>
+  <sys:String x:Key="Field.HorizontalPressChannel.Desc">水平压力取自哪个通道（不用 = 0）。当前判定不使用该通道，先把现场配置存下来。</sys:String>
+  <sys:String x:Key="Field.HorizontalDisplaceChannel">水平位移通道</sys:String>
+  <sys:String x:Key="Field.HorizontalDisplaceChannel.Desc">水平位移取自哪个通道（不用 = 0）。当前判定不使用该通道，先把现场配置存下来。</sys:String>
+  <sys:String x:Key="Field.AutoFallTime">试验完成后归位时间</sys:String>
+  <sys:String x:Key="Field.AutoFallTime.Desc">试验完成（破坏确认，或量程停机）后，电机反转把工作台送回起始位置所用的秒数（现役 AutoFallTime「试验结束自动下降时间」；现场配 5s）。归位段的数据不记入曲线；生效时点在「破坏后继续加载时间」之后：破坏确认 → 继续加载 → 归位。</sys:String>
+  <sys:String x:Key="Field.JogSpeed">平台升降速率</sys:String>
+  <sys:String x:Key="Field.JogSpeed.Desc">执行页「工作台上升 / 下降」按钮的升降速率，与试验加载速率分开；受电机 50mm/min 上限约束。</sys:String>
+  <sys:String x:Key="Field.DisplacementSafetyFactor">位移闸门安全系数</sys:String>
+  <sys:String x:Key="Field.DisplacementSafetyFactor.Desc">位移闸门 = 设备位移量程 × 本系数（真机 25mm → 23.75mm）。超量程会压坏位移传感器。</sys:String>
+  <sys:String x:Key="Field.LoadSafetyFactor">荷载闸门安全系数</sys:String>
+  <sys:String x:Key="Field.LoadSafetyFactor.Desc">荷载闸门 = 设备压力量程 × 本系数（真机 100kN → 95kN）；取不到量程时回落现役常量 50kN。</sys:String>
+  <sys:String x:Key="Field.MinBreakLoad">不判破坏荷载下限</sys:String>
+  <sys:String x:Key="Field.MinBreakLoad.Desc">峰值荷载小于该值时不判断破坏（现役常量 BREAK_MIN_LOAD_KN；现场配 200N = 0.2kN）。0 = 不启用下限。</sys:String>
+  <sys:String x:Key="Field.ContinueLoadingTime">破坏后继续加载时间</sys:String>
+  <sys:String x:Key="Field.ContinueLoadingTime.Desc">破坏确认后仍继续加载的时间（单位秒），让曲线走出一段破坏后的荷载下降趋势（现役 ContinueLoadingTime）。这一段的数据记入曲线；走完再按「试验完成后归位时间」反转归位（归位段不记曲线）。0 = 不做继续加载，确认后直接归位。</sys:String>
+  <sys:String x:Key="Field.EnableOriginCorrection">启用曲线原点修正</sys:String>
+  <sys:String x:Key="Field.EnableOriginCorrection.Desc">是否做曲线原点修正（有的试验需要、有的不需要）。关闭时修正原点记 0、校正挠度 = 峰值挠度、应变按未修正挠度算。</sys:String>
+  <sys:String x:Key="Field.OriginCorrectionStart">原点修正区间起点</sys:String>
+  <sys:String x:Key="Field.OriginCorrectionStart.Desc">拟合修正直线的荷载区间起点（占峰值荷载百分数）。规范未规定拟合方法；现役代码默认 10，现场配 20。</sys:String>
+  <sys:String x:Key="Field.OriginCorrectionEnd">原点修正区间终点</sys:String>
+  <sys:String x:Key="Field.OriginCorrectionEnd.Desc">拟合修正直线的荷载区间终点（占峰值荷载百分数）。现役代码默认 80，现场配 60。</sys:String>
+  <sys:String x:Key="Field.LockDisplacement">锁定峰值位移</sys:String>
+  <sys:String x:Key="Field.LockDisplacement.Desc">跨中挠度取峰值荷载点的位移（现役 LockDisplacement）；每个试验默认选中。取消则取曲线最大位移。</sys:String>
+  <sys:String x:Key="Field.LoadRate">加载速率</sys:String>
+  <sys:String x:Key="Field.LoadRate.Desc">试验过程的加载速率。电机上限 50mm/min；取值按规范与现场配置（骨架占位，周内照现役 / 规范补齐口径）。</sys:String>
+  <sys:String x:Key="Field.ContactLoad">接触判定阈值</sys:String>
+  <sys:String x:Key="Field.ContactLoad.Desc">荷载达到该值视为压头已接触试件（现役 ZeroDisplacement「压力小于该值时位移清零」，单位 N→kN）；接触成立时位移调零并切到试验速率。</sys:String>
+  <sys:String x:Key="Field.BreakDrop">破坏判据（荷载下降量）</sys:String>
+  <sys:String x:Key="Field.BreakDrop.Desc">荷载自峰值下降超过该值即视为破坏（现役 PressureDrop「压力落差」，单位 N→kN；现场配 0.5kN）。</sys:String>
+  <sys:String x:Key="Field.BreakConfirmSamples">破坏确认帧数</sys:String>
+  <sys:String x:Key="Field.BreakConfirmSamples.Desc">破坏确认所需的连续帧数（现役 NumberOfFilters，注释写「滤波次数」，实际当确认帧数用；现场配 5）。</sys:String>
+  <!-- 试样信息字段（试件尺寸；填录后随该件存进明细） -->
+  <sys:String x:Key="Field.SpanLength">跨径 L</sys:String>
+  <sys:String x:Key="Field.SampleLength">试件长度</sys:String>
+  <sys:String x:Key="Field.SampleWidth">试件宽度 b</sys:String>
+  <sys:String x:Key="Field.SampleHeight">试件高度 h</sys:String>
+  <!-- 试验单字段（试验单编辑弹窗；名字里的 " *" 是必填标记，照现役） -->
+  <sys:String x:Key="Field.Sheet.SheetID">试验单号</sys:String>
+  <sys:String x:Key="Field.Sheet.SheetID.Desc">自动生成（只读）</sys:String>
+  <sys:String x:Key="Field.Sheet.ClientUnits">委托单位</sys:String>
+  <sys:String x:Key="Field.Sheet.SupervisionUnits">监理单位</sys:String>
+  <sys:String x:Key="Field.Sheet.ProjectName">项目名称 *</sys:String>
+  <sys:String x:Key="Field.Sheet.TestSpecificationsId">试验规范 *</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleSizeId">试件尺寸(mm) *</sys:String>
+  <sys:String x:Key="Field.Sheet.CreatedOn">试验时间</sys:String>
+  <sys:String x:Key="Field.Sheet.CreatedOn.Desc">新建时填当前时间</sys:String>
+  <sys:String x:Key="Field.Sheet.TestTemperature">试验温度 *</sys:String>
+  <sys:String x:Key="Field.Sheet.LoadRate">加载速率 *</sys:String>
+  <sys:String x:Key="Field.Sheet.AcceptanceDate">接样日期</sys:String>
+  <sys:String x:Key="Field.Sheet.Operator">试验员</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleDensity">试样密度</sys:String>
+  <sys:String x:Key="Field.Sheet.VoidRatio">空隙率</sys:String>
+  <sys:String x:Key="Msg.FieldRequired">{0}不能为空</sys:String>
+  <sys:String x:Key="Msg.FieldChoose">请选择{0}</sys:String>
+  <sys:String x:Key="Msg.FieldFormat">{0}格式不对</sys:String>
+  <sys:String x:Key="Msg.FieldOutOfRange">{0}必须在 {1} ~ {2} 之间</sys:String>
+  <!-- 网口链路状态的细节（键在 STS.Communication.NetworkLinkMessageKeys） -->
+  <sys:String x:Key="Link.Detail.NotChecked">尚未检测</sys:String>
+  <sys:String x:Key="Link.Detail.ReadFailed">读取网卡状态失败：{0}</sys:String>
+  <sys:String x:Key="Link.Detail.AdapterMissing">没找到能到达 {0} 的网口（网卡被拔掉？地址段变了？）</sys:String>
+  <sys:String x:Key="Link.Detail.Up">链路正常（{0}）</sys:String>
+  <sys:String x:Key="Link.Detail.MediaDisconnected">网口 Down：网线未插 / 对端（交换机、控制器）掉电 / 网卡被禁用</sys:String>
+  <sys:String x:Key="Link.Detail.Dormant">网口 Dormant：没有载波</sys:String>
+  <sys:String x:Key="Link.Detail.NotPresent">网卡不存在</sys:String>
+  <sys:String x:Key="Link.Detail.Other">网口状态 {0}</sys:String>
+  <!-- 存储层抛给界面的消息（键在 STS.Storage.StorageMessageKeys） -->
+  <sys:String x:Key="Msg.Storage.SheetNotFound">找不到试验单 {0}</sys:String>
+  <sys:String x:Key="Msg.Storage.SheetNotFoundByNumber">找不到单号 {0} 对应的试验单</sys:String>
+  <sys:String x:Key="Msg.Storage.MethodNotRegistered">未注册的方法代号：{0}</sys:String>
+  <sys:String x:Key="Msg.Storage.NumberExhausted">单号流水已用尽（{0} {1} 当天超过 999 个）。</sys:String>
+  <!-- 设备名（键在 STS.Communication.DeviceSourceMessageKeys）与设备来源消息 -->
+  <sys:String x:Key="Device.Name.Simulator">模拟器</sys:String>
+  <sys:String x:Key="Device.Name.NoSource">（尚未选择数据来源）</sys:String>
+  <!-- 历史数据页「试件」列表与字段表的列名（用户 2026-10-15：要和当前语言一致） -->
+  <!-- 曲线图标注（界面与存盘图共用这三条键，见 STS.Control.CurveMarkKeys） -->
+  <sys:String x:Key="Curve.Mark.Peak">峰值 {0:0.00} kN / {1:0.00} mm</sys:String>
+  <sys:String x:Key="Curve.Mark.Origin">修正原点 {0:0.00} mm</sys:String>
+  <sys:String x:Key="Curve.Mark.FitBound">{0:0.#}% {1:0.00} kN</sys:String>
+  <sys:String x:Key="Exec.PeakFormat">峰值 {0}</sys:String>
+
+  <!-- 工作台点动（按住运行、松开停止） -->
+  <sys:String x:Key="Exec.JogUp">工作台上升中</sys:String>
+  <sys:String x:Key="Exec.JogDown">工作台下降中</sys:String>
+  <sys:String x:Key="Exec.JogStopped">工作台已停止</sys:String>
+  <sys:String x:Key="Exec.JogFailed">点动失败</sys:String>
+  <sys:String x:Key="Exec.JogNeedConnect">还没联机 —— 先点「联机」，再操作工作台</sys:String>
+  <sys:String x:Key="Exec.ContactDetected">接触成立：位移调零（软件偏移量），切换到试验速率</sys:String>
+  <sys:String x:Key="Exec.Returning">破坏已确认：继续加载结束，电机反转归位（归位段不记曲线）</sys:String>
+  <sys:String x:Key="Exec.PhaseRangeStopped">量程停机，按曲线峰值结算</sys:String>
+  <sys:String x:Key="Exec.DisplacementClamped">位移闸门已收敛到设备量程的 {0:0.###} mm —— 不得超过位移传感器量程，超了会压坏传感器</sys:String>
+  <sys:String x:Key="Exec.LoadClamped">荷载闸门按设备压力量程算得 {0:0.###} kN</sys:String>
+  <sys:String x:Key="Exec.MotorStalled">设备电机已停转（手动停机 / 限位 / 伺服保护），本轮已中止</sys:String>
+  <sys:String x:Key="Exec.CommunicationLost">通讯中断超过 2 秒，本轮已中止</sys:String>
+
+  <sys:String x:Key="Chart.Axis.Deformation">变形 (mm)</sys:String>
+
+  <sys:String x:Key="Field.Sheet.TestSpecificationsID">试验依据 *</sys:String>
+  <sys:String x:Key="Field.Sheet.TestStandardsID">试验方法 *</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleSizeID">试件尺寸(mm) *</sys:String>
+
+
+  <sys:String x:Key="Field.SampleDesc">试样描述</sys:String>
+  <!-- 方法名（骨架：抗剪强度·静三轴法） -->
+  <sys:String x:Key="Method.ShearStrength.Name">抗剪强度试验（静三轴法）</sys:String>
+
+</ResourceDictionary>

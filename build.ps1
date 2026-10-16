@@ -22,7 +22,7 @@ $env:DOTNET_CLI_HOME = 'E:\AiStudy\CodeX\.dotnetcli'
 $env:MSBUILDDISABLENODEREUSE = '1'
 
 Write-Host "DOTNET_CLI_HOME = $env:DOTNET_CLI_HOME"
-dotnet build "$PSScriptRoot\ANX.slnx" -m:1 -c $Configuration --nologo
+dotnet build "$PSScriptRoot\STS.slnx" -m:1 -c $Configuration --nologo
 
 # 先留住构建结果，再做收尾 —— 收尾的成败不影响构建的退出码
 $buildExitCode = $LASTEXITCODE

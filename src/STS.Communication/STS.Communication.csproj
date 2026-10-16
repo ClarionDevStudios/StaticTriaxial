@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\STS.Core\STS.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 串口通道：System.IO.Ports（IAP 同版本；本机离线缓存已有 10.0.11） -->
+    <PackageReference Include="System.IO.Ports" Version="10.0.11" />
+  </ItemGroup>
+
+  <!-- 模拟器只在 Debug 编译；Release（交付）构建里整个文件不参与编译 -->
+  <ItemGroup Condition="'$(Configuration)' != 'Debug'">
+    <Compile Remove="Channels\SimulatedDeviceController.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,26 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/STS.Core/STS.Core.csproj" />
+    <Project Path="src/STS.Communication/STS.Communication.csproj" />
+    <Project Path="src/STS.Control/STS.Control.csproj" />
+    <Project Path="src/STS.Protocol/STS.Protocol.csproj" />
+    <Project Path="src/STS.Reporting/STS.Reporting.csproj" />
+    <Project Path="src/STS.Storage/STS.Storage.csproj" />
+    <Project Path="src/STS.Ui/STS.Ui.csproj" />
+    <Project Path="src/STS.Host/STS.Host.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/STS.Method.ShearStrength.Tests/STS.Method.ShearStrength.Tests.csproj" />
+    <Project Path="tests/STS.Storage.Tests/STS.Storage.Tests.csproj" />
+    <Project Path="tests/STS.Reporting.Tests/STS.Reporting.Tests.csproj" />
+    <Project Path="tests/STS.Core.Tests/STS.Core.Tests.csproj" />
+    <Project Path="tests/STS.Control.Tests/STS.Control.Tests.csproj" />
+    <Project Path="tests/STS.Communication.Tests/STS.Communication.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/STS.Tools.SchemaDump/STS.Tools.SchemaDump.csproj" />
+  </Folder>
+  <Folder Name="/methods/">
+    <Project Path="methods/STS.Method.ShearStrength/STS.Method.ShearStrength.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\STS.Core\STS.Core.csproj" />
+    <ProjectReference Include="..\..\src\STS.Control\STS.Control.csproj" />
+    <ProjectReference Include="..\..\src\STS.Reporting\STS.Reporting.csproj" />
+    <ProjectReference Include="..\..\src\STS.Storage\STS.Storage.csproj" />
+  </ItemGroup>
+</Project>

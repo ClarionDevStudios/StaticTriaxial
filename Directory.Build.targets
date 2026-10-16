@@ -1,7 +1,7 @@
 <Project>
   <!--
     模拟器只在 Debug 构建里编译：Release（正式）不定义 SIMULATOR，
-    `SimulatedDeviceController.cs` 不参与编译（见 ANX.Communication.csproj 的 Compile Remove），
+    `SimulatedDeviceController.cs` 不参与编译（见 STS.Communication.csproj 的 Compile Remove），
     Host 里注册模拟器的那段也用 `#if SIMULATOR` 关掉。
 
     ⚠ 必须写在 **.targets** 里，不能写在 Directory.Build.props：

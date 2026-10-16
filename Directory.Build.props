@@ -5,8 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Version>0.1.0</Version>
-    <Product>ANX 沥青综合性能试验软件（C# 重构 · 学习项目）</Product>
-    <Company>ANX</Company>
+    <Product>STS 抗剪强度试验软件（静三轴法）</Product>
+    <Company>STS</Company>
     <NeutralLanguage>zh-CN</NeutralLanguage>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <!-- 多语言资源与日期的既定行为：不做不变文化截断 -->

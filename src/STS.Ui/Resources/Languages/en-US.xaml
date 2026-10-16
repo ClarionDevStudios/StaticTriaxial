@@ -1,0 +1,396 @@
+<ResourceDictionary
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+>
+  <sys:String x:Key="App.Title">Static Triaxial Shear Strength Test (STS)</sys:String>
+
+  <sys:String x:Key="Nav.Home">Home</sys:String>
+  <sys:String x:Key="Nav.Settings">Settings</sys:String>
+  <sys:String x:Key="Nav.Exit">Exit</sys:String>
+
+  <sys:String x:Key="Common.Yes">OK</sys:String>
+  <sys:String x:Key="Common.No">Cancel</sys:String>
+  <sys:String x:Key="Common.ExitConfirm">Are you sure you want to exit?</sys:String>
+  <sys:String x:Key="Common.ListSeparator">; </sys:String>
+
+  <sys:String x:Key="Home.Title">Home</sys:String>
+  <sys:String x:Key="Home.Subtitle">C# / WPF host software - a new project generated from AsphaltNext with its full history. Serial comms; the protocol follows the Automatic Geotechnical Project Communication Protocol V1.7. The legacy Delphi triaxial software stays in service as the reference answer.</sys:String>
+  <sys:String x:Key="Home.MilestoneTitle">Milestones</sys:String>
+  <sys:String x:Key="Home.M1">Skeleton generated: rename + cleanup + serial channel (unit tests) + shell boots</sys:String>
+  <sys:String x:Key="Home.M2">Simulated device answering per the geotechnical protocol, driving the end-to-end acceptance</sys:String>
+  <sys:String x:Key="Home.M3">Geotechnical protocol framing layer (V1.7) with golden cases</sys:String>
+  <sys:String x:Key="Home.M4">Full chain (connect -> acquire/control -> analysis -> storage -> report -> UI)</sys:String>
+  <sys:String x:Key="Home.StatusDone">Done</sys:String>
+  <sys:String x:Key="Home.StatusTodo">Not started</sys:String>
+  <sys:String x:Key="Home.CurrentMilestone">Current milestone</sys:String>
+  <sys:String x:Key="Home.BoundaryTitle">Current boundaries</sys:String>
+  <sys:String x:Key="Home.BoundaryText">Skeleton generated: rename and cleanup done, serial channel in place (unit-tested), shell boots. In progress: geotechnical protocol framing (V1.7) and the simulated device; on-machine verification awaits hardware (acceptance runs on the simulated link for now).</sys:String>
+
+  <!-- Home: test-method entry cards (option A, user 2026-10-16) -->
+  <sys:String x:Key="Home.MethodsTitle">Test methods</sys:String>
+  <sys:String x:Key="Home.MethodsHint">Pick a method to switch to it and open its test page. The current method also drives history, parameters and reports.</sys:String>
+  <sys:String x:Key="Home.MethodCurrent">Current</sys:String>
+  <sys:String x:Key="Home.MethodEnter">Open</sys:String>
+  <sys:String x:Key="Home.MethodSwitchBlocked">A test is running - stop it (or let the specimen finish) before switching methods.</sys:String>
+  <sys:String x:Key="Exec.MethodSwitched">Test method switched to:</sys:String>
+
+  <sys:String x:Key="Settings.Title">Settings</sys:String>
+  <sys:String x:Key="Settings.TabPreferences">Preferences</sys:String>
+  <sys:String x:Key="Settings.DataSource">Data source</sys:String>
+  <sys:String x:Key="Settings.DataSourceDevice">Real machine</sys:String>
+  <sys:String x:Key="Settings.DataSourceSimulator">Simulated data</sys:String>
+  <sys:String x:Key="Settings.DataSourceHint">"Real machine" connects to the device and runs with an actual specimen; "Simulated data" makes the simulator produce the data so the workflow can be verified without specimens. Takes effect immediately, no restart needed.</sys:String>
+  <sys:String x:Key="Settings.DataSourceSwitched">Data source switched</sys:String>
+  <sys:String x:Key="Exec.DataSourceChanged">Data source switched to</sys:String>
+  <sys:String x:Key="Settings.DataSourceFailed">Failed to switch the data source</sys:String>
+  <sys:String x:Key="Settings.Language">Language</sys:String>
+  <sys:String x:Key="Settings.Theme">Theme</sys:String>
+  <sys:String x:Key="Settings.ThemeDark">Dark</sys:String>
+  <sys:String x:Key="Settings.ThemeLight">Light</sys:String>
+  <sys:String x:Key="Settings.System">System</sys:String>
+  <sys:String x:Key="Settings.LogDirectory">Log directory</sys:String>
+  <sys:String x:Key="Settings.OpenLogDir">Open log directory</sys:String>
+  <sys:String x:Key="Settings.About">About</sys:String>
+  <sys:String x:Key="Settings.AppVersion">Application version</sys:String>
+  <sys:String x:Key="Settings.RuntimeVersion">Runtime version</sys:String>
+  <sys:String x:Key="Settings.UiLibraryVersion">UI library version</sys:String>
+  <sys:String x:Key="Settings.Saved">Saved to the config file</sys:String>
+  <sys:String x:Key="Settings.SavedNextStart">it stays in effect next time you start</sys:String>
+  <sys:String x:Key="Settings.SaveFailed">Saving settings failed</sys:String>
+  <sys:String x:Key="Exec.CurveImageSaved">Curve image saved</sys:String>
+  <sys:String x:Key="Exec.CurveImageSaveFailed">Saving the curve image failed</sys:String>
+
+  <sys:String x:Key="Nav.Execution">Test run</sys:String>
+  <sys:String x:Key="Exec.NewSheet">New sheet</sys:String>
+  <sys:String x:Key="Exec.TestParams">Parameters</sys:String>
+  <sys:String x:Key="Exec.Print">Print report</sys:String>
+  <sys:String x:Key="Exec.History">History</sys:String>
+  <sys:String x:Key="Exec.DataFlow">Data flow</sys:String>
+  <sys:String x:Key="Exec.NewSample">New sample</sys:String>
+  <sys:String x:Key="Exec.EditSample">Edit sample</sys:String>
+  <sys:String x:Key="Exec.DeleteSample">Delete sample</sys:String>
+  <sys:String x:Key="Exec.DeleteSampleConfirm">Delete sample {0}? Its curve, results and sample info are removed together — this cannot be undone. Continue?</sys:String>
+  <sys:String x:Key="Exec.SampleDeleted">Sample deleted</sys:String>
+  <sys:String x:Key="Exec.SampleNotFound">Sample not found (maybe already deleted)</sys:String>
+  <sys:String x:Key="Exec.DeleteSampleFailed">Delete sample failed</sys:String>
+  <sys:String x:Key="Exec.StartTest">Start test</sys:String>
+  <sys:String x:Key="Exec.RunningHint">Test running</sys:String>
+  <sys:String x:Key="Exec.SelectSampleFirst">Select a specimen in the list first (click "New sample" to create one)</sys:String>
+  <sys:String x:Key="Exec.IdleHint">Idle</sys:String>
+  <sys:String x:Key="Exec.StopTest">Stop test</sys:String>
+  <sys:String x:Key="Exec.ClearInfo">Clear</sys:String>
+  <sys:String x:Key="Exec.SheetId">Sheet ID</sys:String>
+  <sys:String x:Key="Exec.SampleListId">Sample</sys:String>
+  <sys:String x:Key="Exec.Connection">Connection</sys:String>
+  <sys:String x:Key="Exec.Connect">Connect</sys:String>
+  <sys:String x:Key="Exec.NoDevice">No device configured (Debug builds use the simulator)</sys:String>
+  <sys:String x:Key="Exec.NotConnected">Not connected</sys:String>
+  <sys:String x:Key="Exec.Connected">Connected</sys:String>
+  <sys:String x:Key="Exec.LinkDown">Link down</sys:String>
+  <sys:String x:Key="Exec.LinkUp">Network link is up</sys:String>
+  <sys:String x:Key="Exec.LinkBlocked">Link down: commands cannot reach the device. Restore the link first (the run will not resume automatically).</sys:String>
+  <sys:String x:Key="Exec.LinkStopBestEffort">Stop command sent on a best-effort basis (link is down, not confirmed)</sys:String>
+  <sys:String x:Key="Exec.LinkAlarmTitle">Communication alarm</sys:String>
+  <sys:String x:Key="Exec.LinkAlarmBodyRunning">Network link lost (**a test was running**): {0}&#10;{1}&#10;&#10;That run was aborted. A stop command was sent on a best-effort basis, but **the device state cannot be confirmed** — the link to the controller is UDP (connectionless): the frame may never have left this PC, and a "successful" send proves nothing.&#10;&#10;Check the machine and specimen on site NOW; after the link recovers the run will NOT resume automatically.</sys:String>
+  <sys:String x:Key="Exec.LinkUnknownAdapter">(adapter not identified)</sys:String>
+  <sys:String x:Key="Exec.Reconnected">Link restored — reconnected automatically (device config re-read)</sys:String>
+  <sys:String x:Key="Exec.ReconnectFailed">Automatic reconnect after link restore failed; click "Connect" to retry</sys:String>
+  <sys:String x:Key="Exec.NoDeviceConfig">Not connected (device config A0 not read): live values are hidden (shown as --) because raw counts must not be mistaken for measurements. Click "Connect", or wait for automatic reconnect after the link recovers.</sys:String>
+  <sys:String x:Key="Exec.StopNotConfirmed">Motor stop NOT confirmed: no "motor stopped" status frame after the stop command — check the machine on site</sys:String>
+  <sys:String x:Key="Exec.ForceCleaned">UI returned to idle: the previous run's cleanup was interrupted (the stop command got no ack). Check the machine state before continuing.</sys:String>
+  <sys:String x:Key="Exec.StopAlarmBody">Motor stop NOT confirmed: no "motor stopped" status frame arrived within 2 s after the stop command.&#10;&#10;The link is up, so this usually means the machine really did not stop (motor stalled / servo protection / controller not responding). Check the machine on site.</sys:String>
+  <sys:String x:Key="Exec.ConnectFailed">Connect failed</sys:String>
+  <sys:String x:Key="Exec.Stopping">Stopping…</sys:String>
+  <sys:String x:Key="Exec.Failed">Run failed</sys:String>
+  <sys:String x:Key="Exec.PhaseIdle">Ready</sys:String>
+  <sys:String x:Key="Exec.PhaseCompleted">Completed</sys:String>
+  <sys:String x:Key="Exec.PhaseAborted">Aborted</sys:String>
+  <sys:String x:Key="Exec.NotSettleable">Not settleable — nothing stored</sys:String>
+  <sys:String x:Key="Exec.SampleDone">Specimen done</sys:String>
+  <sys:String x:Key="Exec.Points">points</sys:String>
+  <sys:String x:Key="Exec.Validity">Validity check</sys:String>
+  <sys:String x:Key="Exec.ValidityBusy">A run is in progress; cannot compute results</sys:String>
+  <sys:String x:Key="Exec.ValidityNoSheet">No open sheet — create or select one first</sys:String>
+  <sys:String x:Key="Exec.ValidityNoSamples">No settled specimens on this sheet yet</sys:String>
+  <sys:String x:Key="Exec.ValidityNoExclusion">none</sys:String>
+  <sys:String x:Key="Exec.ValidityDone">Validity computed: {0} specimen(s) evaluated, {1} effective, excluded: {2}</sys:String>
+  <sys:String x:Key="Exec.SampleLabel">Specimen </sys:String>
+  <sys:String x:Key="Exec.NeedsSupplement">Fewer than 3 effective specimens — supplement the test</sys:String>
+  <sys:String x:Key="Exec.NeedsSupplementPrompt">Only {0} effective specimen(s) after exclusion (fewer than 3) — per clause 5.6 the test should be supplemented.</sys:String>
+  <sys:String x:Key="Common.Hint">Notice</sys:String>
+  <sys:String x:Key="Exec.DefaultProject">Default project</sys:String>
+  <sys:String x:Key="Exec.WorktableUp">Worktable up</sys:String>
+  <sys:String x:Key="Exec.WorktableDown">Worktable down</sys:String>
+  <sys:String x:Key="Exec.ToDo">To do</sys:String>
+
+  <sys:String x:Key="Nav.History">History</sys:String>
+  <sys:String x:Key="History.Keyword">Keyword</sys:String>
+  <sys:String x:Key="History.Query">Search</sys:String>
+  <sys:String x:Key="History.Export">Export report (zh)</sys:String>
+  <sys:String x:Key="History.ExportEn">Export report (en)</sys:String>
+  <sys:String x:Key="History.Ready">Ready</sys:String>
+  <sys:String x:Key="History.Found">Found</sys:String>
+  <sys:String x:Key="History.SheetsUnit">sheets</sys:String>
+  <sys:String x:Key="History.SelectSheetFirst">Select a test sheet first</sys:String>
+  <sys:String x:Key="History.Recompute">Recompute with current parameters</sys:String>
+  <sys:String x:Key="History.RecomputeConfirm">Recompute all stored curves of sheet {0} with the current parameters? Stored result columns and group statistics will be overwritten (the curves themselves are untouched).</sys:String>
+  <sys:String x:Key="History.RecomputeDone">Recomputed {0} sample(s), skipped {1}</sys:String>
+  <sys:String x:Key="History.RecomputeFailed">Recompute failed</sys:String>
+  <sys:String x:Key="History.PrintPreview">Print preview</sys:String>
+
+  <!-- Print preview window (2026-10-15: the report is built on open, in the current UI language, overwriting silently) -->
+  <sys:String x:Key="Preview.Title">Print preview</sys:String>
+  <sys:String x:Key="Preview.Description">The report was generated in the current UI language when this window opened (an existing file is overwritten). You can print it or show the file; PDF export is not wired up yet.</sys:String>
+  <sys:String x:Key="Preview.Print">Print report</sys:String>
+  <sys:String x:Key="Preview.Locate">Show file</sys:String>
+  <sys:String x:Key="Preview.ExportPdf">Export PDF</sys:String>
+  <sys:String x:Key="Preview.ExportPdfPending">PDF export is not wired up yet (the capability exists: FlexCel ships its own PDF export)</sys:String>
+  <sys:String x:Key="Preview.Rendering">Building the report and rendering the preview…</sys:String>
+  <sys:String x:Key="Preview.Created">Report generated: {0}</sys:String>
+  <sys:String x:Key="Preview.Failed">Failed to build the report or the preview</sys:String>
+  <sys:String x:Key="Preview.NoSheet">No test sheet to preview (select one in the list first)</sys:String>
+  <sys:String x:Key="Preview.Unavailable">Print preview is unavailable</sys:String>
+  <sys:String x:Key="Preview.Printed">Sent to the printer: {0}</sys:String>
+  <sys:String x:Key="Preview.PrintFailed">Printing failed</sys:String>
+  <sys:String x:Key="Preview.NothingToPrint">The preview is not ready yet, please retry</sys:String>
+  <sys:String x:Key="Preview.NothingToLocate">The report file is not ready yet</sys:String>
+  <sys:String x:Key="Preview.LocateFailed">Failed to show the file</sys:String>
+  <sys:String x:Key="History.ColSheetId">Sheet ID</sys:String>
+  <sys:String x:Key="History.ColProject">Project</sys:String>
+  <sys:String x:Key="History.ColDate">Date</sys:String>
+  <sys:String x:Key="History.ColSamples">Specimens</sys:String>
+  <sys:String x:Key="History.Samples">Specimens</sys:String>
+  <sys:String x:Key="History.Fields">Specimen fields</sys:String>
+
+  <sys:String x:Key="Sheet.New">New sheet</sys:String>
+  <sys:String x:Key="Sheet.Mode">Mode</sys:String>
+  <sys:String x:Key="Sheet.ModeNew">New test project</sys:String>
+  <sys:String x:Key="Sheet.ModeLast">Last test project</sys:String>
+  <sys:String x:Key="Sheet.ModeExisting">Other test project</sys:String>
+  <sys:String x:Key="Sheet.SheetId">Sheet no.</sys:String>
+  <sys:String x:Key="Sheet.SheetIdAuto">Sheet no. is generated automatically and read-only; it is issued when you click OK</sys:String>
+  <sys:String x:Key="Sheet.SheetIdPicked">Keeps the selected sheet's number (read-only)</sys:String>
+  <sys:String x:Key="Sheet.SheetIdEdit">Sheet no. is read-only; changes here are written back to that sheet</sys:String>
+  <sys:String x:Key="Sheet.Updated">Updated</sys:String>
+  <sys:String x:Key="Sheet.SectionInfo">Test sheet</sys:String>
+  <sys:String x:Key="Sheet.OptionalHint">Fields marked * are required; these may be left empty:</sys:String>
+  <sys:String x:Key="Sheet.ReadTemplate">Load template</sys:String>
+  <sys:String x:Key="Sheet.SaveTemplate">Save as template</sys:String>
+  <sys:String x:Key="Sheet.TemplateLoaded">Template loaded</sys:String>
+  <sys:String x:Key="Sheet.TemplateSaved">Saved as template</sys:String>
+  <sys:String x:Key="Sheet.CreateFailed">Saving the sheet failed</sys:String>
+  <sys:String x:Key="Sheet.Existing">Use an existing sheet</sys:String>
+  <sys:String x:Key="Sheet.Project">Project</sys:String>
+  <sys:String x:Key="Sheet.Prefix">Number prefix</sys:String>
+  <sys:String x:Key="Sheet.Confirm">OK</sys:String>
+  <sys:String x:Key="Sheet.Cancel">Cancel</sys:String>
+  <sys:String x:Key="Sheet.Ready">Ready</sys:String>
+  <sys:String x:Key="Sheet.LoadExisting">Refresh list</sys:String>
+  <sys:String x:Key="Sheet.Loaded">Loaded</sys:String>
+  <sys:String x:Key="Sheet.Created">Created</sys:String>
+  <sys:String x:Key="Sheet.Selected">Selected</sys:String>
+  <sys:String x:Key="Sheet.SelectFirst">Select a test sheet first</sys:String>
+  <sys:String x:Key="Exec.SheetSelected">Using sheet</sys:String>
+
+  <sys:String x:Key="Sample.Title">Specimen data entry</sys:String>
+  <sys:String x:Key="Sample.Fields">Data for this specimen</sys:String>
+  <sys:String x:Key="Sample.SampleId">Specimen no. (sequence in sheet)</sys:String>
+  <sys:String x:Key="Sample.Loaded">Sheet {0} · specimen {1}</sys:String>
+  <sys:String x:Key="Sample.NoSheet">Select a test sheet first</sys:String>
+  <sys:String x:Key="Sample.NoSampleId">Enter the specimen number first</sys:String>
+  <sys:String x:Key="Mach.Title">Machine and control parameters</sys:String>
+  <sys:String x:Key="Mach.Tab.Channels">Channels</sys:String>
+  <sys:String x:Key="Mach.Tab.Parameters">Test parameters</sys:String>
+  <sys:String x:Key="Param.PendingIntegration">Not wired</sys:String>
+  <sys:String x:Key="Param.ChannelNotWired">That displacement source (micrometer / averaged pair) is not wired yet; readings stay on the previous channel</sys:String>
+  <sys:String x:Key="Param.Save">Save</sys:String>
+  <sys:String x:Key="Param.Reload">Reload</sys:String>
+  <sys:String x:Key="Param.Loaded">Current values loaded</sys:String>
+  <sys:String x:Key="Param.Saved">Saved</sys:String>
+  <sys:String x:Key="Param.SaveFailed">Save failed</sys:String>
+  <sys:String x:Key="Param.UnsavedChanges">Unsaved changes</sys:String>
+  <sys:String x:Key="Param.ConfirmTitle">Confirm</sys:String>
+  <sys:String x:Key="Param.ReloadConfirm">"{0}" has unsaved changes; reloading discards them. Continue?</sys:String>
+  <sys:String x:Key="Param.RestoreDefaults">Restore defaults</sys:String>
+  <sys:String x:Key="Common.Close">Close</sys:String>
+  <sys:String x:Key="Param.RestoreDefaultsConfirm">Restore defaults for "{0}"? Current edits will be discarded (you still need to save).</sys:String>
+  <sys:String x:Key="Param.RestoreDefaultsDone">Defaults restored (not saved yet)</sys:String>
+  <sys:String x:Key="Param.Invalid">{0} value(s) invalid; not saved</sys:String>
+  <sys:String x:Key="Param.RangeHint">range {0} ~ {1}</sys:String>
+  <sys:String x:Key="Param.Error.Required">Required</sys:String>
+  <sys:String x:Key="Param.Error.NotANumber">Enter a number</sys:String>
+  <sys:String x:Key="Param.Error.OutOfRange">Out of range ({0} ~ {1})</sys:String>
+  <sys:String x:Key="Param.Error.InvalidSwitch">Use 0 (off) or 1 (on)</sys:String>
+  <sys:String x:Key="Param.Scope.Runtime">Runtime (effective during the test)</sys:String>
+  <sys:String x:Key="Param.Scope.Runtime.Hint">After saving, loaded into the control loop on the next Start.</sys:String>
+  <sys:String x:Key="Param.Scope.Computation">Computation (settlement / recompute)</sys:String>
+  <sys:String x:Key="Param.Scope.Computation.Hint">After saving, effective on the next settlement or "recompute with current parameters" (History page can recompute stored curves).</sys:String>
+  <sys:String x:Key="Param.Scope.Acquisition">Acquisition (where data comes from)</sys:String>
+  <sys:String x:Key="Param.Scope.Acquisition.Hint">Takes effect immediately after saving.</sys:String>
+  <sys:String x:Key="Param.Scope.Presentation">Recording and display</sys:String>
+  <sys:String x:Key="Param.Scope.Presentation.Hint">After saving, affects curve recording and UI refresh.</sys:String>
+  <sys:String x:Key="Mach.Description">Machine and control parameters: runtime values are loaded at Start, computation values are read when settling or recomputing. Saving takes effect on the next run or settlement; a running test is not changed mid-flight.</sys:String>
+  <sys:String x:Key="Mach.CurrentMethod">Current method: {0} ({1}) — this page is generic; values are stored per method and switching methods loads that method's own values.</sys:String>
+  <sys:String x:Key="Sample.Description">Enter the data of THIS specimen (span / dimensions). It is stored with the specimen row and used per specimen when computing results. Opening the same specimen number again loads what you entered.</sys:String>
+  <sys:String x:Key="Exec.NoSheet">No test sheet yet (create one or pick an existing sheet)</sys:String>
+
+  <!-- Startup notice: the database schema version does not match; show it, then exit normally -->
+  <sys:String x:Key="Startup.SchemaMismatch.Title">Database schema mismatch - cannot start</sys:String>
+  <!-- These three are joined with Environment.NewLine in code: XAML/BAML normalizes line breaks inside resource text -->
+  <sys:String x:Key="Startup.SchemaMismatch.Summary">The database schema version does not match, so the application cannot start.</sys:String>
+  <sys:String x:Key="Startup.SchemaMismatch.Versions">Database version: {0}, required version: {1}</sys:String>
+  <sys:String x:Key="Startup.SchemaMismatch.Hint">This project does not migrate data. Back up the file below, delete it, then start the application again (a new database will be created):</sys:String>
+  <sys:String x:Key="Startup.Failed.Title">Startup failed</sys:String>
+  <sys:String x:Key="Startup.Failed.Summary">An error occurred while starting the application, so it cannot continue.</sys:String>
+  <sys:String x:Key="Startup.Failed.Detail">Error: {0}</sys:String>
+  <sys:String x:Key="Startup.Failed.LogHint">Details have been written to the log file; please provide it to the developer:</sys:String>
+  <sys:String x:Key="Runtime.Error.Title">Unhandled UI exception</sys:String>
+  <sys:String x:Key="Runtime.Error.Summary">An unhandled exception occurred on the UI thread; the last operation may not have completed.</sys:String>
+  <sys:String x:Key="Runtime.Error.Detail">Exception: {0}</sys:String>
+  <sys:String x:Key="Runtime.Error.LogHint">The full stack trace has been written to the log file:</sys:String>
+  <sys:String x:Key="Runtime.Error.Question">Exit the application? Choose Yes to exit now, or No to ignore this exception and keep running (the interface may be inconsistent; save your work first).</sys:String>
+  <sys:String x:Key="Runtime.Error.ThrottleNote">The same exception is reported only once per {0} seconds; later occurrences are written to the log only.</sys:String>
+
+  <!-- Curve axis names: the method supplies the key, the UI resolves it for the current language -->
+  <sys:String x:Key="Chart.Axis.Deflection">Midspan deflection (mm)</sys:String>
+  <sys:String x:Key="Chart.Axis.Load">Load (kN)</sys:String>
+
+  <!--
+    Parameter / sample-info field texts (keys come from STS.Control.ParameterTextKeys).
+    English keeps to abbreviations wherever possible (user 2026-10-15: "能使用缩写的必须使用缩写").
+  -->
+  <sys:String x:Key="Field.PressChannel">Load channel</sys:String>
+  <sys:String x:Key="Field.PressChannel.Desc">Which channel the axial load comes from. Takes effect on save. Factory default ch. 1 = 100 kN main sensor (ch. 2 = 5 kN).</sys:String>
+  <sys:String x:Key="Field.PressChannel.0">Load ch. 1</sys:String>
+  <sys:String x:Key="Field.PressChannel.1">Load ch. 2</sys:String>
+  <sys:String x:Key="Field.PressChannel.2">Load ch. 3</sys:String>
+  <sys:String x:Key="Field.PressChannel.3">Load ch. 4</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel">Displ. channel</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.Desc">Which channel the axial displacement comes from. Takes effect on save. Both machine channels are 25.000 mm.</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.0">Displ. ch. 1</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.1">Displ. ch. 2</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.2">Displ. ch. 3</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.3">Displ. ch. 4</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.4">Dial 1</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.5">Dial 2</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.6">Dial 3</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.7">Dial 4</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.8">Avg. displ. 1+2</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.9">Avg. displ. 3+4</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.10">Avg. dial 1+2</sys:String>
+  <sys:String x:Key="Field.DisplaceChannel.11">Avg. dial 3+4</sys:String>
+  <sys:String x:Key="Field.Option.Unused">Unused</sys:String>
+  <sys:String x:Key="Field.HorizontalPressChannel">Horiz. load ch.</sys:String>
+  <sys:String x:Key="Field.HorizontalPressChannel.Desc">Which channel the horizontal load comes from (Unused = 0). Not used by the current analysis — stored for the record only.</sys:String>
+  <sys:String x:Key="Field.HorizontalDisplaceChannel">Horiz. displ. ch.</sys:String>
+  <sys:String x:Key="Field.HorizontalDisplaceChannel.Desc">Which channel the horizontal displacement comes from (Unused = 0). Not used by the current analysis — stored for the record only.</sys:String>
+  <sys:String x:Key="Field.AutoFallTime">Reset time</sys:String>
+  <sys:String x:Key="Field.AutoFallTime.Desc">Seconds the motor reverses after the test ends (break confirmed or limit stop) to return the table home. Not recorded into the curve. Runs after "Continue after break".</sys:String>
+  <sys:String x:Key="Field.JogSpeed">Jog speed</sys:String>
+  <sys:String x:Key="Field.JogSpeed.Desc">Speed of the worktable up/down buttons on the run page; separate from the test load rate. Capped at 50 mm/min by the motor.</sys:String>
+  <sys:String x:Key="Field.DisplacementSafetyFactor">Displ. limit factor</sys:String>
+  <sys:String x:Key="Field.DisplacementSafetyFactor.Desc">Displacement limit = device range x factor (25 mm → 23.75 mm). Going past the range damages the sensor.</sys:String>
+  <sys:String x:Key="Field.LoadSafetyFactor">Load limit factor</sys:String>
+  <sys:String x:Key="Field.LoadSafetyFactor.Desc">Load limit = device load range x factor (100 kN → 95 kN); falls back to 50 kN when the range is unknown.</sys:String>
+  <sys:String x:Key="Field.MinBreakLoad">Min. break load</sys:String>
+  <sys:String x:Key="Field.MinBreakLoad.Desc">Peak load below this value is not judged as a break (legacy constant BREAK_MIN_LOAD_KN; site value 200 N = 0.2 kN). 0 = no lower limit.</sys:String>
+  <sys:String x:Key="Field.ContinueLoadingTime">Continue after break</sys:String>
+  <sys:String x:Key="Field.ContinueLoadingTime.Desc">Seconds of extra loading after the break is confirmed, so the curve shows the falling trend. This part IS recorded. Then the table resets. 0 = reset right away.</sys:String>
+  <sys:String x:Key="Field.EnableOriginCorrection">Origin correction</sys:String>
+  <sys:String x:Key="Field.EnableOriginCorrection.Desc">Whether to correct the curve origin (some tests need it, some not). When off, origin = 0 and the strain uses the uncorrected deflection.</sys:String>
+  <sys:String x:Key="Field.OriginCorrectionStart">Fit range start</sys:String>
+  <sys:String x:Key="Field.OriginCorrectionStart.Desc">Start of the load range used to fit the tangent line (% of peak load). Not fixed by the standard; code default 10, site value 20.</sys:String>
+  <sys:String x:Key="Field.OriginCorrectionEnd">Fit range end</sys:String>
+  <sys:String x:Key="Field.OriginCorrectionEnd.Desc">End of the load range used to fit the tangent line (% of peak load). Code default 80, site value 60.</sys:String>
+  <sys:String x:Key="Field.LockDisplacement">Lock peak displ.</sys:String>
+  <sys:String x:Key="Field.LockDisplacement.Desc">Midspan deflection taken at the peak load point (factory LockDisplacement); selected by default. Clear it to use the maximum deflection.</sys:String>
+  <sys:String x:Key="Field.LoadRate">Load rate</sys:String>
+  <sys:String x:Key="Field.LoadRate.Desc">Loading rate of the test. Motor cap 50 mm/min; value per spec and site setup (skeleton placeholder - to be aligned with the legacy tool and the standard).</sys:String>
+  <sys:String x:Key="Field.ContactLoad">Contact load</sys:String>
+  <sys:String x:Key="Field.ContactLoad.Desc">Load above this value means the head has touched the specimen (factory ZeroDisplacement). On contact the deflection is zeroed and the rate switches to the test rate.</sys:String>
+  <sys:String x:Key="Field.BreakDrop">Break drop</sys:String>
+  <sys:String x:Key="Field.BreakDrop.Desc">Load falling this far below the peak counts as a break (factory PressureDrop; site value 0.5 kN).</sys:String>
+  <sys:String x:Key="Field.BreakConfirmSamples">Break frames</sys:String>
+  <sys:String x:Key="Field.BreakConfirmSamples.Desc">Consecutive frames required to confirm a break (factory NumberOfFilters; site value 5).</sys:String>
+  <!-- Specimen info fields (specimen dimensions, stored per specimen) -->
+  <sys:String x:Key="Field.SpanLength">Span L</sys:String>
+  <sys:String x:Key="Field.SampleLength">Length</sys:String>
+  <sys:String x:Key="Field.SampleWidth">Width b</sys:String>
+  <sys:String x:Key="Field.SampleHeight">Height h</sys:String>
+  <!-- Test-sheet fields (sheet editor dialog); the trailing " *" marks a required field -->
+  <sys:String x:Key="Field.Sheet.SheetID">Sheet no.</sys:String>
+  <sys:String x:Key="Field.Sheet.SheetID.Desc">Auto-generated (read-only)</sys:String>
+  <sys:String x:Key="Field.Sheet.ClientUnits">Client</sys:String>
+  <sys:String x:Key="Field.Sheet.SupervisionUnits">Supervisor</sys:String>
+  <sys:String x:Key="Field.Sheet.ProjectName">Project *</sys:String>
+  <sys:String x:Key="Field.Sheet.TestSpecificationsId">Standard *</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleSizeId">Size (mm) *</sys:String>
+  <sys:String x:Key="Field.Sheet.CreatedOn">Test time</sys:String>
+  <sys:String x:Key="Field.Sheet.CreatedOn.Desc">Set to now on create</sys:String>
+  <sys:String x:Key="Field.Sheet.TestTemperature">Temp. *</sys:String>
+  <sys:String x:Key="Field.Sheet.LoadRate">Load rate *</sys:String>
+  <sys:String x:Key="Field.Sheet.AcceptanceDate">Received</sys:String>
+  <sys:String x:Key="Field.Sheet.Operator">Operator</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleDensity">Density</sys:String>
+  <sys:String x:Key="Field.Sheet.VoidRatio">Air voids</sys:String>
+  <sys:String x:Key="Msg.FieldRequired">{0} is required</sys:String>
+  <sys:String x:Key="Msg.FieldChoose">Choose {0}</sys:String>
+  <sys:String x:Key="Msg.FieldFormat">{0}: bad format</sys:String>
+  <sys:String x:Key="Msg.FieldOutOfRange">{0} must be between {1} and {2}</sys:String>
+  <!-- Network link detail (keys in STS.Communication.NetworkLinkMessageKeys) -->
+  <sys:String x:Key="Link.Detail.NotChecked">Not checked yet</sys:String>
+  <sys:String x:Key="Link.Detail.ReadFailed">Failed to read adapter state: {0}</sys:String>
+  <sys:String x:Key="Link.Detail.AdapterMissing">No adapter can reach {0} (unplugged? subnet changed?)</sys:String>
+  <sys:String x:Key="Link.Detail.Up">Link up ({0})</sys:String>
+  <sys:String x:Key="Link.Detail.MediaDisconnected">Port down: cable unplugged, peer off, or adapter disabled</sys:String>
+  <sys:String x:Key="Link.Detail.Dormant">Port dormant: no carrier</sys:String>
+  <sys:String x:Key="Link.Detail.NotPresent">Adapter not present</sys:String>
+  <sys:String x:Key="Link.Detail.Other">Port state {0}</sys:String>
+  <!-- Messages raised by the storage layer (keys in STS.Storage.StorageMessageKeys) -->
+  <sys:String x:Key="Msg.Storage.SheetNotFound">Sheet {0} not found</sys:String>
+  <sys:String x:Key="Msg.Storage.SheetNotFoundByNumber">No sheet found for number {0}</sys:String>
+  <sys:String x:Key="Msg.Storage.MethodNotRegistered">Method {0} is not registered</sys:String>
+  <sys:String x:Key="Msg.Storage.NumberExhausted">Sheet numbers exhausted ({0} {1}: over 999 in one day).</sys:String>
+  <!-- Device names and device-source messages -->
+  <sys:String x:Key="Device.Name.Simulator">Simulator</sys:String>
+  <sys:String x:Key="Device.Name.NoSource">(no data source selected)</sys:String>
+
+  <!-- Method-declared metric names and curve text: the method supplies the key, the wording lives here -->
+  <!--
+    指标卡上的名字：**一律用缩写**（用户 2026-10-15："卡片中的标题能否使用英文缩写，多个卡片被撑宽，
+    导致最右侧的 4 个按钮被遮挡"）。卡片按内容取宽、不折行，名字一长整排就顶掉右边的按钮。
+  -->
+  <!-- Column names of the history page's specimen list / field table -->
+  <!-- Curve chart annotations (shared by the live chart and the saved PNG, see STS.Control.CurveMarkKeys) -->
+  <sys:String x:Key="Curve.Mark.Peak">Peak {0:0.00} kN / {1:0.00} mm</sys:String>
+  <sys:String x:Key="Curve.Mark.Origin">Origin {0:0.00} mm</sys:String>
+  <sys:String x:Key="Curve.Mark.FitBound">{0:0.#}% {1:0.00} kN</sys:String>
+  <sys:String x:Key="Exec.PeakFormat">Peak {0}</sys:String>
+
+  <!-- Worktable jog (press and hold to run, release to stop) -->
+  <sys:String x:Key="Exec.JogUp">Worktable moving up</sys:String>
+  <sys:String x:Key="Exec.JogDown">Worktable moving down</sys:String>
+  <sys:String x:Key="Exec.JogStopped">Worktable stopped</sys:String>
+  <sys:String x:Key="Exec.JogFailed">Jog failed</sys:String>
+  <sys:String x:Key="Exec.JogNeedConnect">Not connected - click Connect first, then use the worktable buttons</sys:String>
+  <sys:String x:Key="Exec.ContactDetected">Contact detected: displacement zeroed (software offset), switching to test speed</sys:String>
+  <sys:String x:Key="Exec.Returning">Break confirmed: continue-loading finished, motor reversing to return the platform (reset travel is not recorded)</sys:String>
+  <sys:String x:Key="Exec.PhaseRangeStopped">Range stop; settled by curve peak</sys:String>
+  <sys:String x:Key="Exec.DisplacementClamped">Displacement limit clamped to {0:0.###} mm of the device range — exceeding the sensor range damages it</sys:String>
+  <sys:String x:Key="Exec.LoadClamped">Load limit set to {0:0.###} kN from the device pressure range</sys:String>
+  <sys:String x:Key="Exec.MotorStalled">Device motor stopped (manual stop / limit / servo protection); run aborted</sys:String>
+  <sys:String x:Key="Exec.CommunicationLost">No data for over 2 seconds; run aborted</sys:String>
+
+  <sys:String x:Key="Chart.Axis.Deformation">Deformation (mm)</sys:String>
+
+  <sys:String x:Key="Field.Sheet.TestSpecificationsID">Specification *</sys:String>
+  <sys:String x:Key="Field.Sheet.TestStandardsID">Test method *</sys:String>
+  <sys:String x:Key="Field.Sheet.SampleSizeID">Size (mm) *</sys:String>
+
+
+  <sys:String x:Key="Field.SampleDesc">Sample description</sys:String>
+  <!-- Method name (skeleton: shear strength, static triaxial) -->
+  <sys:String x:Key="Method.ShearStrength.Name">Shear strength (static triaxial)</sys:String>
+
+</ResourceDictionary>

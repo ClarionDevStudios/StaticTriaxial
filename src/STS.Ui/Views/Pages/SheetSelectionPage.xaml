@@ -1,0 +1,220 @@
+<Page
+  x:Class="STS.Ui.Views.Pages.SheetSelectionPage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:local="clr-namespace:STS.Ui.Views.Pages"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+  Title="Sheet"
+  d:DataContext="{d:DesignInstance local:SheetSelectionPage, IsDesignTimeCreatable=False}"
+  Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+  mc:Ignorable="d"
+>
+  <!--
+    字段行的显示模板：左边标签、右边控件（文本框 / 下拉 / 日期），两行一对横向排布。
+    控件的选择与内容**完全由方法声明的字段决定**（界面不认识任何具体字段名）。
+  -->
+  <Page.Resources>
+    <DataTemplate x:Key="SheetFieldTemplate">
+      <Grid Margin="0,6,18,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="130" />
+          <ColumnDefinition Width="170" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <TextBlock
+          VerticalAlignment="Center"
+          Style="{StaticResource FieldLabelStyle}"
+          Text="{Binding Label}"
+          TextWrapping="Wrap"
+        />
+
+        <TextBox
+          Grid.Column="1"
+          IsReadOnly="{Binding IsReadOnly}"
+          Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
+          Visibility="{Binding IsPlain, Converter={StaticResource BoolToVisibility}}"
+        />
+
+        <ComboBox
+          Grid.Column="1"
+          DisplayMemberPath="Label"
+          IsEnabled="{Binding IsEnabledForEdit}"
+          ItemsSource="{Binding Options}"
+          SelectedValue="{Binding Value, Mode=TwoWay}"
+          SelectedValuePath="Value"
+          Visibility="{Binding IsChoice, Converter={StaticResource BoolToVisibility}}"
+        />
+
+        <DatePicker
+          Grid.Column="1"
+          IsEnabled="{Binding IsEnabledForEdit}"
+          SelectedDate="{Binding Value, Mode=TwoWay, Converter={StaticResource DateText}}"
+          Visibility="{Binding IsDate, Converter={StaticResource BoolToVisibility}}"
+        />
+
+        <TextBlock
+          Grid.Column="2"
+          Margin="8,0,0,0"
+          VerticalAlignment="Center"
+          Style="{StaticResource FieldLabelStyle}"
+          Text="{Binding Unit}"
+        />
+      </Grid>
+    </DataTemplate>
+  </Page.Resources>
+
+  <Grid Margin="24,16,24,16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <!-- ① 试验方式（三选一，照现役）+ 单号（只读、自动生成） -->
+    <StackPanel Grid.Row="0">
+      <StackPanel Orientation="Horizontal">
+        <TextBlock
+          VerticalAlignment="Center"
+          Style="{StaticResource FieldLabelStyle}"
+          Text="{DynamicResource Sheet.Mode}"
+        />
+        <RadioButton
+          Margin="12,0,0,0"
+          GroupName="SheetMode"
+          IsChecked="{Binding ViewModel.IsNewMode, Mode=TwoWay}"
+          Content="{DynamicResource Sheet.ModeNew}"
+        />
+        <RadioButton
+          Margin="18,0,0,0"
+          GroupName="SheetMode"
+          IsChecked="{Binding ViewModel.IsLastMode, Mode=TwoWay}"
+          Content="{DynamicResource Sheet.ModeLast}"
+          IsEnabled="{Binding ViewModel.CanUseLastMode}"
+        />
+        <RadioButton
+          Margin="18,0,0,0"
+          GroupName="SheetMode"
+          IsChecked="{Binding ViewModel.IsExistingMode, Mode=TwoWay}"
+          Content="{DynamicResource Sheet.ModeExisting}"
+        />
+      </StackPanel>
+
+      <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
+        <TextBlock
+          VerticalAlignment="Center"
+          Style="{StaticResource FieldLabelStyle}"
+          Text="{Binding ViewModel.SheetIdHint, Mode=OneWay}"
+          TextWrapping="Wrap"
+        />
+      </StackPanel>
+    </StackPanel>
+
+    <!-- ② "其他试验项目"：先挑单（放在字段区**上方**，切过来就能看见，不必滚动） -->
+    <ui:Card
+      Grid.Row="1"
+      Margin="0,12,0,0"
+      Padding="16"
+      VerticalContentAlignment="Top"
+      Visibility="{Binding ViewModel.IsExistingMode, Converter={StaticResource BoolToVisibility}}"
+    >
+      <DockPanel>
+        <TextBlock
+          DockPanel.Dock="Top"
+          Style="{StaticResource CardTitleStyle}"
+          Text="{DynamicResource Sheet.Existing}"
+        />
+        <DataGrid
+          x:Name="SheetGrid"
+          Height="150"
+          Margin="0,10,0,0"
+          AutoGenerateColumns="False"
+          IsReadOnly="True"
+          ItemsSource="{Binding ViewModel.Sheets}"
+          SelectedItem="{Binding ViewModel.SelectedSheet, Mode=TwoWay}"
+          SelectionMode="Single"
+        >
+        </DataGrid>
+      </DockPanel>
+    </ui:Card>
+
+    <!-- ③ 字段区：一张卡片、两列按行配对（照现役版面） -->
+    <ScrollViewer
+      Grid.Row="2"
+      Margin="0,12,0,0"
+      HorizontalScrollBarVisibility="Disabled"
+      VerticalScrollBarVisibility="Auto"
+    >
+      <StackPanel>
+        <ui:Card Padding="16" VerticalContentAlignment="Top">
+          <StackPanel>
+            <TextBlock Style="{StaticResource CardTitleStyle}" Text="{DynamicResource Sheet.SectionInfo}" />
+            <TextBlock
+              Margin="0,6,0,0"
+              Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+              Text="{Binding ViewModel.OptionalHint, Mode=OneWay}"
+              TextWrapping="Wrap"
+            />
+
+            <ItemsControl
+              Margin="0,6,0,0"
+              HorizontalAlignment="Left"
+              ItemTemplate="{StaticResource SheetFieldTemplate}"
+              ItemsSource="{Binding ViewModel.Rows}"
+            >
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <UniformGrid Columns="2" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+            </ItemsControl>
+          </StackPanel>
+        </ui:Card>
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- ④ 模板按钮（读取模板只在"新建试验项目"可用）+ 状态 -->
+    <StackPanel Grid.Row="3" Margin="0,12,0,0" Orientation="Horizontal">
+      <ui:Button
+        Appearance="Secondary"
+        Command="{Binding ViewModel.ReadTemplateCommand}"
+        Content="{DynamicResource Sheet.ReadTemplate}"
+        Icon="{ui:SymbolIcon DocumentArrowDown24}"
+      />
+      <ui:Button
+        Margin="8,0,0,0"
+        Appearance="Secondary"
+        Command="{Binding ViewModel.SaveTemplateCommand}"
+        Content="{DynamicResource Sheet.SaveTemplate}"
+        Icon="{ui:SymbolIcon Save24}"
+      />
+      <TextBlock
+        Margin="14,0,0,0"
+        VerticalAlignment="Center"
+        Style="{StaticResource StatusTextStyle}"
+        Text="{Binding ViewModel.Status, Mode=OneWay}"
+      />
+    </StackPanel>
+
+    <!-- ⑤ 确定 / 取消 -->
+    <StackPanel Grid.Row="4" Margin="0,12,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
+      <ui:Button
+        Width="110"
+        Appearance="Primary"
+        Command="{Binding ViewModel.ConfirmCommand}"
+        Content="{DynamicResource Sheet.Confirm}"
+      />
+      <ui:Button
+        Width="110"
+        Margin="8,0,0,0"
+        Appearance="Secondary"
+        Command="{Binding ViewModel.CancelCommand}"
+        Content="{DynamicResource Sheet.Cancel}"
+      />
+    </StackPanel>
+  </Grid>
+</Page>
