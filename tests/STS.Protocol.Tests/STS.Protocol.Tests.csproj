@@ -13,4 +13,11 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\STS.Protocol\STS.Protocol.csproj" />
   </ItemGroup>
+
+  <!-- 模拟下位机相关用例随模拟器一起只在 Debug 编译 -->
+  <ItemGroup Condition="'$(Configuration)' != 'Debug'">
+    <Compile Remove="GeoSimulatorTests.cs" />
+    <Compile Remove="GeoLoopbackChannelTests.cs" />
+    <Compile Remove="GeoDeviceControllerTests.cs" />
+  </ItemGroup>
 </Project>

@@ -105,4 +105,11 @@ public interface ITestDeviceController
     /// 口径依据现役 `AnalyzeDataController.ZeroAxialDisplacement`（接触成立时调位移，不调荷载）。
     /// </summary>
     Task ZeroDisplacementAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// **荷载调零**（上位机软件零点，与 <see cref="ZeroDisplacementAsync"/> 同款；规范 T 1236 4.3：
+    /// 施加 3~5kPa 接触**之前**把荷载传感器读数调零）：把**当前荷载读数**记为偏移量，
+    /// 之后荷载净值为 0 起算，**不动设备零点**（GR-1 没有荷载清零指令）。
+    /// </summary>
+    Task ZeroLoadAsync(CancellationToken cancellationToken = default);
 }

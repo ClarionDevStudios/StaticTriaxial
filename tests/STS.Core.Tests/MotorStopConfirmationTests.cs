@@ -120,6 +120,9 @@ public sealed class MotorStopConfirmationTests
         public Task ZeroDisplacementAsync(CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
+        public Task ZeroLoadAsync(CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         /// <summary>引用一下事件，免得被"从未使用"的警告烦到（事件本身用不上）。</summary>
         public void Touch() => SampleReceived?.Invoke(this, new TestSample());
     }

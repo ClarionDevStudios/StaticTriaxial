@@ -24,6 +24,8 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
     private double _travelMM;
     private double _displacementOffsetMM;
     private double _lastRawDisplacementMM;
+    private double _loadOffsetKN;
+    private double _lastRawLoadKN;
     private double? _returnSpeedMillimetersPerMinute;
 
     public SimulatedDeviceController(
@@ -169,6 +171,16 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// 荷载调零（上位机软件调零，规范 T 1236 4.3 的步骤）：把当前荷载记为偏移量，
+    /// 之后净值为 0 起算；与位移调零同款、不动设备零点。
+    /// </summary>
+    public Task ZeroLoadAsync(CancellationToken cancellationToken = default)
+    {
+        _loadOffsetKN = _lastRawLoadKN;
+        return Task.CompletedTask;
+    }
+
     public async ValueTask DisposeAsync()
     {
         await StopAsync().ConfigureAwait(false);
@@ -189,6 +201,7 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
                         : LoadSample(_sampleIntervalSeconds * _timeScale, seconds);
 
                 _lastRawDisplacementMM = sample.Displacement;
+                _lastRawLoadKN = sample.Load;
 
                 // **仿真时钟也要走**：位移按"速率 × 仿真时间"前进，样本的时间戳就必须是同一个时钟，
                 // 否则上位机（阶段机）用墙钟计时、曲线用仿真时间走位移，两边的"10 秒"不是一个长度 ——
@@ -200,6 +213,8 @@ public sealed class SimulatedDeviceController : ITestDeviceController, IAsyncDis
                     this,
                     sample with
                     {
+                        // 荷载 / 位移调零都是上位机侧偏移（净值 = 原始 − 偏移），不动设备零点
+                        Load = sample.Load - _loadOffsetKN,
                         // 与真机控制器同口径：接触调零是上位机侧偏移（净值 = 原始 − 偏移），不动设备零点
                         Displacement = sample.Displacement - _displacementOffsetMM,
                         RawDisplacement = sample.Displacement,

@@ -15,7 +15,11 @@ using STS.Core.Settings;
 /// 模拟器只在 Debug 里存在：Release 构建下若设置里选了"模拟数据"，会**回落到真机**
 /// （<see cref="IsSimulating"/> 为 false），不会静默假装在出数据。
 /// </summary>
-public sealed class SwitchableDeviceController : ITestDeviceController, IDeviceSourceSwitch, IAsyncDisposable
+public sealed class SwitchableDeviceController
+    : ITestDeviceController,
+        IConfiningPressureControl,
+        IDeviceSourceSwitch,
+        IAsyncDisposable
 {
     private readonly Func<CancellationToken, Task<string>> _sourceKey;
     private readonly Func<ITestDeviceController> _deviceFactory;
@@ -182,6 +186,50 @@ public sealed class SwitchableDeviceController : ITestDeviceController, IDeviceS
         await (await CurrentAsync(cancellationToken).ConfigureAwait(false))
             .ZeroDisplacementAsync(cancellationToken)
             .ConfigureAwait(false);
+
+    /// <inheritdoc />
+    public async Task ZeroLoadAsync(CancellationToken cancellationToken = default) =>
+        await (await CurrentAsync(cancellationToken).ConfigureAwait(false))
+            .ZeroLoadAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// 转发给当前来源；来源没实现 <see cref="IConfiningPressureControl"/>（例如不带围压系统的机型）
+    /// 就**明确报错**——静默假装发了指令会让操作员以为围压已经加上（用户 2026-10-16 口径：
+    /// 施加 = 单发一条 C2，稳压由下位机完成）。
+    /// </remarks>
+    public async Task ApplyConfiningPressureAsync(
+        double targetKPa,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var active = await CurrentAsync(cancellationToken).ConfigureAwait(false);
+
+        if (active is IConfiningPressureControl confining)
+        {
+            await confining
+                .ApplyConfiningPressureAsync(targetKPa, cancellationToken)
+                .ConfigureAwait(false);
+            return;
+        }
+
+        throw new InvalidOperationException($"当前数据来源（{active.DeviceName}）不支持围压控制");
+    }
+
+    /// <inheritdoc />
+    public async Task ReleaseConfiningPressureAsync(CancellationToken cancellationToken = default)
+    {
+        var active = await CurrentAsync(cancellationToken).ConfigureAwait(false);
+
+        if (active is IConfiningPressureControl confining)
+        {
+            await confining.ReleaseConfiningPressureAsync(cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        throw new InvalidOperationException($"当前数据来源（{active.DeviceName}）不支持围压控制");
+    }
 
     /// <inheritdoc />
     public async Task ApplyAsync(CancellationToken cancellationToken = default)

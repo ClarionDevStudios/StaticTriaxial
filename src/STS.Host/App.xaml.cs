@@ -79,12 +79,15 @@ public partial class App
         );
 
     /// <summary>
-    /// 模拟器工厂：**只在 Debug 构建里存在**（Release 返回 null → 选了"模拟数据"会回落到真机，
-    /// 不会静默假装在出数据）。
+    /// 模拟数据来源（**只在 Debug 构建里存在**；Release 返回 null → 选了"模拟数据"会回落到真机）：
+    /// **协议级模拟下位机** —— 回环通道 + 真实 `GeoDeviceController`，跑的就是 V1.7 编解码与 A1 流；
+    /// 时间倍率 20× 把 306mm × 1.5%/min 的加载压到演示长度（45.9mm / ~30s）。
     /// </summary>
     private static Func<ITestDeviceController>? CreateSimulator =>
 #if SIMULATOR
-        () => new SimulatedDeviceController(sampleIntervalSeconds: 0.02, timeScale: 5.0);
+        () => new GeoDeviceController(
+            new GeoLoopbackChannel(new GeoSimulator(), timeScale: 20.0)
+        );
 #else
         null;
 #endif

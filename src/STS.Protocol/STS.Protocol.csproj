@@ -6,4 +6,10 @@
   <ItemGroup>
     <ProjectReference Include="..\STS.Core\STS.Core.csproj" />
   </ItemGroup>
+
+  <!-- 模拟下位机只在 Debug 编译（生产构建不含模拟器，与通道层同一口径） -->
+  <ItemGroup Condition="'$(Configuration)' != 'Debug'">
+    <Compile Remove="Geo\GeoSimulator.cs" />
+    <Compile Remove="Geo\GeoLoopbackChannel.cs" />
+  </ItemGroup>
 </Project>

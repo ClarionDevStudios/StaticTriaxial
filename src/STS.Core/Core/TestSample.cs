@@ -17,4 +17,13 @@ public readonly record struct TestSample(double Load, double Displacement, doubl
     /// 未设置时与 <see cref="Displacement"/> 相同。
     /// </summary>
     public double RawDisplacement { get; init; } = Displacement;
+
+    /// <summary>
+    /// 围压 σ3（kPa；取自 A1 的 PRESS3，原始值单位 0.001MPa 即 1kPa）。
+    /// 设备不报 / 未安装围压通道时为 null（界面上显示"—"）。T 1236 的分段流程用它做"稳压"指示。
+    /// </summary>
+    public double? ConfiningPressureKPa { get; init; }
+
+    /// <summary>围压是否已稳压（A1 的 SATAE Bit10；下位机自己稳压，上位机只显示）。未知为 null。</summary>
+    public bool? ConfiningStable { get; init; }
 }

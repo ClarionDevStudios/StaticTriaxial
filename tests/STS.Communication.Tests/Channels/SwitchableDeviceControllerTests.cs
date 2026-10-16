@@ -138,7 +138,60 @@ public sealed class SwitchableDeviceControllerTests
         Assert.Equal([1.0, 3.0], seen);
     }
 
-    private sealed class FakeDevice(string name) : ITestDeviceController
+    /// <summary>
+    /// 围压调用**转发给当前来源、跟着来源切换走**（用户 2026-10-16：施加 = 单发一条 C2）。
+    /// </summary>
+    [Fact]
+    public async Task 围压调用应转发给当前来源并跟随切换()
+    {
+        var source = AppDataSources.Device;
+        var device = new FakeConfiningDevice("真机");
+        var simulator = new FakeConfiningDevice("模拟器");
+
+        await using var switchable = new SwitchableDeviceController(
+            _ => Task.FromResult(source),
+            () => device,
+            () => simulator
+        );
+
+        await switchable.ConnectAsync();
+        await switchable.ApplyConfiningPressureAsync(60);
+        await switchable.ReleaseConfiningPressureAsync();
+
+        Assert.Equal([60.0], device.AppliedKPa);
+        Assert.Equal(1, device.ReleaseCount);
+
+        // 切到"模拟数据"：围压调用跟到新来源，旧来源不再被打扰
+        source = AppDataSources.Simulator;
+        await switchable.ApplyConfiningPressureAsync(30);
+
+        Assert.Equal([30.0], simulator.AppliedKPa);
+        Assert.Equal([60.0], device.AppliedKPa);
+    }
+
+    /// <summary>来源没有围压能力时**明确报错**，不能静默假装发过指令。</summary>
+    [Fact]
+    public async Task 来源不支持围压时应明确报错()
+    {
+        await using var switchable = new SwitchableDeviceController(
+            _ => Task.FromResult(AppDataSources.Device),
+            () => new FakeDevice("不带围压的机型")
+        );
+
+        await switchable.ConnectAsync();
+
+        var apply = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => switchable.ApplyConfiningPressureAsync(60)
+        );
+        Assert.Contains("不支持围压", apply.Message);
+
+        var release = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => switchable.ReleaseConfiningPressureAsync()
+        );
+        Assert.Contains("不支持围压", release.Message);
+    }
+
+    private class FakeDevice(string name) : ITestDeviceController
     {
         public string DeviceName { get; } = name;
 
@@ -201,5 +254,33 @@ public sealed class SwitchableDeviceControllerTests
 
         public Task ZeroDisplacementAsync(CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
+
+        public Task ZeroLoadAsync(CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+    }
+
+    /// <summary>带围压能力的假设备：记录调用了什么，供转发断言。</summary>
+    private sealed class FakeConfiningDevice(string name)
+        : FakeDevice(name),
+            IConfiningPressureControl
+    {
+        public List<double> AppliedKPa { get; } = [];
+
+        public int ReleaseCount { get; private set; }
+
+        public Task ApplyConfiningPressureAsync(
+            double targetKPa,
+            CancellationToken cancellationToken = default
+        )
+        {
+            AppliedKPa.Add(targetKPa);
+            return Task.CompletedTask;
+        }
+
+        public Task ReleaseConfiningPressureAsync(CancellationToken cancellationToken = default)
+        {
+            ReleaseCount++;
+            return Task.CompletedTask;
+        }
     }
 }
