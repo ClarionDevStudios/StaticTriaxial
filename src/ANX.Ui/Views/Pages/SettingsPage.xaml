@@ -6,7 +6,7 @@
   xmlns:local="clr-namespace:ANX.Ui.Views.Pages"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-  Title="Settings"
+  Title="{DynamicResource Nav.Settings}"
   d:DataContext="{d:DesignInstance local:SettingsPage, IsDesignTimeCreatable=False}"
   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
   mc:Ignorable="d"

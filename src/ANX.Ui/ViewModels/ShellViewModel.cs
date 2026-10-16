@@ -46,12 +46,6 @@ public partial class ShellViewModel : ViewModelBase, INavigationPaneService
             },
             new NavigationViewItem
             {
-                Content = L("Nav.History"),
-                Icon = new SymbolIcon { Symbol = SymbolRegular.History24 },
-                TargetPageType = typeof(Views.Pages.HistoryPage),
-            },
-            new NavigationViewItem
-            {
                 Content = L("Nav.Home"),
                 Icon = new SymbolIcon { Symbol = SymbolRegular.Home24 },
                 TargetPageType = typeof(Views.Pages.HomePage),
