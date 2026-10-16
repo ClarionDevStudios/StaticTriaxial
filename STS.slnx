@@ -19,6 +19,7 @@
     <Project Path="tests/STS.Communication.Tests/STS.Communication.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
+    <Project Path="tools/STS.Tools.ReportSample/STS.Tools.ReportSample.csproj" />
     <Project Path="tools/STS.Tools.SchemaDump/STS.Tools.SchemaDump.csproj" />
   </Folder>
   <Folder Name="/methods/">

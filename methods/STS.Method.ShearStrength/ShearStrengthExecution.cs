@@ -11,8 +11,8 @@ using STS.Storage;
 ///
 /// 实装进度（2026-10-16）：①**试验单 / 试样信息真实读写**（建单、试件号、增删改查、缺尺寸硬校验、
 /// 超窗提示）；②**判定 / 落库**（单件判定 → 分级均值 → 收尾拟包络线 c、φ、r → 完成时间；
-/// 有效性 / 重算）；③试验单编辑（试验单字段 / 模板）为下一批 —— 还没接的写操作先抛明确说明，
-/// 不会静默假动作。
+/// 有效性 / 重算）；③**试验单编辑**（报告 6.1~6.6 + 人员的字段声明、必填 / 日期校验、模板存读）；
+/// ④围压目标供执行页取（`IConfiningPressureSource`）。
 /// </summary>
 public sealed class ShearStrengthExecution(TestSheetService sheets)
     : ITestExecution,
@@ -480,7 +480,8 @@ public sealed class ShearStrengthExecution(TestSheetService sheets)
                     ["FrictionAngleDeg"] = double.IsNaN(fit.FrictionAngleDegrees)
                         ? null
                         : fit.FrictionAngleDegrees,
-                    ["EnvelopeCorrelation"] = fit.Correlation,
+                    // 相关系数也算不出来时（例如各级"σ1max−σ3"完全相同 → 分母为 0）存 NULL，别把 NaN 写进库
+                    ["EnvelopeCorrelation"] = double.IsNaN(fit.Correlation) ? null : fit.Correlation,
                     ["EnvelopeReliable"] = fit.IsReliable ? 1 : 0,
                     ["LevelResultsJson"] = EncodeLevelResults(levels),
                 },
@@ -631,53 +632,244 @@ public sealed class ShearStrengthExecution(TestSheetService sheets)
         return new RecomputeReport(recomputed, skipped);
     }
 
-    // ── ITestSheetEditor（骨架：声明为空、写操作抛说明）────────────────────
+    // ── ITestSheetEditor（试验单编辑：报告 6.1~6.6 + 人员 + 模板）────────────
 
-    public IReadOnlyList<ParameterDefinition> SheetInfoFields => [];
+    /// <summary>单号前缀（沿用现役现场口径）。</summary>
+    private const string NumberPrefix = "WT";
 
+    /// <summary>
+    /// 模板表里声明的列（与 `ShearStrengthPersistenceModule.TemplateTable` 一致）：
+    /// 只存"下次新建时的缺省值"（仪器 + 人员 + 缩分 / 成型）；单号与试验日期自动生成、不进模板。
+    /// </summary>
+    private static readonly string[] TemplateColumns =
+    [
+        ShearStrengthSheetFields.MachineNameAndIDKey,
+        ShearStrengthSheetFields.TestPersonKey,
+        ShearStrengthSheetFields.CalculatePersonKey,
+        ShearStrengthSheetFields.VerificationPersonKey,
+        ShearStrengthSheetFields.SampleReductionMethodKey,
+        ShearStrengthSheetFields.MoldingMethodKey,
+        ShearStrengthSheetFields.MoldingParametersKey,
+    ];
+
+    /// <inheritdoc />
+    public IReadOnlyList<ParameterDefinition> SheetInfoFields => ShearStrengthSheetFields.Definitions;
+
+    /// <inheritdoc />
     public Task<string> PeekNextSheetIdAsync(CancellationToken cancellationToken = default) =>
-        throw Skeleton();
+        Task.FromResult(sheets.PeekNextSheetId(MethodCode, NumberPrefix));
 
+    /// <inheritdoc />
     public Task<IReadOnlyDictionary<string, string>> ReadSheetInfoAsync(
         string sheetId,
         CancellationToken cancellationToken = default
-    ) => throw Skeleton();
+    )
+    {
+        var keys = ShearStrengthSheetFields.Definitions.Select(definition => definition.Key).ToArray();
+        return Task.FromResult(ToFieldTexts(sheets.ReadMainRow(sheetId, keys)));
+    }
 
-    public Task<string> CreateSheetAsync(
+    /// <inheritdoc />
+    public async Task<string> CreateSheetAsync(
         IReadOnlyDictionary<string, string> fields,
         CancellationToken cancellationToken = default
-    ) => throw Skeleton();
+    )
+    {
+        ValidateSheetFields(fields);
 
-    public Task UpdateSheetAsync(
+        // 单号由流水生成器发（界面上显示的只是"预览号"）；试验日期也由存储层现取 —— 都从字段里剔掉
+        var payload = fields
+            .Where(pair =>
+                !string.Equals(pair.Key, ShearStrengthSheetFields.SheetIdKey, StringComparison.Ordinal)
+                && !string.Equals(pair.Key, ShearStrengthSheetFields.CreatedOnKey, StringComparison.Ordinal)
+            )
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+
+        return await sheets
+            .CreateAsync(MethodCode, NumberPrefix, BuildMainColumns(payload), cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task UpdateSheetAsync(
         string sheetId,
         IReadOnlyDictionary<string, string> fields,
         CancellationToken cancellationToken = default
-    ) => throw Skeleton();
+    )
+    {
+        ValidateSheetFields(fields);
 
+        // includeBlank: true —— 改单时"清空某一项"要真的清掉（写 NULL），而不是跳过
+        var columns = BuildMainColumns(fields, includeBlank: true);
+        columns.Remove(ShearStrengthSheetFields.SheetIdKey);
+        columns.Remove(ShearStrengthSheetFields.CreatedOnKey);
+
+        await sheets.UpdateMainFieldsAsync(sheetId, columns, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// T 1236 单上没有"要写回参数表"的试验条件项（加载速率由方法按规范常量 / 逐件尺寸装配），
+    /// 所以这里是空操作 —— 保留接口语义，将来若有单上条件要回写再补。
+    /// </remarks>
     public Task PushTestConditionsAsync(
         string sheetId,
         CancellationToken cancellationToken = default
-    ) => throw Skeleton();
+    ) => Task.CompletedTask;
 
+    /// <inheritdoc />
     public IReadOnlyDictionary<string, string> ResolveDependentDefaults(
         string changedKey,
         string value
-    ) => new Dictionary<string, string>(StringComparer.Ordinal);
+    ) =>
+        // T 1236 没有联动预填（现役那套"按试验目的带温度 / 速率"不适用）
+        new Dictionary<string, string>(StringComparer.Ordinal);
 
+    /// <inheritdoc />
     public Task<bool> HasTemplateAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult(false);
+        Task.FromResult(
+            sheets.ReadTemplateRow(MethodCode, [ShearStrengthSheetFields.MachineNameAndIDKey])
+                is not null
+        );
 
+    /// <inheritdoc />
     public Task<IReadOnlyDictionary<string, string>> ReadTemplateAsync(
         CancellationToken cancellationToken = default
-    ) => throw Skeleton();
+    )
+    {
+        var row = sheets.ReadTemplateRow(MethodCode, TemplateColumns);
 
+        if (row is null)
+        {
+            return Task.FromResult(DefaultFieldTexts());
+        }
+
+        // 模板只覆盖它声明的 7 列，其余字段回落到声明默认值
+        var values = ShearStrengthSheetFields.Definitions.ToDictionary(
+            definition => definition.Key,
+            definition =>
+                row.TryGetValue(definition.Key, out var value) && value is not null
+                    ? Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty
+                    : definition.DefaultValue,
+            StringComparer.Ordinal
+        );
+
+        return Task.FromResult<IReadOnlyDictionary<string, string>>(values);
+    }
+
+    /// <inheritdoc />
     public Task SaveTemplateAsync(
         IReadOnlyDictionary<string, string> fields,
         CancellationToken cancellationToken = default
-    ) => throw Skeleton();
+    )
+    {
+        // 模板表只有 7 列：模板表没声明的字段直接丢掉（单号 / 试验日期本来也不进模板）
+        var payload = fields
+            .Where(pair => TemplateColumns.Contains(pair.Key, StringComparer.Ordinal))
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
 
-    private static NotSupportedException Skeleton() =>
-        new("静三轴方法该功能在下一批实现（判定 / 落库与试验单编辑；详见 docs / 项目卡片）。");
+        return sheets.SaveTemplateAsync(
+            MethodCode,
+            BuildMainColumns(payload, includeBlank: true),
+            cancellationToken
+        );
+    }
+
+    /// <summary>
+    /// 试验单的必填 / 格式校验（方法层的事 —— 界面不认识"哪个字段必须填"）。
+    /// 必填 = 项目名称；日期项要求 `yyyy-MM-dd` 能解析；其余文本自由。
+    /// </summary>
+    private static void ValidateSheetFields(IReadOnlyDictionary<string, string> fields)
+    {
+        foreach (var definition in ShearStrengthSheetFields.Definitions)
+        {
+            var text = fields.TryGetValue(definition.Key, out var value)
+                ? value?.Trim() ?? string.Empty
+                : string.Empty;
+
+            if (
+                text.Length == 0
+                && ShearStrengthSheetFields.RequiredKeys.Contains(definition.Key, StringComparer.Ordinal)
+            )
+            {
+                throw LocalizedException.Single(
+                    ShearStrengthMessageKeys.FieldRequired,
+                    $"{definition.DisplayName.TrimEnd(' ', '*')}不能为空",
+                    ShearStrengthMessageKeys.FieldName(definition.DisplayNameKey)
+                );
+            }
+
+            if (
+                text.Length > 0
+                && definition.Kind == ParameterKind.Date
+                && !DateOnly.TryParse(text, CultureInfo.InvariantCulture, out _)
+            )
+            {
+                throw LocalizedException.Single(
+                    ShearStrengthMessageKeys.FieldFormat,
+                    $"{definition.DisplayName}格式不对（应为 yyyy-MM-dd）",
+                    ShearStrengthMessageKeys.FieldName(definition.DisplayNameKey)
+                );
+            }
+        }
+    }
+
+    /// <summary>
+    /// 界面字段 → 主表列：文本列存字符串；空值默认跳过（留给数据库 NULL），
+    /// <paramref name="includeBlank"/> = true 时把空值也写进列（值 = null），用于"改单时把原来填过的值清掉"。
+    /// </summary>
+    private static Dictionary<string, object?> BuildMainColumns(
+        IReadOnlyDictionary<string, string> fields,
+        bool includeBlank = false
+    )
+    {
+        var columns = new Dictionary<string, object?>(StringComparer.Ordinal);
+
+        foreach (var definition in ShearStrengthSheetFields.Definitions)
+        {
+            if (!fields.TryGetValue(definition.Key, out var text))
+            {
+                continue;
+            }
+
+            text = text?.Trim() ?? string.Empty;
+
+            if (text.Length == 0)
+            {
+                if (includeBlank)
+                {
+                    columns[definition.Key] = null;
+                }
+
+                continue;
+            }
+
+            columns[definition.Key] = text;
+        }
+
+        return columns;
+    }
+
+    /// <summary>读回的主表行 → 界面字段文本（空值给空串，由界面决定显示）。</summary>
+    private static IReadOnlyDictionary<string, string> ToFieldTexts(
+        IReadOnlyDictionary<string, object?> row
+    ) =>
+        ShearStrengthSheetFields.Definitions.ToDictionary(
+            definition => definition.Key,
+            definition =>
+                row.TryGetValue(definition.Key, out var value) && value is not null
+                    ? Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty
+                    : string.Empty,
+            StringComparer.Ordinal
+        );
+
+    /// <summary>各字段的默认值（没有模板时用）。</summary>
+    private static IReadOnlyDictionary<string, string> DefaultFieldTexts() =>
+        ShearStrengthSheetFields.Definitions.ToDictionary(
+            definition => definition.Key,
+            definition => definition.DefaultValue,
+            StringComparer.Ordinal
+        );
 
     /// <summary>
     /// 读该件**真实存下来**的试验条件（围压 σ3 / h0 / d0）——判定与加载速率都要它们；

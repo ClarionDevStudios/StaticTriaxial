@@ -425,12 +425,46 @@
   <sys:String x:Key="Msg.ShearStrength.NeedMoreLevels">完成试验单至少需要 {1} 级围压（当前 {0} 级）——先按规范 4.8 做完各级试件再收尾。</sys:String>
   <sys:String x:Key="Msg.ShearStrength.LevelIncomplete">围压 {0:0.###} kPa 只有 {1} 件完成（每级需要 {2} 件）——先补齐这一级的试件再收尾。</sys:String>
   <sys:String x:Key="Msg.ShearStrength.HeightOutOfWindow">试件高度 {0} mm 超出合格窗（{1} ± {2} mm，规范 4.1.3）——按真实数据继续试验，请在报告中说明。</sys:String>
+  <!-- 抗剪强度（静三轴法）试验单字段（报告 6.1~6.6 + 人员） -->
+  <sys:String x:Key="Field.ProjectName">项目名称 *</sys:String>
+  <sys:String x:Key="Field.ProjectName.Desc">报告 6.1：试验项目名称（必填）</sys:String>
+  <sys:String x:Key="Field.SheetID">试验单号</sys:String>
+  <sys:String x:Key="Field.SheetID.Desc">自动生成（只读）</sys:String>
+  <sys:String x:Key="Field.SampleNumber">样品编号</sys:String>
+  <sys:String x:Key="Field.SampleNumber.Desc">报告 6.2</sys:String>
+  <sys:String x:Key="Field.SampleName">样品名称</sys:String>
+  <sys:String x:Key="Field.SampleName.Desc">报告 6.2（如：级配碎石）</sys:String>
+  <sys:String x:Key="Field.SampleOrigin">样品产地</sys:String>
+  <sys:String x:Key="Field.SampleOrigin.Desc">报告 6.2</sys:String>
+  <sys:String x:Key="Field.SampleSpecification">规格</sys:String>
+  <sys:String x:Key="Field.SampleSpecification.Desc">报告 6.2（如：0~31.5mm）</sys:String>
+  <sys:String x:Key="Field.SampleReceiptDate">接样日期</sys:String>
+  <sys:String x:Key="Field.SampleReceiptDate.Desc">报告 6.3（yyyy-MM-dd）</sys:String>
+  <sys:String x:Key="Field.SampleDescription">样品描述</sys:String>
+  <sys:String x:Key="Field.SampleDescription.Desc">报告 6.3（自由文本）</sys:String>
+  <sys:String x:Key="Field.CreatedOn">试验日期</sys:String>
+  <sys:String x:Key="Field.CreatedOn.Desc">新建时填当前时间（只读）</sys:String>
+  <sys:String x:Key="Field.SampleReductionMethod">样品缩分方法</sys:String>
+  <sys:String x:Key="Field.SampleReductionMethod.Desc">报告 6.4（可存模板复用）</sys:String>
+  <sys:String x:Key="Field.MachineNameAndID">仪器设备名称、型号及编号</sys:String>
+  <sys:String x:Key="Field.MachineNameAndID.Desc">报告 6.5（可存模板复用）</sys:String>
+  <sys:String x:Key="Field.MoldingMethod">成型方法</sys:String>
+  <sys:String x:Key="Field.MoldingMethod.Desc">报告 6.6（按本规程 T 1227）</sys:String>
+  <sys:String x:Key="Field.MoldingParameters">成型主要参数</sys:String>
+  <sys:String x:Key="Field.MoldingParameters.Desc">报告 6.6（如分层数 / 击实功 / 目标含水率）</sys:String>
+  <sys:String x:Key="Field.TestPerson">试验员</sys:String>
+  <sys:String x:Key="Field.TestPerson.Desc">可存模板复用</sys:String>
+  <sys:String x:Key="Field.CalculatePerson">计算人</sys:String>
+  <sys:String x:Key="Field.CalculatePerson.Desc">可存模板复用</sys:String>
+  <sys:String x:Key="Field.VerificationPerson">校核人</sys:String>
+  <sys:String x:Key="Field.VerificationPerson.Desc">可存模板复用</sys:String>
   <!-- 抗剪强度（静三轴法）指标卡 -->
   <sys:String x:Key="Method.ShearStrength.Load">荷载</sys:String>
   <sys:String x:Key="Method.ShearStrength.Displacement">位移</sys:String>
   <sys:String x:Key="Method.ShearStrength.ShearStrength">剪切强度 σ1max</sys:String>
   <sys:String x:Key="Method.ShearStrength.AxialStrain">破坏应变 ε1</sys:String>
   <sys:String x:Key="Method.ShearStrength.Elapsed">试验持续时间</sys:String>
+  <sys:String x:Key="Method.ShearStrength.CurveTitle">试件 {0}</sys:String>
   <!-- 试验后数据补录（Q3）与完成试验单 -->
   <sys:String x:Key="Sample.BackfillTitle">试验后数据补录</sys:String>
   <sys:String x:Key="Sample.BackfillDescription">补录试验后才有值的字段（试件总质量 / 含水率 / 干密度 / 含水率损失）；其余试样参数只读，保存前同样做合法性校验。</sys:String>

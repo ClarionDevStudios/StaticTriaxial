@@ -26,6 +26,13 @@ public sealed class ShearStrengthLocalizationTests
                     )
                 )
             )
+            .Concat(
+                ShearStrengthSheetFields.Definitions.SelectMany(definition =>
+                    new[] { definition.DisplayNameKey, definition.DescriptionKey }.Where(key =>
+                        !string.IsNullOrEmpty(key)
+                    )
+                )
+            )
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 

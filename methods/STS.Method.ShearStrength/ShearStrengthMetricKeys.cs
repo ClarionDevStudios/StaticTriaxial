@@ -18,6 +18,9 @@ public static class ShearStrengthMetricKeys
 
     public const string Elapsed = "Method.ShearStrength.Elapsed";
 
+    /// <summary>曲线图标题（试件号做参数；报表与自动存盘的 PNG 共用）。</summary>
+    public const string CurveTitle = "Method.ShearStrength.CurveTitle";
+
     /// <summary>全部键（供语言字典一致性用例把守）。</summary>
     public static readonly string[] All =
     [
@@ -26,5 +29,6 @@ public static class ShearStrengthMetricKeys
         ShearStrength,
         AxialStrain,
         Elapsed,
+        CurveTitle,
     ];
 }

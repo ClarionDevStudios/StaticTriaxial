@@ -12,8 +12,10 @@ using FlexCel.XlsAdapter;
 /// 约定（2026-10-15 定下来的）：
 /// <list type="bullet">
 ///   <item>模板文件名 `<前缀>.<语种>.xlsx`，放在报表根目录的 `Template\` 下；</item>
-///   <item>模板里**藏一枚版本戳**：第 1 行 K 列写 `STS-TEMPLATE-V<n>`，该列**隐藏**
-///         （报表本身只占 A~I）—— 写出厂模板时调 <see cref="ApplyStamp"/>；</item>
+///   <item>模板里**藏一枚版本戳**：第 1 行 **T 列**写 `STS-TEMPLATE-V<n>`，该列**隐藏**。
+///         正文占哪几列由各方法模板自己定（第 1 版弯曲模板正文占 A~I，所以当时戳在 K 列；
+///         T 1236 是 12 列宽表（A~L），戳列往后挪到 T，正文到戳列之间留作**隐藏隔离带**，
+///         打印宽度只算正文。写出厂模板时调 <see cref="ApplyStamp"/>；</item>
 ///   <item>代码侧版本号 **+1 = 出厂模板换代**（改了结构 / 固定文本 / 样式就要 +1）。
 ///         导出前比对戳：落后、没有戳、读不出来 → 把旧文件**改名备份**（`.yyyyMMddHHmmss.bak.xlsx`，
 ///         同目录、不删）再重新写出厂模板；戳一致 → 原样保留，**站点手工改过的模板继续生效**。</item>
@@ -24,10 +26,10 @@ using FlexCel.XlsAdapter;
 /// </summary>
 public sealed class FactoryTemplateStore
 {
-    /// <summary>版本戳的位置：第 1 行 K 列。</summary>
+    /// <summary>版本戳的位置：第 1 行 T 列（正文宽表到 L 为止；M~T 隐藏成隔离带）。</summary>
     public const int StampRow = 1;
 
-    public const int StampColumn = 11;
+    public const int StampColumn = 20;
 
     private readonly string _templatesRoot;
     private readonly string _filePrefix;

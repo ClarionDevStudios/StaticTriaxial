@@ -12,5 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\methods\STS.Method.ShearStrength\STS.Method.ShearStrength.csproj" />
+    <!-- 验收测试要驱动"真协议栈 + 模拟下位机"（GeoDeviceController / GeoSimulator） -->
+    <ProjectReference Include="..\..\src\STS.Protocol\STS.Protocol.csproj" />
   </ItemGroup>
 </Project>
