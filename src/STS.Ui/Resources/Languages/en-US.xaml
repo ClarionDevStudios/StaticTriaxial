@@ -63,9 +63,7 @@
 
   <sys:String x:Key="Nav.Execution">Test run</sys:String>
   <sys:String x:Key="Exec.NewSheet">New sheet</sys:String>
-  <sys:String x:Key="Exec.TestParams">Parameters</sys:String>
   <sys:String x:Key="Exec.Print">Print report</sys:String>
-  <sys:String x:Key="Exec.History">History</sys:String>
   <sys:String x:Key="Exec.DataFlow">Data flow</sys:String>
   <sys:String x:Key="Exec.NewSample">New sample</sys:String>
   <sys:String x:Key="Exec.EditSample">Edit sample</sys:String>
@@ -124,6 +122,7 @@
   <sys:String x:Key="Exec.WorktableDown">Worktable down</sys:String>
   <sys:String x:Key="Exec.ToDo">To do</sys:String>
 
+  <sys:String x:Key="Nav.MachineSettings">Parameters</sys:String>
   <sys:String x:Key="Nav.History">History</sys:String>
   <sys:String x:Key="History.Keyword">Keyword</sys:String>
   <sys:String x:Key="History.Query">Search</sys:String>
@@ -426,9 +425,16 @@
   <sys:String x:Key="Field.WaterContentLoss.Desc">Report 6.7 item (entered; may be left blank).</sys:String>
   <sys:String x:Key="Field.SampleDesc.Desc">Free text (may be left blank).</sys:String>
   <sys:String x:Key="Msg.ShearStrength.MissingSpecimenSize">Specimen {0} has no dimensions (initial height / diameter) yet. Fill in the specimen info before starting the test.</sys:String>
-  <sys:String x:Key="Msg.ShearStrength.NeedMoreLevels">Finishing the sheet needs at least {1} confining levels (currently {0}). Complete all levels (section 4.8) before finishing.</sys:String>
-  <sys:String x:Key="Msg.ShearStrength.LevelIncomplete">Confining level {0:0.###} kPa has only {1} completed specimen(s); {2} are required per level. Complete this level before finishing.</sys:String>
+  <sys:String x:Key="Msg.ShearStrength.NeedMoreLevels">Computing shear parameters needs at least {1} confining levels (currently {0}). Complete all levels (section 4.8) first.</sys:String>
+  <sys:String x:Key="Msg.ShearStrength.LevelIncomplete">Confining level {0:0.###} kPa has only {1} completed specimen(s); {2} are required per level. Complete this level first.</sys:String>
   <sys:String x:Key="Msg.ShearStrength.HeightOutOfWindow">Specimen height {0} mm is outside the acceptance window ({1} ± {2} mm, section 4.1.3). The test will continue with the actual value; note it in the report.</sys:String>
+  <!-- 抗剪强度参数（规范 5.5）算完弹框里的结论行：方法层只带键，数值由它填进来 -->
+  <sys:String x:Key="Msg.ShearStrength.Cohesion">Cohesion c = {0} kPa</sys:String>
+  <sys:String x:Key="Msg.ShearStrength.FrictionAngle">Friction angle φ = {0}°</sys:String>
+  <sys:String x:Key="Msg.ShearStrength.CorrelationReliable">Correlation r = {0} (r ≥ 0.99, reliable)</sys:String>
+  <sys:String x:Key="Msg.ShearStrength.CorrelationNotReliable">Correlation r = {0} (r &lt; 0.99, not reliable)</sys:String>
+  <sys:String x:Key="Msg.ShearStrength.EnvelopeNoSolution">No envelope solution (slope |m| ≥ 1, abnormal data): c and φ not written</sys:String>
+  <sys:String x:Key="Msg.ShearStrength.CorrelationNotComputable">Correlation r not computable (σ1max − σ3 identical across levels): not written</sys:String>
   <!-- Shear strength (static triaxial) sheet fields (report 6.1-6.6 + personnel) -->
   <sys:String x:Key="Field.ProjectName">Project name *</sys:String>
   <sys:String x:Key="Field.ProjectName.Desc">Report 6.1: test project name (required)</sys:String>
@@ -447,7 +453,7 @@
   <sys:String x:Key="Field.SampleDescription">Sample description</sys:String>
   <sys:String x:Key="Field.SampleDescription.Desc">Report 6.3 (free text)</sys:String>
   <sys:String x:Key="Field.CreatedOn">Test date</sys:String>
-  <sys:String x:Key="Field.CreatedOn.Desc">Set to now on create (read-only)</sys:String>
+  <sys:String x:Key="Field.CreatedOn.Desc">Set to today on create (read-only; the DB keeps the full timestamp)</sys:String>
   <sys:String x:Key="Field.SampleReductionMethod">Reduction method</sys:String>
   <sys:String x:Key="Field.SampleReductionMethod.Desc">Report 6.4 (reusable as template)</sys:String>
   <sys:String x:Key="Field.MachineNameAndID">Instrument (name / model / serial)</sys:String>
@@ -469,13 +475,18 @@
   <sys:String x:Key="Method.ShearStrength.AxialStrain">Failure strain ε1</sys:String>
   <sys:String x:Key="Method.ShearStrength.Elapsed">Test duration</sys:String>
   <sys:String x:Key="Method.ShearStrength.CurveTitle">Specimen {0}</sys:String>
+  <sys:String x:Key="Method.ShearStrength.SampleID">Specimen</sys:String>
+  <sys:String x:Key="Method.ShearStrength.PeakLoad">Peak axial load Pmax (N)</sys:String>
+  <sys:String x:Key="Method.ShearStrength.PeakDeformation">Peak deformation (mm)</sys:String>
   <!-- Post-test data entry (Q3) and sheet finish -->
   <sys:String x:Key="Sample.BackfillTitle">Post-test data entry</sys:String>
   <sys:String x:Key="Sample.BackfillDescription">Enter post-test values only (total mass / water content / dry density / water content loss). Other specimen parameters are read-only; the same validation applies before saving.</sys:String>
   <sys:String x:Key="Exec.Backfill">Backfill</sys:String>
-  <sys:String x:Key="Exec.FinishSheet">Finish sheet</sys:String>
-  <sys:String x:Key="Exec.FinishSheetConfirm">Finish sheet {0}? Level means and c / φ / r (with the r ≥ 0.99 reliability flag) will be computed per sections 5.4 / 5.5, and the completion time will be written.</sys:String>
-  <sys:String x:Key="Exec.SheetCompleted">Sheet {0} finished: level means and c / φ / r written (see report / history).</sys:String>
+  <sys:String x:Key="Exec.ShearParams">Shear parameters</sys:String>
+  <sys:String x:Key="Exec.ShearParamsConfirm">Compute shear parameters for sheet {0}? Level means and c / φ / r (with the r ≥ 0.99 reliability flag) will be computed per sections 5.4 / 5.5, and the completion time will be written.</sys:String>
+  <sys:String x:Key="Exec.ShearParamsHeader">Sheet {0} (sections 5.4 / 5.5):</sys:String>
+  <sys:String x:Key="Exec.ShearParamsFooter">Written to the sheet; the completion time is set to now. Level means are on the 5.4 row of the report.</sys:String>
+  <sys:String x:Key="Exec.ShearParamsDone">Sheet {0}: shear parameters computed and written.</sys:String>
   <!-- Method name (skeleton: shear strength, static triaxial) -->
   <sys:String x:Key="Method.ShearStrength.Name">Shear strength (static triaxial)</sys:String>
 

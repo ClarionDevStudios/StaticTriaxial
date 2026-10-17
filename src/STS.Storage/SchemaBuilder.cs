@@ -26,8 +26,13 @@ public static class SchemaBuilder
     ///        试件号改为现役格式 `S001`（序号落 `SheetIndex`）。
     /// 5：方法表随骨架来到 v5（静三轴三表为骨架占位；软件未发布，改结构不做迁移，
     ///     开发库对不上版本备份后重建）。
+    /// 5 → 6（2026-10-17）：静三轴三表**定稿 v1**（Main 26 / Detail 22 / Template 8 列）。
+    ///     **教训**：v1 定稿时漏了 +1 —— 定稿前的开发库按"版本相同"混过了校验，
+    ///     `CREATE TABLE IF NOT EXISTS` 又不改已有表，旧形状静默残留，查询报
+    ///     `no such column`（用户实测：新建试验单字段全空、无从查起）。
+    ///     **改表结构必须 +1**，让旧库走"版本不匹配 → 备份后重建"的既有拦截。
     /// </summary>
-    public const int CurrentSchemaVersion = 5;
+    public const int CurrentSchemaVersion = 6;
 
     /// <summary>框架自有表的建表 SQL（幂等）。</summary>
     public static IEnumerable<string> BuildFrameworkTables()

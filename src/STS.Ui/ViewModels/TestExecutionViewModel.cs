@@ -7,7 +7,6 @@ using STS.Control.Methods;
 using STS.Core;
 using STS.Core.Control;
 using STS.Ui.Services;
-using Wpf.Ui;
 
 /// <summary>
 /// 一张实时指标卡（界面用，值随采样刷新）。
@@ -127,9 +126,9 @@ public partial class TestExecutionViewModel : ViewModelBase
     private readonly ITestDeviceController? _device;
     private readonly INetworkLinkMonitor? _linkMonitor;
     private readonly ICurrentSheetContext? _currentSheet;
-    private readonly INavigationService? _navigation;
     private readonly IModalPageService? _modalPages;
     private readonly IReportExportService? _exporter;
+    private readonly PrintPreviewViewModel? _preview;
     private readonly SampleInfoViewModel? _sampleInfo;
     private readonly INavigationPaneService? _pane;
     private readonly ICurrentMethodContext? _methods;
@@ -141,14 +140,6 @@ public partial class TestExecutionViewModel : ViewModelBase
     private const double SheetDialogWidth = 880;
 
     private const double SheetDialogHeight = 780;
-
-    /// <summary>
-    /// 「试验参数」弹窗尺寸：内容要**并排**放运行期 / 计算期两张卡（各 620 宽 + 边距），
-    /// 窄了 WrapPanel 就换行（用户 2026-10-12 要求水平排列）。
-    /// </summary>
-    private const double ParameterDialogWidth = 1340;
-
-    private const double ParameterDialogHeight = 800;
 
     /// <summary>「试样信息填录」弹窗尺寸（一张 980 宽的卡 + 顶部工具条）。</summary>
     private const double SampleDialogWidth = 1060;
@@ -210,9 +201,9 @@ public partial class TestExecutionViewModel : ViewModelBase
         ITestExecution execution,
         ITestDeviceController? device = null,
         ICurrentSheetContext? currentSheet = null,
-        INavigationService? navigation = null,
         IReportExportService? exporter = null,
         IModalPageService? modalPages = null,
+        PrintPreviewViewModel? preview = null,
         SampleInfoViewModel? sampleInfo = null,
         INavigationPaneService? pane = null,
         INetworkLinkMonitor? linkMonitor = null,
@@ -224,9 +215,9 @@ public partial class TestExecutionViewModel : ViewModelBase
         _device = device;
         _linkMonitor = linkMonitor;
         _currentSheet = currentSheet;
-        _navigation = navigation;
         _exporter = exporter;
         _modalPages = modalPages;
+        _preview = preview;
         _sampleInfo = sampleInfo;
         _pane = pane;
         _methods = methods;
@@ -399,11 +390,11 @@ public partial class TestExecutionViewModel : ViewModelBase
         && SampleRows.Count(row => row.HasResult) >= MinimumJudgedSamples;
 
     /// <summary>
-    /// 能不能点「完成试验单」：有当前单、且没在跑试验（收尾要读写整单数据）。
-    /// 件数 / 级数是否够，由方法层在收尾时按规范 4.8 / 5.4 校验并给出明确原因，
-    /// 界面不重复一遍这套规则（方法演进时只改一处）。
+    /// 能不能点「抗剪强度参数」：有当前单、且没在跑试验（算参数要读写整单数据）。
+    /// **按钮随时可点**（用户 2026-10-17 定的口径）—— 件数 / 级数是否够由方法层按规范 4.8 / 5.4
+    /// 校验并给出明确原因，界面不重复一遍这套规则（方法演进时只改一处），也不置灰（置灰说不出为什么）。
     /// </summary>
-    public bool CanFinishSheet => !IsRunning && CurrentSheetId is { Length: > 0 };
+    public bool CanComputeShearParams => !IsRunning && CurrentSheetId is { Length: > 0 };
 
     /// <summary>
     /// 分段流程按钮（调零 / 施加围压 / 开始剪切 / 卸除围压）的公共前提：**联机着、没在跑试验**。
@@ -468,7 +459,7 @@ public partial class TestExecutionViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanStartTest));
         OnPropertyChanged(nameof(CanStartOrStop));
         OnPropertyChanged(nameof(CanEvaluateValidity));
-        OnPropertyChanged(nameof(CanFinishSheet));
+        OnPropertyChanged(nameof(CanComputeShearParams));
         OnPropertyChanged(nameof(CanUseStageCommands));
         OnPropertyChanged(nameof(CanApplyConfining));
         OnPropertyChanged(nameof(CanStartShear));
@@ -478,7 +469,7 @@ public partial class TestExecutionViewModel : ViewModelBase
         BackfillSampleCommand.NotifyCanExecuteChanged();
         StartOrStopCommand.NotifyCanExecuteChanged();
         EvaluateValidityCommand.NotifyCanExecuteChanged();
-        FinishSheetCommand.NotifyCanExecuteChanged();
+        ComputeShearParamsCommand.NotifyCanExecuteChanged();
         ApplyConfiningCommand.NotifyCanExecuteChanged();
         StartShearCommand.NotifyCanExecuteChanged();
     }
@@ -1127,9 +1118,9 @@ public partial class TestExecutionViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanStartOrStop));
         // 跑起来/停下来都影响"有效性计算"能不能点
         OnPropertyChanged(nameof(CanEvaluateValidity));
-        OnPropertyChanged(nameof(CanFinishSheet));
+        OnPropertyChanged(nameof(CanComputeShearParams));
         EvaluateValidityCommand.NotifyCanExecuteChanged();
-        FinishSheetCommand.NotifyCanExecuteChanged();
+        ComputeShearParamsCommand.NotifyCanExecuteChanged();
         StartOrStopCommand.NotifyCanExecuteChanged();
     }
 
@@ -1527,12 +1518,13 @@ public partial class TestExecutionViewModel : ViewModelBase
     private void ClearLog() => Log.Clear();
 
     /// <summary>
-    /// 「完成试验单」收尾（用户 2026-10-16 定的口径）：按规范 5.4 / 5.5 计算分级均值与 c、φ、r
-    /// （含 r ≥ 0.99 的可信标志），写入主表并写完成时间（`CompletedOn`）。
-    /// 级数 / 件数不足时由方法层带明确原因拒绝（界面照原文提示，不自己复述规则）。
+    /// 「抗剪强度参数」（用户 2026-10-17 定的口径，原「完成试验单」改名）：按规范 5.4 / 5.5 算
+    /// 分级均值与 c、φ、r（含 r ≥ 0.99 的可信标志），写入主表并写完成时间（`CompletedOn`）。
+    /// 级数 / 件数不足时由方法层带明确原因拒绝（界面照原文提示，不自己复述规则）；
+    /// 算完**弹框把 c、φ、r 显示出来** —— 结论行由方法层带资源键回来，这里按当前语言渲染。
     /// </summary>
-    [RelayCommand(CanExecute = nameof(CanFinishSheet))]
-    private async Task FinishSheetAsync()
+    [RelayCommand(CanExecute = nameof(CanComputeShearParams))]
+    private async Task ComputeShearParamsAsync()
     {
         if (CurrentSheetId is not { Length: > 0 } sheetId)
         {
@@ -1541,8 +1533,8 @@ public partial class TestExecutionViewModel : ViewModelBase
         }
 
         var confirmed = await AppDialogs.ConfirmAsync(
-            L("Exec.FinishSheet"),
-            string.Format(CultureInfo.CurrentCulture, L("Exec.FinishSheetConfirm"), sheetId),
+            L("Exec.ShearParams"),
+            string.Format(CultureInfo.CurrentCulture, L("Exec.ShearParamsConfirm"), sheetId),
             L("Common.Yes"),
             L("Common.No")
         );
@@ -1554,8 +1546,23 @@ public partial class TestExecutionViewModel : ViewModelBase
 
         try
         {
-            await _execution.CompleteSheetAsync(sheetId);
-            Append(string.Format(CultureInfo.CurrentCulture, L("Exec.SheetCompleted"), sheetId));
+            var summary = await _execution.CompleteSheetAsync(sheetId);
+            Append(string.Format(CultureInfo.CurrentCulture, L("Exec.ShearParamsDone"), sheetId));
+
+            // 结论行：方法层只带键与数值，这里按当前语言渲染（抗剪强度参数 = c、φ、r 各一行）
+            var lines = new List<string>
+            {
+                string.Format(CultureInfo.CurrentCulture, L("Exec.ShearParamsHeader"), sheetId),
+            };
+            lines.AddRange(summary.Lines.Select(line => UiText.Format(Localization, line)));
+            lines.Add(string.Empty);
+            lines.Add(L("Exec.ShearParamsFooter"));
+
+            await AppDialogs.NotifyAsync(
+                L("Exec.ShearParams"),
+                string.Join(Environment.NewLine, lines),
+                L("Common.Yes")
+            );
         }
         catch (Exception ex)
         {
@@ -1573,19 +1580,6 @@ public partial class TestExecutionViewModel : ViewModelBase
             typeof(Views.Pages.SheetSelectionPage),
             SheetDialogWidth,
             SheetDialogHeight
-        );
-
-    /// <summary>
-    /// 打开「试验参数」弹窗（用户 2026-10-13 改成**弹出窗体**）。
-    /// 宽度要够并排放两张卡片（运行期 / 计算期各 620 宽）—— 用户 2026-10-12 明确要求两者水平排列，
-    /// 窗口一窄 WrapPanel 就会换行。
-    /// </summary>
-    [RelayCommand]
-    private void OpenMachineSettings() =>
-        _modalPages?.Show(
-            typeof(Views.Pages.MachineSettingsPage),
-            ParameterDialogWidth,
-            ParameterDialogHeight
         );
 
     /// <summary>
@@ -1697,29 +1691,32 @@ public partial class TestExecutionViewModel : ViewModelBase
         }
     }
 
-    /// <summary>去历史数据页（报表导出的入口在那里）。</summary>
+    /// <summary>
+    /// 「打印报表」（用户 2026-10-17：功能与历史数据页「打印预览」一致）：
+    /// 打开**打印预览**窗体 —— 按当前界面语言生成报表（同名静默覆盖）→ 整表渲染 → 打印 / 定位文件。
+    /// 以前这里只生成文件、往日志里写一行路径，用户既看不到也没法直接打印。
+    /// </summary>
     [RelayCommand]
-    private void OpenHistory() => _navigation?.Navigate(typeof(Views.Pages.HistoryPage));
-
-    /// <summary>打印当前试验单的报表 —— 与历史页导出**同一套实现**，只是目标不同（当前 vs 选中）。</summary>
-    [RelayCommand]
-    private async Task PrintReportAsync()
+    private void PrintReport()
     {
-        if (_sheetId is null || _exporter is null)
+        if (CurrentSheetId is not { Length: > 0 } sheetId)
         {
             Append(L("Exec.NoSheet"));
             return;
         }
 
-        try
+        if (_preview is null || _modalPages is null)
         {
-            var path = await _exporter.ExportAsync(_sheetId, "zh-CN");
-            Append($"{L("History.Exported")} {path}");
+            Append(L("Preview.Unavailable"));
+            return;
         }
-        catch (Exception ex)
-        {
-            Append($"{L("History.ExportFailed")}: {Text(ex)}");
-        }
+
+        _preview.PrepareFor(sheetId);
+        _modalPages.Show(
+            typeof(Views.Pages.PrintPreviewPage),
+            PrintPreviewViewModel.DialogWidth,
+            PrintPreviewViewModel.DialogHeight
+        );
     }
 
     /// <summary>

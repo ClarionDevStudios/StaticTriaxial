@@ -6,7 +6,8 @@ using Wpf.Ui.Abstractions.Controls;
 
 /// <summary>
 /// 参数配置页：编辑机器与控制参数（通道设置 / 试验参数）。
-/// 用户 2026-10-13 起以**弹出窗体**方式打开（见 <see cref="IModalPageService"/>）。
+/// 用户 2026-10-17 起从导航栏「试验参数」进入（原先在执行页按钮里、当弹窗打开）；
+/// 弹出窗体那套接口（<see cref="IModalPage"/>）保留不动 —— 想再当弹窗用时不缺东西。
 /// </summary>
 public partial class MachineSettingsPage : INavigableView<MachineSettingsViewModel>, IModalPage
 {

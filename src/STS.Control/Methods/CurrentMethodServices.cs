@@ -93,8 +93,10 @@ public sealed class CurrentMethodExecution(Func<ICurrentMethodContext> methods)
         CancellationToken cancellationToken = default
     ) => Execution.CompleteSampleAsync(sheetId, sampleId, curve, cancellationToken);
 
-    public Task CompleteSheetAsync(string sheetId, CancellationToken cancellationToken = default) =>
-        Execution.CompleteSheetAsync(sheetId, cancellationToken);
+    public Task<SheetFinishSummary> CompleteSheetAsync(
+        string sheetId,
+        CancellationToken cancellationToken = default
+    ) => Execution.CompleteSheetAsync(sheetId, cancellationToken);
 
     public Task<ValidityReport> EvaluateValidityAsync(
         string sheetId,

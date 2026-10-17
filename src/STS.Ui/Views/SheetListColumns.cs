@@ -23,15 +23,17 @@ public static class SheetListColumns
 
         Add("SheetId", "History.ColSheetId");
         Add("ProjectName", "History.ColProject");
-        Add("CreatedOn", "History.ColDate");
+        // 日期只显示日期、统一 yyyy-MM-dd（用户 2026-10-17）：不写格式时 WPF 按目标元素的语言
+        // 走默认日期格式，本机会显示成 10/17/2026。格式串只有数字与连字符，与语言无关。
+        Add("CreatedOn", "History.ColDate", "yyyy-MM-dd");
         Add("SampleCount", "History.ColSamples");
 
-        void Add(string path, string key) =>
+        void Add(string path, string key, string? stringFormat = null) =>
             grid.Columns.Add(
                 new DataGridTextColumn
                 {
                     Header = text(key),
-                    Binding = new Binding(path),
+                    Binding = new Binding(path) { StringFormat = stringFormat },
                 }
             );
     }

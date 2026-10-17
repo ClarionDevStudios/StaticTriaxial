@@ -84,6 +84,9 @@ public sealed class ShearStrengthSheetEditorTests : IDisposable
         Assert.Equal("级配碎石", info[ShearStrengthSheetFields.SampleNameKey]);
         Assert.Equal("2026-10-15", info[ShearStrengthSheetFields.SampleReceiptDateKey]);
 
+        // 试验日期只显示日期（库里是完整时间戳）：读回来应是 yyyy-MM-dd
+        Assert.Matches(@"^\d{4}-\d{2}-\d{2}$", info[ShearStrengthSheetFields.CreatedOnKey]);
+
         // 预览号是"下一个"（不消耗流水），且与刚建的单号不同
         Assert.NotEqual(sheetId, await execution.PeekNextSheetIdAsync());
     }

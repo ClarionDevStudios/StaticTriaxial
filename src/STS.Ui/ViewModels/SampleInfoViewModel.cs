@@ -97,10 +97,23 @@ public sealed partial class SampleInfoViewModel : EditableRowsViewModel, IModalD
     /// 打开时把"这一件"读出来（导航页与弹窗都走这里，用户 2026-10-13）；
     /// 顺带按当前语言重刷页标题与描述。
     /// </summary>
-    public override void OnOpened()
+    public override void OnOpened() => _ = InitializeSafelyAsync();
+
+    /// <summary>
+    /// 初始化失败**必须说出来**（与试验单弹窗同款加固，2026-10-17）：原先是 fire-and-forget，
+    /// 任何一步抛异常都会被吞掉 —— 弹窗静静全空、无从查起。现在把异常写进状态栏（红字）。
+    /// </summary>
+    private async Task InitializeSafelyAsync()
     {
-        RefreshTexts();
-        _ = InitializeAsync();
+        try
+        {
+            RefreshTexts();
+            await InitializeAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            SetStatus(Text(ex), isError: true);
+        }
     }
 
     /// <summary>关闭弹窗（改动只有点了「保存」才落地，所以这里不给"确定"语义）。</summary>

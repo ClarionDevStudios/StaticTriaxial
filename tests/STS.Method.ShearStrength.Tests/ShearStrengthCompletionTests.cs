@@ -1,5 +1,6 @@
 namespace STS.Method.ShearStrength.Tests;
 
+using System.Globalization;
 using STS.Core;
 using STS.Storage;
 
@@ -83,7 +84,7 @@ public sealed class ShearStrengthCompletionTests : IDisposable
         // m = 0.5 → φ = 30°、b = 10 → c = 10 / cos30°、r = 1。
         await SeedCompletedLevelsAsync(service, sheetId, (30, 130), (60, 220), (100, 340));
 
-        await execution.CompleteSheetAsync(sheetId);
+        var summary = await execution.CompleteSheetAsync(sheetId);
 
         var main = service.ReadMainRow(
             sheetId,
@@ -107,6 +108,41 @@ public sealed class ShearStrengthCompletionTests : IDisposable
         Assert.Contains("\"sigma3\":30", json, StringComparison.Ordinal);
         Assert.Contains("\"meanShearStrength\":130", json, StringComparison.Ordinal);
         Assert.Contains("\"count\":3", json, StringComparison.Ordinal);
+
+        // 结论行（界面弹框显示的就是这三行）：键在方法侧、数值按报表口径格式化
+        Assert.Equal(3, summary.Lines.Count);
+        Assert.Equal(ShearStrengthMessageKeys.CohesionLine, summary.Lines[0].ResourceKey);
+        Assert.Equal(ShearStrengthMessageKeys.FrictionAngleLine, summary.Lines[1].ResourceKey);
+        Assert.Equal(ShearStrengthMessageKeys.CorrelationReliable, summary.Lines[2].ResourceKey);
+        Assert.Equal(11.547, Convert.ToDouble(summary.Lines[0].Args[0], CultureInfo.InvariantCulture), 3);
+        Assert.Equal("30", summary.Lines[1].Args[0]);
+        Assert.Equal("1", summary.Lines[2].Args[0]);
+    }
+
+    [Fact]
+    public async Task 相关系数算不出时结论行应带键说明而不是渲染NaN()
+    {
+        var service = _database.CreateService();
+        var execution = new ShearStrengthExecution(service);
+        var sheetId = await execution.CreateSheetAsync("项目", "WT");
+
+        // 三级围压下 σ1max − σ3 完全相同（各级 q 一致）→ 相关系数分母为 0：r 算不出；
+        // c、φ 仍可解 —— m = 0 → φ = 0°、c = b = 50 kPa。
+        await SeedCompletedLevelsAsync(service, sheetId, (30, 130), (60, 160), (100, 200));
+
+        var summary = await execution.CompleteSheetAsync(sheetId);
+
+        Assert.Equal(3, summary.Lines.Count);
+        Assert.Equal(ShearStrengthMessageKeys.CohesionLine, summary.Lines[0].ResourceKey);
+        Assert.Equal("50", summary.Lines[0].Args[0]);
+        Assert.Equal(ShearStrengthMessageKeys.FrictionAngleLine, summary.Lines[1].ResourceKey);
+        Assert.Equal("0", summary.Lines[1].Args[0]);
+        Assert.Equal(ShearStrengthMessageKeys.CorrelationNotComputable, summary.Lines[2].ResourceKey);
+
+        // 库里不写 NaN：相关系数存 NULL、可信标志置 0
+        var main = service.ReadMainRow(sheetId, ["EnvelopeCorrelation", "EnvelopeReliable"]);
+        Assert.True(main["EnvelopeCorrelation"] is null or DBNull);
+        Assert.Equal(0L, Convert.ToInt64(main["EnvelopeReliable"]));
     }
 
     [Fact]

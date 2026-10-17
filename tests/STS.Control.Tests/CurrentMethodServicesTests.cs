@@ -119,7 +119,7 @@ public sealed class CurrentMethodServicesTests
             CancellationToken cancellationToken = default
         ) => throw new NotSupportedException();
 
-        public Task CompleteSheetAsync(
+        public Task<SheetFinishSummary> CompleteSheetAsync(
             string sheetId,
             CancellationToken cancellationToken = default
         ) => throw new NotSupportedException();

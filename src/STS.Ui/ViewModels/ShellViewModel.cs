@@ -51,6 +51,21 @@ public partial class ShellViewModel : ViewModelBase, INavigationPaneService
                 Icon = new SymbolIcon { Symbol = SymbolRegular.Beaker24 },
                 TargetPageType = typeof(Views.Pages.TestExecutionPage),
             },
+            // 「试验参数」「历史数据」原先是执行页里的两个按钮，用户 2026-10-17 要求挪到导航栏：
+            // 它们是常驻入口，不必挤在执行页的功能按钮区（那里现在只剩新建 / 打印 / 收尾三个）。
+            // 进执行页会自动收起导航栏，要用这两项时先点左上角的展开按钮（与首页 / 系统设置同一条路）。
+            new NavigationViewItem
+            {
+                Content = L("Nav.MachineSettings"),
+                Icon = new SymbolIcon { Symbol = SymbolRegular.Wrench24 },
+                TargetPageType = typeof(Views.Pages.MachineSettingsPage),
+            },
+            new NavigationViewItem
+            {
+                Content = L("Nav.History"),
+                Icon = new SymbolIcon { Symbol = SymbolRegular.History24 },
+                TargetPageType = typeof(Views.Pages.HistoryPage),
+            },
         ];
 
         NavigationFooter =

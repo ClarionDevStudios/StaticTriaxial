@@ -79,7 +79,21 @@ public sealed class SimulatedFullRunTests : IDisposable
         }
 
         // ── 收尾：分级均值 → c、φ、r → CompletedOn ──
-        await execution.CompleteSheetAsync(sheetId);
+        var summary = await execution.CompleteSheetAsync(sheetId);
+
+        // 结论行（界面弹框显示的就是这几行）：c、φ 两行必须在；"相关系数"那行在退化数据上不稳定，
+        // 只断言它是那三种写法之一（可信 / 不可信 / 算不出）—— 真机数据下才有判别意义。
+        Assert.Equal(ShearStrengthMessageKeys.CohesionLine, summary.Lines[0].ResourceKey);
+        Assert.Equal(ShearStrengthMessageKeys.FrictionAngleLine, summary.Lines[1].ResourceKey);
+        Assert.Contains(
+            summary.Lines[2].ResourceKey,
+            new[]
+            {
+                ShearStrengthMessageKeys.CorrelationReliable,
+                ShearStrengthMessageKeys.CorrelationNotReliable,
+                ShearStrengthMessageKeys.CorrelationNotComputable,
+            }
+        );
 
         var main = service.ReadMainRow(
             sheetId,

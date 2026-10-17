@@ -13,11 +13,20 @@ using STS.Ui.Services;
 /// 再把整张表渲成一张图**居中**显示；上方三个按钮：打印报表 / 定位文件 / 导出PDF（暂置灰）。
 /// （**不做分页**是用户 2026-10-15 的决定。）
 ///
-/// 与执行页那个「打印报表」按钮的分工：那个只生成文件、不预览；这里把"生成 → 看 → 打印"串成一条。
-/// 历史页原来的"导出报表（中文）/（英文）"两个按钮合并成了这一个入口。
+/// **两个入口共用这一个窗体**（用户 2026-10-17：执行页「打印报表」要与历史页「打印预览」一致）：
+/// 执行页打当前单、历史页打选中单，都是"生成 → 看 → 打印"一条路。
+/// 历史页原来的"导出报表（中文）/（英文）"两个按钮也合并成了这一个入口。
 /// </summary>
 public sealed partial class PrintPreviewViewModel : ViewModelBase, IModalDialogViewModel
 {
+    /// <summary>
+    /// 预览弹窗尺寸（两个入口共用）：要装下一整张表（按宽度铺满）——
+    /// 实际打开时 <c>ModalPageService</c> 还会按屏幕工作区夹一次。
+    /// </summary>
+    public const double DialogWidth = 1120;
+
+    public const double DialogHeight = 900;
+
     private readonly IReportExportService _exporter;
     private readonly IReportPreviewRenderer _renderer;
     private string _sheetId = string.Empty;

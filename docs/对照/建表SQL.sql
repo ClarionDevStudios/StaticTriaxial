@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS TestParameterConfig (
 CREATE TABLE IF NOT EXISTS ShearStrengthTestMain (
     SheetID TEXT NOT NULL,       -- 试验单号（主键，自动生成）
     CreatedOn TEXT,              -- 试验日期（建单时间，报告 6.4；yyyy-MM-dd HH:mm:ss）
-    CompletedOn TEXT,            -- 整单收尾时间（全部试件完成后由「完成试验单」写入；不代表结论定稿）
+    CompletedOn TEXT,            -- 整单收尾时间（全部试件完成后由「抗剪强度参数」写入；不代表结论定稿）
     ProjectName TEXT,            -- 试验项目名称（报告 6.1；历史列表与查询用）
     UUID TEXT,                   -- 云端去重用 UUID（明细沿用同一枚）
     SampleNumber TEXT,           -- 样品编号（报告 6.2）

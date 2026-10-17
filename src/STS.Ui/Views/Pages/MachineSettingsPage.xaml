@@ -6,7 +6,7 @@
   xmlns:local="clr-namespace:STS.Ui.Views.Pages"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-  Title="Machine"
+  Title="{DynamicResource Nav.MachineSettings}"
   d:DataContext="{d:DesignInstance local:MachineSettingsPage, IsDesignTimeCreatable=False}"
   Foreground="{DynamicResource TextFillColorPrimaryBrush}"
   mc:Ignorable="d"
@@ -50,14 +50,6 @@
           Appearance="Secondary"
           Command="{Binding ViewModel.RestoreDefaultsCommand}"
           Content="{DynamicResource Param.RestoreDefaults}"
-        />
-        <!-- 用户 2026-10-13 起本页是弹出窗体：靠导航栏离开的路没了，给一个明确的关闭 -->
-        <ui:Button
-          Width="110"
-          Margin="8,0,0,0"
-          Appearance="Secondary"
-          Command="{Binding ViewModel.CloseCommand}"
-          Content="{DynamicResource Common.Close}"
         />
         <TextBlock
           Margin="14,0,0,0"

@@ -59,7 +59,7 @@ public static class ShearStrengthSheetFields
         Text(SampleSpecificationKey, "规格", "报告 6.2（如：0~31.5mm）"),
         Date(SampleReceiptDateKey, "接样日期", "报告 6.3（yyyy-MM-dd）"),
         Text(SampleDescriptionKey, "样品描述", "报告 6.3（自由文本）"),
-        Text(CreatedOnKey, "试验日期", "新建时填当前时间（只读）"),
+        Text(CreatedOnKey, "试验日期", "新建时填当天日期（只读；库里存完整时间戳）"),
         Text(SampleReductionMethodKey, "样品缩分方法", "报告 6.4（可存模板复用）"),
         Text(MachineNameAndIDKey, "仪器设备名称、型号及编号", "报告 6.5（可存模板复用）"),
         Text(MoldingMethodKey, "成型方法", "报告 6.6（按本规程 T 1227）"),

@@ -31,8 +31,8 @@ public partial class ParameterTabView(string title, IReadOnlyList<ParameterGroup
 /// **方法参数**编辑页基类：按分组（机器 / 试件）分页、页内按作用时点分区，读写方法参数表。
 /// 试件尺寸**不属于这里** —— 它是试样信息（见 <see cref="SampleInfoViewModel"/>，用户 2026-10-12 明确）。
 ///
-/// 用户 2026-10-13 起本页以**弹出窗体**打开（见 <see cref="IModalPageService"/>），
-/// 所以底部给了一个「关闭」—— 以前靠导航栏离开，现在得让窗体自己关得掉。
+/// 用户 2026-10-17 起本页改回**导航页**（导航栏「试验参数」；用户 2026-10-13 到 10-17 之间是弹出窗体，
+/// 那时才需要在工具条上给一个「关闭」）。弹窗那套（<see cref="IModalDialogViewModel"/>）保留不动。
 /// </summary>
 public abstract partial class ParameterEditorViewModel : EditableRowsViewModel, IModalDialogViewModel
 {

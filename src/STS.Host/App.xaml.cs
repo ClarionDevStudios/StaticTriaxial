@@ -287,9 +287,10 @@ public partial class App
                     sp.GetRequiredService<ITestExecution>(),
                     sp.GetService<ITestDeviceController>(),
                     sp.GetRequiredService<ICurrentSheetContext>(),
-                    sp.GetRequiredService<INavigationService>(),
                     sp.GetRequiredService<IReportExportService>(),
                     sp.GetRequiredService<IModalPageService>(),
+                    // 打印报表 = 打开打印预览（与历史页同一个窗体，用户 2026-10-17）
+                    sp.GetRequiredService<PrintPreviewViewModel>(),
                     // 执行页要能先把"编辑哪一件"告诉弹窗的 ViewModel（它是单例，会留着上次的号）
                     sp.GetRequiredService<SampleInfoViewModel>(),
                     // 进执行页要收起导航栏（用户 2026-10-14）

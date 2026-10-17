@@ -441,7 +441,15 @@ public sealed class ShearStrengthExecution(TestSheetService sheets)
     }
 
     /// <inheritdoc />
-    public async Task CompleteSheetAsync(string sheetId, CancellationToken cancellationToken = default)
+    /// <remarks>
+    /// 界面上的「抗剪强度参数」按钮走这里（用户 2026-10-17 定的口径：按钮随时可点，
+    /// 级数 / 件数不满足时**带明确原因拒绝**）。返回值是要弹给用户看的结论行（c、φ、r 与可信标志），
+    /// 资源键在方法侧、语言在界面侧 —— 与 <see cref="LocalizedException"/> 同款做法。
+    /// </remarks>
+    public async Task<SheetFinishSummary> CompleteSheetAsync(
+        string sheetId,
+        CancellationToken cancellationToken = default
+    )
     {
         var levels = ReadCompletedLevels(sheetId);
 
@@ -450,7 +458,7 @@ public sealed class ShearStrengthExecution(TestSheetService sheets)
         {
             throw LocalizedException.Single(
                 ShearStrengthMessageKeys.NeedMoreLevels,
-                $"完成试验单至少需要 {ShearStrengthAnalyzer.MinimumConfiningLevels} 级围压（当前 {levels.Count} 级）",
+                $"算抗剪强度参数至少需要 {ShearStrengthAnalyzer.MinimumConfiningLevels} 级围压（当前 {levels.Count} 级）",
                 levels.Count,
                 ShearStrengthAnalyzer.MinimumConfiningLevels
             );
@@ -490,7 +498,41 @@ public sealed class ShearStrengthExecution(TestSheetService sheets)
             .ConfigureAwait(false);
 
         await sheets.CompleteAsync(sheetId, cancellationToken).ConfigureAwait(false);
+
+        // 结论行（界面弹框显示）：c / φ 无解时只给"无解"那一句，别把 NaN 渲染成数字
+        var lines = new List<LocalizedText>();
+
+        if (double.IsNaN(fit.CohesionKPa) || double.IsNaN(fit.FrictionAngleDegrees))
+        {
+            lines.Add(new LocalizedText(ShearStrengthMessageKeys.EnvelopeNoSolution));
+        }
+        else
+        {
+            lines.Add(new LocalizedText(ShearStrengthMessageKeys.CohesionLine, Number(fit.CohesionKPa)));
+            lines.Add(
+                new LocalizedText(ShearStrengthMessageKeys.FrictionAngleLine, Number(fit.FrictionAngleDegrees))
+            );
+        }
+
+        lines.Add(
+            double.IsNaN(fit.Correlation)
+                ? new LocalizedText(ShearStrengthMessageKeys.CorrelationNotComputable)
+                : new LocalizedText(
+                    fit.IsReliable
+                        ? ShearStrengthMessageKeys.CorrelationReliable
+                        : ShearStrengthMessageKeys.CorrelationNotReliable,
+                    Number(fit.Correlation)
+                )
+        );
+
+        return new SheetFinishSummary(lines);
     }
+
+    /// <summary>
+    /// 数值的显示口径：与报表同一套（<c>0.###</c>、不变文化）—— 弹框里的 c、φ、r 与报表上印的一致。
+    /// </summary>
+    private static string Number(double value) =>
+        value.ToString("0.###", CultureInfo.InvariantCulture);
 
     /// <inheritdoc />
     public async Task<ValidityReport> EvaluateValidityAsync(
@@ -666,7 +708,29 @@ public sealed class ShearStrengthExecution(TestSheetService sheets)
     )
     {
         var keys = ShearStrengthSheetFields.Definitions.Select(definition => definition.Key).ToArray();
-        return Task.FromResult(ToFieldTexts(sheets.ReadMainRow(sheetId, keys)));
+        var values = new Dictionary<string, string>(
+            ToFieldTexts(sheets.ReadMainRow(sheetId, keys)),
+            StringComparer.Ordinal
+        );
+
+        // 试验日期**只显示日期**（用户 2026-10-17）：库里存完整时间戳（历史排序 / 追溯用），
+        // 界面读回来时裁掉时间；裁不动（空值 / 意外格式）就原样给。
+        if (
+            DateTime.TryParse(
+                values[ShearStrengthSheetFields.CreatedOnKey],
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var createdOn
+            )
+        )
+        {
+            values[ShearStrengthSheetFields.CreatedOnKey] = createdOn.ToString(
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture
+            );
+        }
+
+        return Task.FromResult<IReadOnlyDictionary<string, string>>(values);
     }
 
     /// <inheritdoc />

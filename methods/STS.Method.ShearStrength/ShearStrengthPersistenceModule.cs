@@ -40,7 +40,7 @@ public sealed class ShearStrengthPersistenceModule : IMethodPersistenceModule
             [
                 new("SheetID", ColumnType.Text, IsRequired: true, Comment: "试验单号（主键，自动生成）"),
                 new("CreatedOn", ColumnType.Text, Comment: "试验日期（建单时间，报告 6.4；yyyy-MM-dd HH:mm:ss）"),
-                new("CompletedOn", ColumnType.Text, Comment: "整单收尾时间（全部试件完成后由「完成试验单」写入；不代表结论定稿）"),
+                new("CompletedOn", ColumnType.Text, Comment: "整单收尾时间（全部试件完成后由「抗剪强度参数」写入；不代表结论定稿）"),
                 new("ProjectName", ColumnType.Text, Comment: "试验项目名称（报告 6.1；历史列表与查询用）"),
                 new("UUID", ColumnType.Text, Comment: "云端去重用 UUID（明细沿用同一枚）"),
                 new("SampleNumber", ColumnType.Text, Comment: "样品编号（报告 6.2）"),

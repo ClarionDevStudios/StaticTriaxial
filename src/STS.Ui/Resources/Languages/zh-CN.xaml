@@ -63,9 +63,7 @@
 
   <sys:String x:Key="Nav.Execution">试验执行</sys:String>
   <sys:String x:Key="Exec.NewSheet">新建试验</sys:String>
-  <sys:String x:Key="Exec.TestParams">试验参数</sys:String>
   <sys:String x:Key="Exec.Print">打印报表</sys:String>
-  <sys:String x:Key="Exec.History">历史数据</sys:String>
   <sys:String x:Key="Exec.DataFlow">数据流</sys:String>
   <sys:String x:Key="Exec.NewSample">新建试样</sys:String>
   <sys:String x:Key="Exec.EditSample">编辑试样</sys:String>
@@ -124,6 +122,7 @@
   <sys:String x:Key="Exec.WorktableDown">工作台下降</sys:String>
   <sys:String x:Key="Exec.ToDo">待做</sys:String>
 
+  <sys:String x:Key="Nav.MachineSettings">试验参数</sys:String>
   <sys:String x:Key="Nav.History">历史数据</sys:String>
   <sys:String x:Key="History.Keyword">关键字</sys:String>
   <sys:String x:Key="History.Query">查询</sys:String>
@@ -422,9 +421,16 @@
   <sys:String x:Key="Field.WaterContentLoss.Desc">报告 6.7 指标（录入；可留空）。</sys:String>
   <sys:String x:Key="Field.SampleDesc.Desc">自由文本（可留空）。</sys:String>
   <sys:String x:Key="Msg.ShearStrength.MissingSpecimenSize">试件 {0} 还没有试件尺寸（初始高度 / 初始直径）——请先在「试样信息」里补全，再开始试验。</sys:String>
-  <sys:String x:Key="Msg.ShearStrength.NeedMoreLevels">完成试验单至少需要 {1} 级围压（当前 {0} 级）——先按规范 4.8 做完各级试件再收尾。</sys:String>
-  <sys:String x:Key="Msg.ShearStrength.LevelIncomplete">围压 {0:0.###} kPa 只有 {1} 件完成（每级需要 {2} 件）——先补齐这一级的试件再收尾。</sys:String>
+  <sys:String x:Key="Msg.ShearStrength.NeedMoreLevels">算抗剪强度参数至少需要 {1} 级围压（当前 {0} 级）——先按规范 4.8 做完各级试件再算。</sys:String>
+  <sys:String x:Key="Msg.ShearStrength.LevelIncomplete">围压 {0:0.###} kPa 只有 {1} 件完成（每级需要 {2} 件）——先补齐这一级的试件再算。</sys:String>
   <sys:String x:Key="Msg.ShearStrength.HeightOutOfWindow">试件高度 {0} mm 超出合格窗（{1} ± {2} mm，规范 4.1.3）——按真实数据继续试验，请在报告中说明。</sys:String>
+  <!-- 抗剪强度参数（规范 5.5）算完弹框里的结论行：方法层只带键，数值由它填进来 -->
+  <sys:String x:Key="Msg.ShearStrength.Cohesion">黏聚力 c = {0} kPa</sys:String>
+  <sys:String x:Key="Msg.ShearStrength.FrictionAngle">内摩擦角 φ = {0}°</sys:String>
+  <sys:String x:Key="Msg.ShearStrength.CorrelationReliable">相关系数 r = {0}（r ≥ 0.99，可信）</sys:String>
+  <sys:String x:Key="Msg.ShearStrength.CorrelationNotReliable">相关系数 r = {0}（r &lt; 0.99，不可信）</sys:String>
+  <sys:String x:Key="Msg.ShearStrength.EnvelopeNoSolution">包络线无解（斜率 |m| ≥ 1，数据异常）：c、φ 没有写入</sys:String>
+  <sys:String x:Key="Msg.ShearStrength.CorrelationNotComputable">相关系数 r 算不出（各级 σ1max − σ3 相同）：没有写入</sys:String>
   <!-- 抗剪强度（静三轴法）试验单字段（报告 6.1~6.6 + 人员） -->
   <sys:String x:Key="Field.ProjectName">项目名称 *</sys:String>
   <sys:String x:Key="Field.ProjectName.Desc">报告 6.1：试验项目名称（必填）</sys:String>
@@ -443,7 +449,7 @@
   <sys:String x:Key="Field.SampleDescription">样品描述</sys:String>
   <sys:String x:Key="Field.SampleDescription.Desc">报告 6.3（自由文本）</sys:String>
   <sys:String x:Key="Field.CreatedOn">试验日期</sys:String>
-  <sys:String x:Key="Field.CreatedOn.Desc">新建时填当前时间（只读）</sys:String>
+  <sys:String x:Key="Field.CreatedOn.Desc">新建时填当天日期（只读；库里存完整时间戳）</sys:String>
   <sys:String x:Key="Field.SampleReductionMethod">样品缩分方法</sys:String>
   <sys:String x:Key="Field.SampleReductionMethod.Desc">报告 6.4（可存模板复用）</sys:String>
   <sys:String x:Key="Field.MachineNameAndID">仪器设备名称、型号及编号</sys:String>
@@ -465,13 +471,18 @@
   <sys:String x:Key="Method.ShearStrength.AxialStrain">破坏应变 ε1</sys:String>
   <sys:String x:Key="Method.ShearStrength.Elapsed">试验持续时间</sys:String>
   <sys:String x:Key="Method.ShearStrength.CurveTitle">试件 {0}</sys:String>
-  <!-- 试验后数据补录（Q3）与完成试验单 -->
+  <sys:String x:Key="Method.ShearStrength.SampleID">试件号</sys:String>
+  <sys:String x:Key="Method.ShearStrength.PeakLoad">最大轴向荷载 Pmax (N)</sys:String>
+  <sys:String x:Key="Method.ShearStrength.PeakDeformation">峰值位移 (mm)</sys:String>
+  <!-- 试验后数据补录（Q3）与抗剪强度参数 -->
   <sys:String x:Key="Sample.BackfillTitle">试验后数据补录</sys:String>
   <sys:String x:Key="Sample.BackfillDescription">补录试验后才有值的字段（试件总质量 / 含水率 / 干密度 / 含水率损失）；其余试样参数只读，保存前同样做合法性校验。</sys:String>
   <sys:String x:Key="Exec.Backfill">补录</sys:String>
-  <sys:String x:Key="Exec.FinishSheet">完成试验单</sys:String>
-  <sys:String x:Key="Exec.FinishSheetConfirm">确定收尾试验单 {0} 吗？将按规范 5.4 / 5.5 计算分级均值与 c、φ、r（含 r ≥ 0.99 可信标志），并写入完成时间。</sys:String>
-  <sys:String x:Key="Exec.SheetCompleted">试验单 {0} 已收尾：分级均值与 c、φ、r 已写入（可在报表 / 历史数据里查看）。</sys:String>
+  <sys:String x:Key="Exec.ShearParams">抗剪强度参数</sys:String>
+  <sys:String x:Key="Exec.ShearParamsConfirm">算试验单 {0} 的抗剪强度参数吗？将按规范 5.4 / 5.5 计算分级均值与 c、φ、r（含 r ≥ 0.99 可信标志），并写入完成时间。</sys:String>
+  <sys:String x:Key="Exec.ShearParamsHeader">试验单 {0}（规范 5.4 / 5.5）：</sys:String>
+  <sys:String x:Key="Exec.ShearParamsFooter">已写入试验单，并把完成时间记为现在；分级均值可在报表 5.4 行查看。</sys:String>
+  <sys:String x:Key="Exec.ShearParamsDone">试验单 {0}：抗剪强度参数已算好并写入。</sys:String>
   <!-- 方法名（骨架：抗剪强度·静三轴法） -->
   <sys:String x:Key="Method.ShearStrength.Name">抗剪强度试验（静三轴法）</sys:String>
 

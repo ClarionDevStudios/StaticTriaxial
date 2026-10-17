@@ -119,11 +119,6 @@ public partial class HistoryViewModel : ViewModelBase
     /// </summary>
     public override void OnNavigatedTo() => _ = SearchAsync();
 
-    /// <summary>弹窗尺寸：预览要装下一整张表（按宽度铺满），比试样编辑页宽高都大一圈。</summary>
-    private const double PreviewDialogWidth = 1120;
-
-    private const double PreviewDialogHeight = 900;
-
     /// <summary>
     /// 打开**打印预览**（用户 2026-10-15）：报表在预览窗体打开时按**当前界面语言**生成、同名静默覆盖，
     /// 窗体里能看、能打印、能定位文件 —— 原先的"导出报表（中文）/（英文）"两个按钮合并成这一个。
@@ -146,8 +141,8 @@ public partial class HistoryViewModel : ViewModelBase
         _preview.PrepareFor(sheet.SheetId);
         _modalPages.Show(
             typeof(Views.Pages.PrintPreviewPage),
-            PreviewDialogWidth,
-            PreviewDialogHeight
+            PrintPreviewViewModel.DialogWidth,
+            PrintPreviewViewModel.DialogHeight
         );
     }
 

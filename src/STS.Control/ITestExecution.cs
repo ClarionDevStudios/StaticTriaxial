@@ -150,8 +150,14 @@ public interface ITestExecution : ICurveAxisSource
         CancellationToken cancellationToken = default
     );
 
-    /// <summary>一组跑完：算组统计并标记试验单完成。</summary>
-    Task CompleteSheetAsync(string sheetId, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// 一组跑完：算整单的**结果参数**（分级均值 → 拟包络线）并标记试验单完成（写完成时间）。
+    /// 返回**要显示给用户的结论行**（资源键 + 参数）—— 界面据此弹框显示结果，方法层不认识语言。
+    /// </summary>
+    Task<SheetFinishSummary> CompleteSheetAsync(
+        string sheetId,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// **有效性计算**（现役窗体「有效性计算」按钮同口径）：
@@ -191,3 +197,10 @@ public sealed record ValidityReport(
     IReadOnlyList<string> ExcludedSampleIds,
     bool NeedsSupplement
 );
+
+/// <summary>
+/// 整单收尾（算结果参数）交给界面显示的结论：一行一条，<see cref="LocalizedText"/> = 资源键 + 参数。
+/// 与 <see cref="LocalizedException"/> 同款做法 —— 方法层只带键上路，界面按当前语言渲染
+/// （例：抗剪强度参数那一步给出「黏聚力 c = 11.547 kPa」「内摩擦角 φ = 30°」「相关系数 r = 1（可信）」）。
+/// </summary>
+public sealed record SheetFinishSummary(IReadOnlyList<LocalizedText> Lines);

@@ -282,7 +282,24 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
     }
 
     /// <summary>打开窗体：先复位成"新建试验项目"，再取单列表（"上次"要用、也决定它可不可选），最后按模式载入。</summary>
-    public override void OnOpened() => _ = InitializeAsync();
+    public override void OnOpened() => _ = InitializeSafelyAsync();
+
+    /// <summary>
+    /// 初始化失败**必须说出来**（用户 2026-10-17：新建试验单里字段全空、无从查起）：
+    /// 原先是 fire-and-forget，任何一步抛异常都会被吞掉 —— 弹窗静静全空。
+    /// 现在把异常写进状态栏（红字），字段没铺上至少知道为什么。
+    /// </summary>
+    private async Task InitializeSafelyAsync()
+    {
+        try
+        {
+            await InitializeAsync().ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            SetStatus(Text(ex), isError: true);
+        }
+    }
 
     private async Task InitializeAsync()
     {
@@ -407,13 +424,14 @@ public partial class SheetSelectionViewModel : ViewModelBase, IModalDialogViewMo
     /// **自动值**（新建模式专属）：单号显示"下一个号"的**预览值**、试验时间取当前时刻，两项都只读。
     /// 单独抽出来是因为"新建初值"与"读取模板"两条路都要回到这个状态 —— 模板表里没有这两项，
     /// 读模板时不能用空串把它们冲掉（用户 2026-10-14）。
+    /// （试验日期**只显示日期**、不带时间 —— 用户 2026-10-17；库里的完整时间戳存取中间层照旧。）
     /// </summary>
     private async Task ApplyAutoValuesAsync()
     {
         var peeked = await _editor.PeekNextSheetIdAsync().ConfigureAwait(true);
 
         SetValue("SheetID", peeked);
-        SetValue("CreatedOn", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture));
+        SetValue("CreatedOn", DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
         SetReadOnly("SheetID");
         SetReadOnly("CreatedOn");
 

@@ -21,6 +21,15 @@ public static class ShearStrengthMetricKeys
     /// <summary>曲线图标题（试件号做参数；报表与自动存盘的 PNG 共用）。</summary>
     public const string CurveTitle = "Method.ShearStrength.CurveTitle";
 
+    /// <summary>历史数据页试件列表的标题列（试件号）。</summary>
+    public const string SampleId = "Method.ShearStrength.SampleID";
+
+    /// <summary>历史数据页：最大轴向荷载 Pmax（明细列单位 N，规范 4.6 的口径）。</summary>
+    public const string PeakLoad = "Method.ShearStrength.PeakLoad";
+
+    /// <summary>历史数据页：取 Pmax 时的轴向变形 Δh（mm）。</summary>
+    public const string PeakDeformation = "Method.ShearStrength.PeakDeformation";
+
     /// <summary>全部键（供语言字典一致性用例把守）。</summary>
     public static readonly string[] All =
     [
@@ -30,5 +39,8 @@ public static class ShearStrengthMetricKeys
         AxialStrain,
         Elapsed,
         CurveTitle,
+        SampleId,
+        PeakLoad,
+        PeakDeformation,
     ];
 }

@@ -18,7 +18,7 @@
       <RowDefinition Height="*" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
-    <!-- ① 实时数据区：指标卡 + 工作台按钮 + 两组功能按钮（照现役布局） -->
+    <!-- ① 实时数据区：指标卡 + 工作台按钮 + 功能按钮（照现役布局） -->
     <Grid Grid.Row="0">
       <Grid.ColumnDefinitions>
         <!-- 卡片按内容取宽；工作台按钮紧贴其右；再右是两组功能按钮；剩余宽度留给下面的曲线图 -->
@@ -103,17 +103,20 @@
       </StackPanel>
 
       <!--
-        功能按钮，放在工作台按钮右侧：2×3 排布，**按钮等宽**
-        （用户 2026-10-15："4个按钮的宽度不一致，History 按钮宽度最小，按标字最长的那个统一"）。
+        功能按钮，放在工作台按钮右侧：**一行三个、按钮等宽**
+        （用户 2026-10-15："按钮的宽度不一致，History 按钮宽度最小，按标字最长的那个统一"）。
         用 UniformGrid 而不是两个 StackPanel：UniformGrid 的所有格子取**所有孩子里最宽的那个**，
-        于是按钮一样宽；按行填充的顺序是"新建试验 / 打印报表 / 试验参数 / 历史数据 / 完成试验单"。
-        第五个按钮「完成试验单」= 规范 5.4 / 5.5 的收尾（分级均值 + c、φ、r + 完成时间）。
+        于是按钮一样宽；左起依次是"新建试验 / 打印报表 / 抗剪强度参数"。
+        「打印报表」= 打开打印预览（与历史数据页「打印预览」同一个窗体，用户 2026-10-17）。
+        「抗剪强度参数」= 规范 5.4 / 5.5 那一步（分级均值 + c、φ、r + 完成时间），
+        算完弹框把 c、φ、r 显示出来（用户 2026-10-17 由「完成试验单」改名并加结果弹框）。
+        「试验参数」「历史数据」已挪到导航栏（用户 2026-10-17）—— 它们是常驻入口，不必占这里的按钮位。
       -->
       <UniformGrid
         Grid.Column="2"
         Margin="12,0,0,0"
-        Columns="2"
-        Rows="3"
+        Columns="3"
+        Rows="1"
         VerticalAlignment="Top"
       >
           <ui:Button
@@ -126,7 +129,7 @@
           />
           <ui:Button
             MinWidth="96"
-            Margin="4,0,0,0"
+            Margin="4,0,4,0"
             Appearance="Primary"
             Command="{Binding ViewModel.PrintReportCommand}"
             Content="{DynamicResource Exec.Print}"
@@ -134,27 +137,11 @@
           />
           <ui:Button
             MinWidth="96"
-            Margin="0,6,4,0"
+            Margin="4,0,0,0"
             Appearance="Primary"
-            Command="{Binding ViewModel.OpenMachineSettingsCommand}"
-            Content="{DynamicResource Exec.TestParams}"
-            Icon="{ui:SymbolIcon Settings24}"
-          />
-          <ui:Button
-            MinWidth="96"
-            Margin="4,6,0,0"
-            Appearance="Primary"
-            Command="{Binding ViewModel.OpenHistoryCommand}"
-            Content="{DynamicResource Exec.History}"
-            Icon="{ui:SymbolIcon History24}"
-          />
-          <ui:Button
-            MinWidth="96"
-            Margin="0,6,4,0"
-            Appearance="Primary"
-            Command="{Binding ViewModel.FinishSheetCommand}"
-            Content="{DynamicResource Exec.FinishSheet}"
-            Icon="{ui:SymbolIcon CheckmarkCircle24}"
+            Command="{Binding ViewModel.ComputeShearParamsCommand}"
+            Content="{DynamicResource Exec.ShearParams}"
+            Icon="{ui:SymbolIcon Calculator24}"
           />
       </UniformGrid>
     </Grid>
